@@ -43,6 +43,8 @@ def run_grad_ascent_on_data(config, obj):
         model.zero_grad()
         # optimizer.zero_grad()
         updated_img.grad.data.zero_()
-    # print((updated_img - orig_img).mean())
-    del loss_r_feature_layers
+    # Removing the hook frees up memory otherwise every call to this function adds up extra Forwardhook
+    # making the forward pass expensive and hog up memory
+    for item in loss_r_feature_layers:
+        item.close()
     return updated_img.detach()
