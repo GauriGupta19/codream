@@ -7,6 +7,8 @@ from torchvision.datasets.cifar import CIFAR10
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader
 
+from data_utils import cifar_extr_noniid
+
 
 class WebObj():
     def __init__(self, config, obj) -> None:
@@ -34,8 +36,17 @@ class WebObj():
                 model = self.load_weights(config["results_path"], model, i)
             c_model = nn.DataParallel(model.to(self.device), device_ids=self.device_ids)
             c_optim = optim(c_model.parameters(), lr=lr)
-            c_idx = indices[i*self.samples_per_client: (i+1)*self.samples_per_client]
-            c_dset = Subset(train_dataset, c_idx)
+            if config["exp_type"].startswith("non_iid"):
+                if i == 0:
+                    # only need to call this func once since it returns all user_groups
+                    user_groups_train, user_groups_test = cifar_extr_noniid(train_dataset, test_dataset,
+                                                                            config["num_clients"], config["class_per_client"],
+                                                                            config["samples_per_client"], rate_unbalance=1.)
+                c_dset = Subset(train_dataset, user_groups_train[i].astype(int))
+            else:
+                c_idx = indices[i*self.samples_per_client: (i+1)*self.samples_per_client]
+                c_dset = Subset(train_dataset, c_idx)
+            
             c_dloader = DataLoader(c_dset, batch_size=64*len(self.device_ids), shuffle=True)
 
             self.c_models.append(c_model)

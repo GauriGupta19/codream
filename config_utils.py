@@ -3,6 +3,7 @@ import jmespath, importlib, os
 
 def load_config(config_path):
     path = '.'.join(config_path.split('.')[1].split('/')[1:])
+    print(path)
     config = importlib.import_module(path).current_config
     return process_config(config)
 

@@ -13,9 +13,6 @@ class Utils():
     def check_and_create_path(self, path):
         if os.path.isdir(path):
             print("Experiment in {} already present".format(path))
-            if self.config["load_existing"]:
-                print("Continue with loading checkpoint")
-                return
             inp = input("Press e to exit, r to replace it: ")
             if inp == "e":
                 exit()
@@ -30,11 +27,14 @@ class Utils():
 
     def copy_source_code(self, path):
         print("exp path:", path)
-        if os.path.isdir(path):
-            # throw a prompt
-            self.check_and_create_path(path)
+        if self.config["load_existing"]:
+            print("Continue with loading checkpoint")
+            return
         else:
-            os.makedirs(path)
+            # if os.path.isdir(path):
+                # throw a prompt
+            self.check_and_create_path(path)
+            # else:
             denylist = ["./__pycache__/", "./.ipynb_checkpoints/",
                         "./imgs/", '/'.join(path.split('/')[:-1])+'/']
             folders = glob(r'./*/')
