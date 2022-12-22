@@ -1,5 +1,7 @@
 expt_dump/
 imgs/
+notes.txt
+removeme*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
