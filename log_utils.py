@@ -1,7 +1,21 @@
-import os, pickle, shutil, logging
+import os, pickle, shutil, logging, torch
+import torchvision.transforms as T
+from torchvision.utils import make_grid, save_image
 from tensorboardX import SummaryWriter
 from shutil import copytree, copy2
 from glob import glob
+from PIL import Image
+
+
+# Normalize an image
+def deprocess(img):
+    inv_normalize = T.Normalize(
+       mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+       std=[1/0.229, 1/0.224, 1/0.225]
+    )
+    img = inv_normalize(img)
+    img = 255*img
+    return img.type(torch.uint8)
 
 
 class Utils():
@@ -76,6 +90,15 @@ class Logger():
         if not load_existing:
             os.makedirs(tb_path)
         self.writer = SummaryWriter(tb_path)
+
+    def log_image(self, imgs, key, iteration):
+        # imgs = deprocess(imgs.detach().cpu())[:64]
+        grid = make_grid(imgs.detach().cpu(), normalize=True, scale_each=True)
+        # grid = imgs
+        # save_image(grid, f"./expt_dump/temp/expt{key}{iteration}.png")
+        im_ob = Image.fromarray(grid.permute(1, 2, 0).numpy(), mode='RGB')
+        im_ob.save(f"./expt_dump/temp/expt{key}{iteration}.png")
+        self.writer.add_image(key, grid.numpy(), iteration)
 
     def log_console(self, msg):
         logging.info(msg)

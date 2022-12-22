@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -71,12 +72,18 @@ def cifar_extr_noniid(train_dataset, test_dataset, num_users, n_class, num_sampl
     labels_test = np.array(test_dataset.targets)
     #labels_test_raw = np.array(test_dataset.targets)
 
-    # sort labels
+    # stores the image idxs with their corresponding labels
+    # array([[    0,     1,     2, ..., 49997, 49998, 49999],
+    #        [    6,     9,     9, ...,     9,     1,     1]])
     idxs_labels = np.vstack((idxs, labels))
+    # sorts the whole thing based on labels
+    # array([[29513, 16836, 32316, ..., 36910, 21518, 25648],
+    #       [    0,     0,     0, ...,     9,     9,     9]])
     idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
     idxs = idxs_labels[0, :]
     labels = idxs_labels[1, :]
 
+    # Same things as above except that it is test set now
     idxs_labels_test = np.vstack((idxs_test, labels_test))
     idxs_labels_test = idxs_labels_test[:, idxs_labels_test[1, :].argsort()]
     idxs_test = idxs_labels_test[0, :]

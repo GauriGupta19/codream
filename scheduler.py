@@ -1,11 +1,13 @@
+from collections import OrderedDict
 import torch, random, numpy
 from distrib_utils import WebObj
 from log_utils import Utils
 from data_utils import get_dataset
 from config_utils import load_config
-from algos import run_grad_ascent_on_data
+from algos import adaptive_run_grad_ascent_on_data, run_grad_ascent_on_data
 from modules import kl_loss_fn, ce_loss_fn
 import torch.nn as nn
+import numpy as np
 
 
 class Scheduler():
@@ -66,6 +68,30 @@ class Scheduler():
         # print(y_hat, correct / samples)
         return total_loss / float(samples)
 
+    def new_train(self, model, dloader, collab_data, optim):
+        model.train()
+        correct_local, correct_dist, total_loss, samples_1, samples_2 = 0, 0, 0, 0, 0
+        for x, y_hat in dloader:
+            x, y_hat = x.to(self.device), y_hat.to(self.device)
+            optim.zero_grad()
+            y = model(x)
+            correct_local += (y.argmax(dim=1) == y_hat).sum()
+            samples_1 += x.shape[0]
+            loss = ce_loss_fn(y, y_hat)
+
+            x, y_hat = collab_data[0].to(self.device), collab_data[1].to(self.device)
+            y = model(x)
+            y = nn.functional.log_softmax(y, dim=1)
+            loss += kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
+            correct_dist += (y.argmax(dim=1) == y_hat.argmax(dim=1)).sum()
+
+            loss.backward()
+            optim.step()
+            total_loss += loss.item()
+            samples_2 += x.shape[0]
+        print(correct_local / samples_1, correct_dist / samples_2)
+        return total_loss / float(samples_1 + samples_2)
+
     def test(self, model, dloader):
         model.eval()
         correct, total = 0, 0
@@ -103,6 +129,54 @@ class Scheduler():
                 torch.save(self.web_obj.c_models[i].module.state_dict(),
                             "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
                 
+
+    def fed_avg(self, models):
+        # All models are sampled currently at every round
+        # Each model is assumed to have equal amount of data and hence
+        # coeff is same for everyone
+        num_clients = len(models)
+        coeff = 1 / num_clients
+        av_wts = OrderedDict()
+        first_model = models[0].module.state_dict()
+
+        for client_num in range(num_clients):
+            local_wts = models[client_num].module.state_dict()
+            for key in first_model.keys():
+                if client_num == 0:
+                    av_wts[key] = coeff * local_wts[key]
+                else:
+                    av_wts[key] += coeff * local_wts[key]
+
+        for client_num in range(num_clients):
+            local_wts = models[client_num].module
+            local_wts.load_state_dict(av_wts)
+
+
+    def start_iid_federated(self):
+        self.utils.logger.log_console("Starting iid clients federated averaging")
+        for epoch in range(self.start_epoch, self.config["epochs"]):
+            num_clients = self.web_obj.num_clients
+            for client_num in range(num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                self.utils.logger.log_console(f"Evaluating client {client_num}")
+                acc = self.test(c_model, self.web_obj.test_loader)
+                self.utils.logger.log_tb(f"test_acc/client{client_num}", acc, epoch)
+                self.utils.logger.log_console("epoch: {} test_acc:{:.4f} client:{}".format(
+                    epoch, acc, client_num
+                ))
+
+            for client_num in range(num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                c_model.train()
+                c_optim = self.web_obj.c_optims[client_num]
+                c_dloader = self.web_obj.c_dloaders[client_num]
+                avg_loss = self.train(c_model, c_dloader, c_optim)
+                self.utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
+            self.fed_avg(self.web_obj.c_models)
+            # Save models
+            for i in range(self.web_obj.num_clients):
+                torch.save(self.web_obj.c_models[i].module.state_dict(),
+                            "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
 
     def start_iid_clients_collab(self):
         for epoch in range(self.start_epoch, self.config["epochs"]):
@@ -170,6 +244,102 @@ class Scheduler():
                 torch.save(self.web_obj.c_models[i].module.state_dict(),
                            "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
     
+    def start_iid_clients_adaptive_collab(self):
+        for epoch in range(self.start_epoch, self.config["epochs"]):
+            collab_data = []
+            # Evaluate on the common test set
+            for client_num in range(self.web_obj.num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                acc = self.test(c_model, self.web_obj.test_loader)
+                # log accuracy for every client
+                self.utils.logger.log_tb(f"test_acc/client{client_num}", acc, epoch)
+                self.utils.logger.log_console("epoch: {} test_acc:{:.4f} client:{}".format(
+                    epoch, acc, client_num
+                ))
+
+            if epoch >= self.config["warmup"]:
+                # Generate collab data
+                for client_num in range(self.web_obj.num_clients):
+                    """ We generate a zero vector of n (num_classes dimension)
+                    then we generate random numbers within range n and substitute
+                    zero at every index obtained from random number to be 1
+                    This way the zero vector becomes a random one-hot vector
+                    """
+                    bs = self.config["distill_batch_size"]
+                    zeroes = torch.zeros(bs, self.dset_obj.NUM_CLS)
+                    ind = torch.randint(low=0, high=10, size=(bs,))
+                    zeroes[torch.arange(start=0, end=bs), ind] = 1
+                    target = zeroes.to(self.device)
+                    # For RGB 3 Channels
+                    rand_imgs = torch.randn(bs, 3, self.dset_obj.IMAGE_SIZE, self.dset_obj.IMAGE_SIZE).to(self.device)
+
+                    c_model = self.web_obj.c_models[client_num]
+                    c_model.eval()
+                    self.utils.logger.log_console(f"generating image for client {client_num}")
+                    obj = {"orig_img": rand_imgs, "target_label": target,
+                           "data": self.dset_obj, "models_t": [m for i, m in enumerate(self.web_obj.c_models) if i != client_num],
+                           "model_s": self.web_obj.c_models[client_num],
+                           "device": self.device}
+                    updated_imgs = adaptive_run_grad_ascent_on_data(self.config, obj)
+                    self.utils.logger.log_image(updated_imgs, f"adaptive_client{client_num}", epoch)
+                    acts = c_model(updated_imgs).detach()
+                    collab_data.append((updated_imgs, acts))
+                    self.utils.logger.log_console(f"generated image")
+
+            # Train each client on their own data and collab data
+            for client_num in range(self.web_obj.num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                c_model.train()
+                c_optim = self.web_obj.c_optims[client_num]
+                c_dloader = self.web_obj.c_dloaders[client_num]
+                if epoch >= self.config["warmup"]:
+                    # Train it 10 times on the same distilled dataset
+                    for _ in range(self.config["distill_epochs"]):
+                        for c_num, (x, y_hat) in enumerate(collab_data):
+                            if c_num == client_num:
+                                # no need to train on its own distilled data
+                                # continue
+                                x, y_hat = x.to(self.device), y_hat.to(self.device)
+                                c_optim.zero_grad()
+                                y = c_model(x)
+                                y = nn.functional.log_softmax(y, dim=1)
+                                loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
+                                loss.backward()
+                                c_optim.step()
+                avg_loss = self.train(c_model, c_dloader, c_optim)
+                self.utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
+            # Save models
+            for i in range(self.web_obj.num_clients):
+                torch.save(self.web_obj.c_models[i].module.state_dict(),
+                           "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
+
+
+    def start_non_iid_federated(self):
+        self.utils.logger.log_console("Starting iid clients federated averaging")
+        for epoch in range(self.start_epoch, self.config["epochs"]):
+            num_clients = self.web_obj.num_clients
+            for client_num in range(num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                self.utils.logger.log_console(f"Evaluating client {client_num}")
+                acc = self.test(c_model, self.web_obj.test_loader)
+                self.utils.logger.log_tb(f"test_acc/client{client_num}", acc, epoch)
+                self.utils.logger.log_console("epoch: {} test_acc:{:.4f} client:{}".format(
+                    epoch, acc, client_num
+                ))
+
+            for client_num in range(num_clients):
+                c_model = self.web_obj.c_models[client_num]
+                c_model.train()
+                c_optim = self.web_obj.c_optims[client_num]
+                c_dloader = self.web_obj.c_dloaders[client_num]
+                avg_loss = self.train(c_model, c_dloader, c_optim)
+                self.utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
+            self.fed_avg(self.web_obj.c_models)
+            # Save models
+            for i in range(self.web_obj.num_clients):
+                torch.save(self.web_obj.c_models[i].module.state_dict(),
+                            "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
+
 
     def start_non_iid_clients_collab(self):
         for epoch in range(self.start_epoch, self.config["epochs"]):
@@ -205,10 +375,14 @@ class Scheduler():
                     c_model.eval()
                     self.utils.logger.log_console(f"generating image for client {client_num}")
                     obj = {"orig_img": rand_imgs, "target_label": target,
-                        "data": self.dset_obj, "model": c_model, "device": self.device}
-                    updated_imgs = run_grad_ascent_on_data(self.config, obj)
+                           "data": self.dset_obj, "models_t": [m for i, m in enumerate(self.web_obj.c_models) if i != client_num],
+                           "model_s": self.web_obj.c_models[client_num],
+                           "device": self.device}
+                    updated_imgs = adaptive_run_grad_ascent_on_data(self.config, obj)
+                    self.utils.logger.log_image(updated_imgs, f"client{client_num}", epoch)
                     acts = c_model(updated_imgs).detach()
                     collab_data.append((updated_imgs, acts))
+                    # collab_data.append((updated_imgs, target))
                     self.utils.logger.log_console(f"generated image")
 
             # Train each client on their own data and collab data
@@ -217,31 +391,52 @@ class Scheduler():
                 c_model.train()
                 c_optim = self.web_obj.c_optims[client_num]
                 c_dloader = self.web_obj.c_dloaders[client_num]
-                if epoch >= self.config["warmup"]:
-                    # Train it 10 times on the same distilled dataset
-                    for _ in range(self.config["distill_epochs"]):
-                        for c_num, (x, y_hat) in enumerate(collab_data):
-                            if c_num == client_num:
-                                # no need to train on its own distilled data
-                                continue
-                            x, y_hat = x.to(self.device), y_hat.to(self.device)
-                            c_optim.zero_grad()
-                            y = c_model(x)
-                            y = nn.functional.log_softmax(y, dim=1)
-                            loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
-                            loss.backward()
-                            c_optim.step()
-                avg_loss = self.train(c_model, c_dloader, c_optim)
+                # if epoch >= self.config["warmup"]:
+                #     # Train it 10 times on the same distilled dataset
+                #     for _ in range(self.config["distill_epochs"]):
+                #         for c_num, (x, y_hat) in enumerate(collab_data):
+                #             if c_num == client_num:
+                #                 # no need to train on its own distilled data
+                #                 continue
+                #             x, y_hat = x.to(self.device), y_hat.to(self.device)
+                #             c_optim.zero_grad()
+                #             y = c_model(x)
+                #             if _ == 0 or _ == self.config["distill_epochs"] - 1:
+                #                 print(f"client num {client_num}, it num {_}")
+                #                 print(y.argmax(dim=1), y_hat.argmax(dim=1))
+                #             y = nn.functional.log_softmax(y, dim=1)
+                #             loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
+                #             loss.backward()
+                #             c_optim.step()
+                dist_data = collab_data[(client_num + 1) % 2]
+                avg_loss = self.new_train(c_model, c_dloader, dist_data, c_optim)
+                # avg_loss = self.train(c_model, c_dloader, c_optim)
+                for c_num, (x, y_hat) in enumerate(collab_data):
+                    if c_num == client_num:
+                        # no need to train on its own distilled data
+                        continue
+                    x, y_hat = x.to(self.device), y_hat.to(self.device)
+                    c_optim.zero_grad()
+                    y = c_model(x)
+                    print(f"after local training of {client_num}", y.argmax(dim=1), y_hat.argmax(dim=1))
                 self.utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
             # Save models
             for i in range(self.web_obj.num_clients):
                 torch.save(self.web_obj.c_models[i].module.state_dict(),
                            "{}/saved_models/c{}.pt".format(self.config["results_path"], i))
 
+
     def run_job(self) -> None:
         if self.config["exp_type"] == "iid_clients_collab":
             self.start_iid_clients_collab()
+        if self.config["exp_type"] == "iid_clients_adaptive_collab":
+            self.start_iid_clients_adaptive_collab()
         elif self.config["exp_type"] == "iid_clients_isolated":
             self.start_iid_clients_isolated()
         elif self.config["exp_type"] == "non_iid_clients_collab":
+            # currently it is adaptive version
             self.start_non_iid_clients_collab()
+        elif self.config["exp_type"] == "iid_clients_federated":
+            self.start_iid_federated()
+        elif self.config["exp_type"] == "non_iid_clients_federated":
+            self.start_non_iid_federated()

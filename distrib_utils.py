@@ -41,7 +41,7 @@ class WebObj():
                     # only need to call this func once since it returns all user_groups
                     user_groups_train, user_groups_test = cifar_extr_noniid(train_dataset, test_dataset,
                                                                             config["num_clients"], config["class_per_client"],
-                                                                            config["samples_per_client"], rate_unbalance=1.)
+                                                                            config["samples_per_client"], rate_unbalance=1)
                 c_dset = Subset(train_dataset, user_groups_train[i].astype(int))
             else:
                 c_idx = indices[i*self.samples_per_client: (i+1)*self.samples_per_client]
