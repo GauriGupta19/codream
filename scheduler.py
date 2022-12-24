@@ -65,12 +65,12 @@ class Scheduler():
             optim.step()
             total_loss += loss.item()
             samples += x.shape[0]
-        # print(y_hat, correct / samples)
+        print("train acc is", correct / samples)
         return total_loss / float(samples)
 
-    def new_train(self, model, dloader, collab_data, optim):
+    def new_train(self, model, dloader, optim, dist_data=None):
         model.train()
-        correct_local, correct_dist, total_loss, samples_1, samples_2 = 0, 0, 0, 0, 0
+        correct_local, correct_dist, total_loss, samples_1, samples_2 = 0, 0, 0, 0, 1
         for x, y_hat in dloader:
             x, y_hat = x.to(self.device), y_hat.to(self.device)
             optim.zero_grad()
@@ -79,17 +79,25 @@ class Scheduler():
             samples_1 += x.shape[0]
             loss = ce_loss_fn(y, y_hat)
 
-            x, y_hat = collab_data[0].to(self.device), collab_data[1].to(self.device)
-            y = model(x)
-            y = nn.functional.log_softmax(y, dim=1)
-            loss += kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
-            correct_dist += (y.argmax(dim=1) == y_hat.argmax(dim=1)).sum()
+            if dist_data is not None:
+                x, y_hat = dist_data[0].to(self.device), dist_data[1].to(self.device)
+                y = model(x)
+                y = nn.functional.log_softmax(y, dim=1)
+                loss += kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))    
+                correct_dist += (y.argmax(dim=1) == y_hat.argmax(dim=1)).sum()
+                samples_2 += x.shape[0]
 
             loss.backward()
             optim.step()
             total_loss += loss.item()
-            samples_2 += x.shape[0]
+
         print(correct_local / samples_1, correct_dist / samples_2)
+        # count the number of unique labels in the collab data
+        if dist_data is None:
+            print("No collab data")
+        else:
+            print(y.argmax(dim=1).unique(return_counts=True))
+            print(y_hat.argmax(dim=1).unique(return_counts=True))
         return total_loss / float(samples_1 + samples_2)
 
     def test(self, model, dloader):
@@ -271,7 +279,8 @@ class Scheduler():
                     zeroes[torch.arange(start=0, end=bs), ind] = 1
                     target = zeroes.to(self.device)
                     # For RGB 3 Channels
-                    rand_imgs = torch.randn(bs, 3, self.dset_obj.IMAGE_SIZE, self.dset_obj.IMAGE_SIZE).to(self.device)
+                    self.config["inp_shape"][0] = bs
+                    rand_imgs = torch.randn(self.config["inp_shape"]).to(self.device)
 
                     c_model = self.web_obj.c_models[client_num]
                     c_model.eval()
@@ -281,8 +290,9 @@ class Scheduler():
                            "model_s": self.web_obj.c_models[client_num],
                            "device": self.device}
                     updated_imgs = adaptive_run_grad_ascent_on_data(self.config, obj)
-                    self.utils.logger.log_image(updated_imgs, f"adaptive_client{client_num}", epoch)
-                    acts = c_model(updated_imgs).detach()
+                    # well we can not log all the channels of the intermediate representations so save first 3 channels
+                    self.utils.logger.log_image(updated_imgs[:, :3], f"adaptive_client{client_num}", epoch)
+                    acts = c_model(updated_imgs, position=self.config["position"]).detach()
                     collab_data.append((updated_imgs, acts))
                     self.utils.logger.log_console(f"generated image")
 
@@ -301,7 +311,7 @@ class Scheduler():
                                 # continue
                                 x, y_hat = x.to(self.device), y_hat.to(self.device)
                                 c_optim.zero_grad()
-                                y = c_model(x)
+                                y = c_model(x, position=self.config["position"])
                                 y = nn.functional.log_softmax(y, dim=1)
                                 loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
                                 loss.backward()
@@ -365,6 +375,7 @@ class Scheduler():
                     bs = self.config["distill_batch_size"]
                     zeroes = torch.zeros(bs, self.dset_obj.NUM_CLS)
                     # Hacky way of getting labels from the same distribution
+                    # Get the labels from the first batch of the client's dataloader
                     ind = next(iter(self.web_obj.c_dloaders[client_num]))[1][:bs]
                     zeroes[torch.arange(start=0, end=bs), ind] = 1
                     target = zeroes.to(self.device)
@@ -374,13 +385,19 @@ class Scheduler():
                     c_model = self.web_obj.c_models[client_num]
                     c_model.eval()
                     self.utils.logger.log_console(f"generating image for client {client_num}")
+                    # models_t refers to the model of the client that we are generating images from
+                    # model_s refers to the model of the client that we are generating images for
                     obj = {"orig_img": rand_imgs, "target_label": target,
-                           "data": self.dset_obj, "models_t": [m for i, m in enumerate(self.web_obj.c_models) if i != client_num],
-                           "model_s": self.web_obj.c_models[client_num],
+                           "data": self.dset_obj, "models_t": [c_model],
+                           "model_s": self.web_obj.c_models[(client_num + 1) % 2],
                            "device": self.device}
+                    # Generate images by running gradient ascent on the random images
                     updated_imgs = adaptive_run_grad_ascent_on_data(self.config, obj)
+                    # Log the generated images
                     self.utils.logger.log_image(updated_imgs, f"client{client_num}", epoch)
+                    # Get the activations of the generated images
                     acts = c_model(updated_imgs).detach()
+                    # Add the generated images and their activations to the collab data
                     collab_data.append((updated_imgs, acts))
                     # collab_data.append((updated_imgs, target))
                     self.utils.logger.log_console(f"generated image")
@@ -391,7 +408,7 @@ class Scheduler():
                 c_model.train()
                 c_optim = self.web_obj.c_optims[client_num]
                 c_dloader = self.web_obj.c_dloaders[client_num]
-                # if epoch >= self.config["warmup"]:
+                if epoch >= self.config["warmup"]:
                 #     # Train it 10 times on the same distilled dataset
                 #     for _ in range(self.config["distill_epochs"]):
                 #         for c_num, (x, y_hat) in enumerate(collab_data):
@@ -408,8 +425,10 @@ class Scheduler():
                 #             loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
                 #             loss.backward()
                 #             c_optim.step()
-                dist_data = collab_data[(client_num + 1) % 2]
-                avg_loss = self.new_train(c_model, c_dloader, dist_data, c_optim)
+                    dist_data = collab_data[(client_num + 1) % 2]
+                    avg_loss = self.new_train(c_model, c_dloader, c_optim, dist_data=dist_data)
+                else:
+                    avg_loss = self.new_train(c_model, c_dloader, c_optim, dist_data=None)
                 # avg_loss = self.train(c_model, c_dloader, c_optim)
                 for c_num, (x, y_hat) in enumerate(collab_data):
                     if c_num == client_num:

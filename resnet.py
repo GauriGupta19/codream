@@ -82,20 +82,20 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
  
-    def forward(self, x, layer_num=0, out_feature=False):
-        if layer_num == 0:
+    def forward(self, x, position=0, out_feature=False):
+        if position == 0:
             x = self.conv1(x)
             x = self.bn1(x)
             x = F.relu(x)
-        if layer_num <= 1:
+        if position <= 1:
             x = self.layer1(x)
-        if layer_num <= 2:
+        if position <= 2:
             x = self.layer2(x)
-        if layer_num <= 3:
+        if position <= 3:
             x = self.layer3(x)
-        if layer_num <= 4:
+        if position <= 4:
             x = self.layer4(x)
-        if layer_num <=5:
+        if position <=5:
             x = F.avg_pool2d(x, 4)
             feature = x.view(x.size(0), -1)
             x = self.linear(feature)
@@ -109,7 +109,7 @@ def ResNet18(num_classes=10):
     return ResNet(BasicBlock, [2,2,2,2], num_classes)
  
 def ResNet34(num_classes=10):
-    return ResNet(BasicBlock, [3,4,6,3], num_classes)
+    return ResNet(BasicBlock, [3,4,6,3], num_classes=num_classes)
  
 def ResNet50(num_classes=10):
     return ResNet(Bottleneck, [3,4,6,3], num_classes)

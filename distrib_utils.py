@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torchvision import models
+# from torchvision import models
+from resnet import ResNet34
 
 from torchvision.datasets.cifar import CIFAR10
 from torch.utils.data import Subset
@@ -18,7 +19,7 @@ class WebObj():
         self.num_clients, self.samples_per_client = config["num_clients"], config["samples_per_client"]
         self.device, self.device_ids = obj["device"], obj["device_ids"]
         train_dataset, test_dataset = obj["dset_obj"].train_dset, obj["dset_obj"].test_dset
-        batch_size, lr = config["batch_size"], config["model_lr"]
+        batch_size, lr, position = config["batch_size"], config["model_lr"], config["position"]
         
         # train_loader = DataLoader(train_dataset, batch_size=batch_size)
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size)
@@ -31,7 +32,7 @@ class WebObj():
         self.c_dloaders = []
 
         for i in range(self.num_clients):
-            model = models.resnet34()
+            model = ResNet34()
             if config["load_existing"]:
                 model = self.load_weights(config["results_path"], model, i)
             c_model = nn.DataParallel(model.to(self.device), device_ids=self.device_ids)

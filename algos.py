@@ -48,6 +48,7 @@ def run_grad_ascent_on_data(config, obj):
 
 def adaptive_run_grad_ascent_on_data(config, obj):
     lr, steps = config["data_lr"], config["steps"]
+    position = config["position"]
     alpha_preds, alpha_tv, alpha_l2, alpha_f = config["alpha_preds"], config["alpha_tv"], config["alpha_l2"], config["alpha_f"]
     orig_img, target_label, models_t, model_s = obj["orig_img"], obj["target_label"], obj["models_t"], obj["model_s"]
     loss_r_feature_layers_t, loss_r_feature_layers_s = [], []
@@ -80,19 +81,20 @@ def adaptive_run_grad_ascent_on_data(config, obj):
         optimizer.zero_grad()
         ce_loss_t_sum = 0
         for m in models_t:
-            acts_t = m.module(inputs_jit)[:, :10]
+            acts_t = m.module(inputs_jit, position=position)[:, :10]
             ce_loss_t_sum += nn.CrossEntropyLoss()(acts_t, target_label)
-        acts_s = model_s.module(inputs_jit)[:, :10]
+        acts_s = model_s.module(inputs_jit, position=position)[:, :10]
         ce_loss_s = nn.CrossEntropyLoss()(acts_s, target_label)
-        loss_r_feature_t = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers_t)])
-        loss_r_feature_s = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers_s)])
-        loss = alpha_preds * (ce_loss_t_sum - ce_loss_s) +\
+        loss_r_feature_t = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers_t) if hasattr(model, "r_feature")])
+        loss_r_feature_s = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers_s) if hasattr(model, "r_feature")])
+        # multiplying with 0 here is a hack to make the loss 0 for the student model, TODO: fix this
+        loss = alpha_preds * (ce_loss_t_sum - 0 * ce_loss_s) +\
                alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) +\
                alpha_f * (loss_r_feature_t + loss_r_feature_s)
         if it % 500 == 0:
-            # acc_t = (acts_t.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts_t.shape[0]
+            acc_t = (acts_t.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts_t.shape[0]
             acc_s = (acts_s.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts_s.shape[0]
-            print(f"{it}/{steps}", loss_r_feature_t.item(), loss_r_feature_s.item(), acc_s)
+            print(f"{it}/{steps}", loss_r_feature_t.item(), loss_r_feature_s.item(), acc_s, acc_t)
 
         loss.backward()
         optimizer.step()
