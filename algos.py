@@ -6,7 +6,7 @@ from generative_model import skip
 
 def run_grad_ascent_on_data(config, obj):
     lr, steps = config["data_lr"], config["steps"]
-    # LOWER_IMAGE_BOUND, UPPER_IMAGE_BOUND = obj["data"].IMAGE_BOUND_L.to(obj["device"]), obj["data"].IMAGE_BOUND_U.to(obj["device"])
+    position = config["position"]
     alpha_preds, alpha_tv, alpha_l2, alpha_f = config["alpha_preds"], config["alpha_tv"], config["alpha_l2"], config["alpha_f"]
     orig_img, target_label, model = obj["orig_img"], obj["target_label"], obj["model"]
     loss_r_feature_layers = []
@@ -29,9 +29,9 @@ def run_grad_ascent_on_data(config, obj):
 
         model.zero_grad()
         optimizer.zero_grad()
-        acts = model.module(inputs_jit)[:, :10]
+        acts = model.module(inputs_jit, position=position)[:, :10]
         ce_loss = nn.CrossEntropyLoss()(acts, target_label)
-        loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers)])
+        loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers) if hasattr(model, "r_feature")])
         loss = alpha_preds * ce_loss + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
         if it % 500 == 0:
             print(f"{it}/{steps}", loss_r_feature.item(), (acts.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts.shape[0])

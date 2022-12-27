@@ -68,36 +68,31 @@ class Scheduler():
         print("train acc is", correct / samples)
         return total_loss / float(samples)
 
-    def new_train(self, model, dloader, optim, dist_data=None):
+    def new_train(self, model, dloader, optim, dist_data=None, position=0):
         model.train()
-        correct_local, correct_dist, total_loss, samples_1, samples_2 = 0, 0, 0, 0, 1
+        correct_local, correct_dist, total_loss, samples_1, samples_2 = 0, 0, 0, 0, 0
         for x, y_hat in dloader:
-            x, y_hat = x.to(self.device), y_hat.to(self.device)
             optim.zero_grad()
+            x_, y_hat_ = dist_data[0].to(self.device), dist_data[1].to(self.device)
+            y_ = model(x_, position=position)
+            y_ = nn.functional.log_softmax(y_, dim=1)
+            loss = kl_loss_fn(y_, nn.functional.softmax(y_hat_, dim=1))    
+            correct_dist += (y_.argmax(dim=1) == y_hat_.argmax(dim=1)).sum()
+            samples_2 += x_.shape[0]
+
+            x, y_hat = x.to(self.device), y_hat.to(self.device)
             y = model(x)
             correct_local += (y.argmax(dim=1) == y_hat).sum()
             samples_1 += x.shape[0]
-            loss = ce_loss_fn(y, y_hat)
-
-            if dist_data is not None:
-                x, y_hat = dist_data[0].to(self.device), dist_data[1].to(self.device)
-                y = model(x)
-                y = nn.functional.log_softmax(y, dim=1)
-                loss += kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))    
-                correct_dist += (y.argmax(dim=1) == y_hat.argmax(dim=1)).sum()
-                samples_2 += x.shape[0]
+            loss += ce_loss_fn(y, y_hat)
 
             loss.backward()
             optim.step()
             total_loss += loss.item()
 
         print(correct_local / samples_1, correct_dist / samples_2)
-        # count the number of unique labels in the collab data
-        if dist_data is None:
-            print("No collab data")
-        else:
-            print(y.argmax(dim=1).unique(return_counts=True))
-            print(y_hat.argmax(dim=1).unique(return_counts=True))
+        print("output y's", y_.argmax(dim=1).unique(return_counts=True))
+        print("distilled y_hat's", y_hat_.argmax(dim=1).unique(return_counts=True))
         return total_loss / float(samples_1 + samples_2)
 
     def test(self, model, dloader):
@@ -164,14 +159,15 @@ class Scheduler():
         self.utils.logger.log_console("Starting iid clients federated averaging")
         for epoch in range(self.start_epoch, self.config["epochs"]):
             num_clients = self.web_obj.num_clients
-            for client_num in range(num_clients):
-                c_model = self.web_obj.c_models[client_num]
-                self.utils.logger.log_console(f"Evaluating client {client_num}")
-                acc = self.test(c_model, self.web_obj.test_loader)
-                self.utils.logger.log_tb(f"test_acc/client{client_num}", acc, epoch)
-                self.utils.logger.log_console("epoch: {} test_acc:{:.4f} client:{}".format(
-                    epoch, acc, client_num
-                ))
+            # no need to run test for every client because the model weights are same
+            # for client_num in range(num_clients):
+            c_model = self.web_obj.c_models[client_num]
+            self.utils.logger.log_console(f"Evaluating clients")
+            acc = self.test(c_model, self.web_obj.test_loader)
+            self.utils.logger.log_tb(f"test_acc/clients", acc, epoch)
+            self.utils.logger.log_console("epoch: {} test_acc:{:.4f}".format(
+                epoch, acc
+            ))
 
             for client_num in range(num_clients):
                 c_model = self.web_obj.c_models[client_num]
@@ -212,8 +208,8 @@ class Scheduler():
                     ind = torch.randint(low=0, high=10, size=(bs,))
                     zeroes[torch.arange(start=0, end=bs), ind] = 1
                     target = zeroes.to(self.device)
-                    # For RGB 3 Channels
-                    rand_imgs = torch.randn(bs, 3, self.dset_obj.IMAGE_SIZE, self.dset_obj.IMAGE_SIZE).to(self.device)
+                    self.config["inp_shape"][0] = bs
+                    rand_imgs = torch.randn(self.config["inp_shape"]).to(self.device)
 
                     c_model = self.web_obj.c_models[client_num]
                     c_model.eval()
@@ -221,7 +217,9 @@ class Scheduler():
                     obj = {"orig_img": rand_imgs, "target_label": target,
                         "data": self.dset_obj, "model": c_model, "device": self.device}
                     updated_imgs = run_grad_ascent_on_data(self.config, obj)
-                    acts = c_model(updated_imgs).detach()
+                    # well we can not log all the channels of the intermediate representations so save first 3 channels
+                    self.utils.logger.log_image(updated_imgs[:, :3], f"adaptive_client{client_num}", epoch)
+                    acts = c_model(updated_imgs, position=self.config["position"]).detach()
                     collab_data.append((updated_imgs, acts))
                     self.utils.logger.log_console(f"generated image")
 
@@ -240,7 +238,7 @@ class Scheduler():
                                 continue
                             x, y_hat = x.to(self.device), y_hat.to(self.device)
                             c_optim.zero_grad()
-                            y = c_model(x)
+                            y = c_model(x, position=self.config["position"])
                             y = nn.functional.log_softmax(y, dim=1)
                             loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
                             loss.backward()
@@ -278,7 +276,7 @@ class Scheduler():
                     ind = torch.randint(low=0, high=10, size=(bs,))
                     zeroes[torch.arange(start=0, end=bs), ind] = 1
                     target = zeroes.to(self.device)
-                    # For RGB 3 Channels
+
                     self.config["inp_shape"][0] = bs
                     rand_imgs = torch.randn(self.config["inp_shape"]).to(self.device)
 
@@ -376,11 +374,13 @@ class Scheduler():
                     zeroes = torch.zeros(bs, self.dset_obj.NUM_CLS)
                     # Hacky way of getting labels from the same distribution
                     # Get the labels from the first batch of the client's dataloader
+                    # size of ind should be greater than bs
                     ind = next(iter(self.web_obj.c_dloaders[client_num]))[1][:bs]
                     zeroes[torch.arange(start=0, end=bs), ind] = 1
                     target = zeroes.to(self.device)
-                    # For RGB 3 Channels
-                    rand_imgs = torch.randn(bs, 3, self.dset_obj.IMAGE_SIZE, self.dset_obj.IMAGE_SIZE).to(self.device)
+
+                    self.config["inp_shape"][0] = bs
+                    rand_imgs = torch.randn(self.config["inp_shape"]).to(self.device)
 
                     c_model = self.web_obj.c_models[client_num]
                     c_model.eval()
@@ -388,15 +388,15 @@ class Scheduler():
                     # models_t refers to the model of the client that we are generating images from
                     # model_s refers to the model of the client that we are generating images for
                     obj = {"orig_img": rand_imgs, "target_label": target,
-                           "data": self.dset_obj, "models_t": [c_model],
-                           "model_s": self.web_obj.c_models[(client_num + 1) % 2],
+                           "data": self.dset_obj, "models_t": [m for i, m in enumerate(self.web_obj.c_models) if i != client_num],
+                           "model_s": self.web_obj.c_models[client_num],
                            "device": self.device}
                     # Generate images by running gradient ascent on the random images
                     updated_imgs = adaptive_run_grad_ascent_on_data(self.config, obj)
                     # Log the generated images
-                    self.utils.logger.log_image(updated_imgs, f"client{client_num}", epoch)
+                    self.utils.logger.log_image(updated_imgs[:, :3], f"client{client_num}", epoch)
                     # Get the activations of the generated images
-                    acts = c_model(updated_imgs).detach()
+                    acts = c_model(updated_imgs, position=self.config["position"]).detach()
                     # Add the generated images and their activations to the collab data
                     collab_data.append((updated_imgs, acts))
                     # collab_data.append((updated_imgs, target))
@@ -425,19 +425,19 @@ class Scheduler():
                 #             loss = kl_loss_fn(y, nn.functional.softmax(y_hat, dim=1))
                 #             loss.backward()
                 #             c_optim.step()
-                    dist_data = collab_data[(client_num + 1) % 2]
-                    avg_loss = self.new_train(c_model, c_dloader, c_optim, dist_data=dist_data)
+                    dist_data = collab_data[client_num]
+                    avg_loss = self.new_train(c_model, c_dloader, c_optim, dist_data=dist_data, position=self.config["position"])
                 else:
-                    avg_loss = self.new_train(c_model, c_dloader, c_optim, dist_data=None)
+                    avg_loss = self.train(c_model, c_dloader, c_optim)
                 # avg_loss = self.train(c_model, c_dloader, c_optim)
-                for c_num, (x, y_hat) in enumerate(collab_data):
-                    if c_num == client_num:
-                        # no need to train on its own distilled data
-                        continue
-                    x, y_hat = x.to(self.device), y_hat.to(self.device)
-                    c_optim.zero_grad()
-                    y = c_model(x)
-                    print(f"after local training of {client_num}", y.argmax(dim=1), y_hat.argmax(dim=1))
+                # for c_num, (x, y_hat) in enumerate(collab_data):
+                #     if c_num == client_num:
+                #         # no need to train on its own distilled data
+                #         continue
+                #     x, y_hat = x.to(self.device), y_hat.to(self.device)
+                #     c_optim.zero_grad()
+                #     y = c_model(x)
+                #     print(f"after local training of {client_num}", y.argmax(dim=1), y_hat.argmax(dim=1))
                 self.utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
             # Save models
             for i in range(self.web_obj.num_clients):
