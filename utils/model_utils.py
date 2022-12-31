@@ -43,7 +43,7 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return train_loss, acc
 
-    def test(self, model, dloader, loss_fn, device, **kwargs):
+    def test(self, model, dloader, loss_fn, device):
         """TODO: generate docstring
         """
         model.eval()
@@ -53,7 +53,7 @@ class ModelUtils():
             for data, target in dloader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
-                test_loss += loss_fn(output, target, reduction='mean').item()
+                test_loss += loss_fn(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 # view_as() is used to make sure the shape of pred and target are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()

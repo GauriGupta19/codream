@@ -18,6 +18,7 @@ class FedAvgClient(BaseClient):
         avg_loss = self.model_utils.train(self.model, self.optim,
                                           self.dloader, self.loss_fn,
                                           self.device)
+        print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
         # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
     
     def local_test(self, **kwargs):
@@ -43,6 +44,7 @@ class FedAvgClient(BaseClient):
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             # self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
+            # print("Client waiting for semaphore from {}".format(self.server_node))
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.TAG_START)
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
             self.local_train()
@@ -66,7 +68,7 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
 
-    def fed_avg(self, model_wts: List[Dict[str, Any]]):
+    def fed_avg(self, model_wts: List[dict]):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
@@ -79,12 +81,12 @@ class FedAvgServer(BaseServer):
             local_wts = model_wts[client_num]
             for key in first_model.keys():
                 if client_num == 0:
-                    avgd_wts[key] = coeff * local_wts[key]
+                    avgd_wts[key] = coeff * local_wts[key].to(self.device)
                 else:
-                    avgd_wts[key] += coeff * local_wts[key]
+                    avgd_wts[key] += coeff * local_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[Dict[str, Any]]):
+    def aggregate(self, representation_list: List[dict]):
         """
         Aggregate the model weights
         """
@@ -99,19 +101,21 @@ class FedAvgServer(BaseServer):
             self.comm_utils.send_signal(client_node,
                                         representation,
                                         self.TAG_SET_REP)
+        self.model.module.load_state_dict(representation)
 
-    def test(self):
+    def test(self) -> float:
         """
         Test the model on the server
         """
-        test_loss, acc = self.model_utils.test(self._test_loader,
-                                               self.model,
+        test_loss, acc = self.model_utils.test(self.model,
+                                               self._test_loader,
                                                self.loss_fn,
                                                self.device)
         # TODO save the model if the accuracy is better than the best accuracy so far
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
+        return acc
 
     def single_round(self):
         """
@@ -129,7 +133,8 @@ class FedAvgServer(BaseServer):
 
     def run_protocol(self):
         self.log_utils.log_console("Starting iid clients federated averaging")
-        start_epochs, total_epochs = self.config["start_epochs"], self.config["epochs"]
+        start_epochs = self.config.get("start_epochs", 0)
+        total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()

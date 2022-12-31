@@ -1,0 +1,11 @@
+{
+    "python.analysis.typeCheckingMode": "basic",
+    "search.exclude": {
+        "**/expt_dump": true,
+        "**/expt_dump_old": true,
+    },
+    "python.analysis.exclude": [
+        "**/expt_dump",
+        "**/expt_dump_old"
+    ]
+}

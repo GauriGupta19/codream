@@ -19,9 +19,9 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
-        self.set_data_parameters()
+        self.set_constants()
 
-    def set_data_parameters(self):
+    def set_constants(self):
         self.TAG_DONE = 0
         self.TAG_START = 1
         self.TAG_SET_REP = 2
@@ -86,6 +86,8 @@ class BaseClient(BaseNode):
             dset = Subset(train_dset, list(user_groups_train[client_idx].astype(int)))
         else:
             indices = numpy.random.permutation(len(train_dset))
+            print(indices[:200])
+            exit()
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
         self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
@@ -120,6 +122,7 @@ class BaseServer(BaseNode):
         super().__init__(config)
         self.num_clients = config["num_clients"]
         self.clients = list(range(1, self.num_clients+1))
+        self.set_data_parameters(config)
 
     def set_data_parameters(self, config):
         test_dset = self.dset_obj.test_dset
