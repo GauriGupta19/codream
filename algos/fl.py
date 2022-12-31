@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from typing import Any, Dict, List
+from torch import Tensor
 import torch.nn as nn
 
 from algos.base_class import BaseClient, BaseServer
@@ -27,13 +28,13 @@ class FedAvgClient(BaseClient):
         """
         pass
 
-    def get_representation(self) -> Dict[str, Any]:
+    def get_representation(self) -> OrderedDict[str, Tensor]:
         """
         Share the model weights
         """
         return self.model.module.state_dict()
 
-    def set_representation(self, representation: Dict[str, Any]):
+    def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
@@ -68,7 +69,7 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
 
-    def fed_avg(self, model_wts: List[dict]):
+    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
@@ -86,7 +87,7 @@ class FedAvgServer(BaseServer):
                     avgd_wts[key] += coeff * local_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[dict]):
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]):
         """
         Aggregate the model weights
         """
