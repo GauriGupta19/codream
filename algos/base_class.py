@@ -75,10 +75,6 @@ class BaseClient(BaseNode):
         batch_size = config["batch_size"]
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
-        """This is a dangerous line because if the permutation is not the same for all clients,
-        then the samples will be same for clients which is not what we want
-        Should not happen because we are using the same seed for all clients"""
-        # TODO: Verify properly that indices remain same for all clients
         if config["exp_type"].startswith("non_iid"):
             user_groups_train, user_groups_test = cifar_extr_noniid(train_dset, test_dset,
                                                                     config["num_clients"], config["class_per_client"],
@@ -86,8 +82,6 @@ class BaseClient(BaseNode):
             dset = Subset(train_dset, list(user_groups_train[client_idx].astype(int)))
         else:
             indices = numpy.random.permutation(len(train_dset))
-            print(indices[:200])
-            exit()
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
         self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)

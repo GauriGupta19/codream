@@ -2,13 +2,15 @@ from mpi4py import MPI
 import torch, random, numpy
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
+from algos.isolated import IsolatedServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
 
 # should be used as: algo_map[algo_name][rank>0](config)
 # If rank is 0, then it returns the server class otherwise the client class
 algo_map = {
-    "fedavg": [FedAvgServer, FedAvgClient]
+    "fedavg": [FedAvgServer, FedAvgClient],
+    "isolated": [IsolatedServer],
 }
 
 def get_node(config: dict, rank) -> BaseNode:

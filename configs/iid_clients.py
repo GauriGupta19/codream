@@ -84,9 +84,30 @@ iid_clients_federated = {
     "exp_keys": []
 }
 
+iid_clients_isolated_new = {
+    "algo": "isolated",
+    "exp_id": 6,
+    "exp_type": "iid_clients_isolated",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./imgs/cifar10",
+    "seed": 1,
+    # no concept of client in isolated learning
+    "device_ids": {"node_0": [1,2]},
+
+    # Learning setup
+    "num_clients": 1, "samples_per_client": 2000,
+
+    "epochs": 1000,
+    "model": "resnet34",
+    "model_lr": 3e-4, "batch_size": 256,
+    
+    "exp_keys": []
+}
+
 iid_clients_federated_new = {
     "algo": "fedavg",
-    "exp_id": 6,
+    "exp_id": 10,
     "exp_type": "iid_clients_federated",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
@@ -106,4 +127,4 @@ iid_clients_federated_new = {
     "exp_keys": []
 }
 
-current_config = iid_clients_federated_new
+current_config = iid_clients_isolated_new
