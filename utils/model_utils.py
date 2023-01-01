@@ -23,7 +23,7 @@ class ModelUtils():
         model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
-    def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device) -> Tuple[float, float]:
+    def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
         model.train()
@@ -32,18 +32,23 @@ class ModelUtils():
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             optim.zero_grad()
-            output = model(data)
+            position = kwargs.get("position", 0)
+            output = model(data, position=position)
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1) # type: ignore
             loss = loss_fn(output, target)
             loss.backward()
             optim.step()
             train_loss += loss.item()
             pred = output.argmax(dim=1, keepdim=True)
             # view_as() is used to make sure the shape of pred and target are the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
         acc = correct / len(dloader.dataset)
         return train_loss, acc
 
-    def test(self, model, dloader, loss_fn, device):
+    def test(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
         model.eval()
@@ -52,7 +57,8 @@ class ModelUtils():
         with torch.no_grad():
             for data, target in dloader:
                 data, target = data.to(device), target.to(device)
-                output = model(data)
+                position = kwargs.get("position", 0)
+                output = model(data, position=position)
                 test_loss += loss_fn(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 # view_as() is used to make sure the shape of pred and target are the same

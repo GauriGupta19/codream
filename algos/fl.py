@@ -6,11 +6,20 @@ import torch.nn as nn
 from algos.base_class import BaseClient, BaseServer
 
 
+class CommProtocol(object):
+    """
+    Communication protocol tags for the server and clients
+    """
+    DONE = 0 # Used to signal that the client is done with the current round
+    START = 1 # Used to signal by the server to start the current round
+    UPDATES = 2 # Used to send the updates from the server to the clients
+
+
 class FedAvgClient(BaseClient):
     def __init__(self, config) -> None:
         super().__init__(config)
         self.config = config
-        # self.set_parameters()
+        self.tag = CommProtocol
 
     def local_train(self):
         """
@@ -46,15 +55,15 @@ class FedAvgClient(BaseClient):
         for round in range(start_epochs, total_epochs):
             # self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
             # print("Client waiting for semaphore from {}".format(self.server_node))
-            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.TAG_START)
+            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
             self.local_train()
             self.local_test()
             repr = self.get_representation()
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
-            self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.TAG_DONE)
+            self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
-            repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.TAG_SET_REP)
+            repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
             # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
             self.set_representation(repr)
             # self.log_utils.logging.info("Round {} done".format(round))
@@ -66,6 +75,7 @@ class FedAvgServer(BaseServer):
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
+        self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
 
@@ -101,7 +111,7 @@ class FedAvgServer(BaseServer):
         for client_node in self.clients:
             self.comm_utils.send_signal(client_node,
                                         representation,
-                                        self.TAG_SET_REP)
+                                        self.tag.UPDATES)
         self.model.module.load_state_dict(representation)
 
     def test(self) -> float:
@@ -125,9 +135,9 @@ class FedAvgServer(BaseServer):
         for client_node in self.clients:
             self.log_utils.log_console("Server sending semaphore from {} to {}".format(self.node_id,
                                                                                     client_node))
-            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.TAG_START)
+            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
         self.log_utils.log_console("Server waiting for all clients to finish")
-        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.TAG_DONE)
+        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
         self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)

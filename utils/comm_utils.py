@@ -23,11 +23,11 @@ class CommUtils():
             recv_data = self.comm.recv(source=src)
         return recv_data
 
-    def wait_for_all_clients(self, client_ids, signal):
+    def wait_for_all_clients(self, client_ids, tag=None):
         """
         """
         data_list = []
         for client_id in client_ids:
-            data = self.wait_for_signal(client_id, signal)
+            data = self.wait_for_signal(client_id, tag=tag)
             data_list.append(data)
         return data_list

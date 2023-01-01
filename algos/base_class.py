@@ -22,10 +22,6 @@ class BaseNode(ABC):
         self.set_constants()
 
     def set_constants(self):
-        self.TAG_DONE = 0
-        self.TAG_START = 1
-        self.TAG_SET_REP = 2
-
         self.best_acc = 0.
 
     def setup_cuda(self, config):
