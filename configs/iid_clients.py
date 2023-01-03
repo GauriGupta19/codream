@@ -24,6 +24,7 @@ iid_clients_collab_new = {
     "data_lr": 0.05, "steps": 2000,
     "alpha_preds": 10, "alpha_tv": 2.5e-5, "alpha_l2": 3e-8, "alpha_f": 10.0,
     "distill_batch_size": 256, "distill_epochs": 10, "warmup": 30,
+    "first_time_steps":2000,
     
     "exp_keys": ["distill_epochs", "steps", "position"]
 }
@@ -49,6 +50,7 @@ iid_clients_adaptive_collab = {
     # Params for gradient descent on data
     "data_lr": 0.05, "steps": 2000, "alpha_preds": 10, "alpha_tv": 2.5e-5, "alpha_l2": 3e-8, "alpha_f": 1.0,
     "distill_batch_size": 256, "distill_epochs": 10, "warmup": 20,
+    "first_time_steps":2000,
 
     "exp_keys": ["distill_epochs", "steps", "position"]
 }
