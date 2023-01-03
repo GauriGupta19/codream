@@ -94,16 +94,16 @@ class DAREClient(BaseClient):
 
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
-        reps=torch.randn(self.config["inp_shape"]).to(self.device)
+        rep=(torch.randn(self.config["inp_shape"]).to(self.device),None)
 
         for round in range(self.config["warmup"], self.config["epochs"]):
             # Wait for the server to signal to start the protocol
             self.comm_utils.wait_for_signal(src=self.server_node,
                                             tag=self.tag.START_GEN_REPS)
-            reps = self.generate_rep(reps,round==self.config["warmup"])
+            rep = self.generate_rep(rep[0],round==self.config["warmup"])
             # Send the representations to the server
             self.comm_utils.send_signal(dest=self.server_node,
-                                        data=reps,
+                                        data=rep,
                                         tag=self.tag.REPS_DONE)
             # self.log_utils.log_console("Round {} done".format(round))
             # Wait for the server to send the representations
