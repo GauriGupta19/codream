@@ -83,15 +83,14 @@ class DAREClient(BaseClient):
                                     batch_size=self.config["distill_batch_size"])
         return dloader_reps
     
-    def generate_rep(self):
+    def generate_rep(self,reps,first_time):
         bs = self.config["distill_batch_size"]
-        self.config["inp_shape"][0] = bs
-        rand_imgs = torch.randn(self.config["inp_shape"]).to(self.device)
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         obj = {
             "model": self.model,
-            "orig_img": rand_imgs,
+            "orig_img": reps,
             "target_label": labels,
+            "steps": self.config["first_time_steps"] if first_time else self.config["steps"],
         }
         reps = synthesize_representations(self.config, obj)
         logits = self.model(reps, position=self.position).detach()
@@ -109,14 +108,18 @@ class DAREClient(BaseClient):
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
 
+        bs = self.config["distill_batch_size"]
+        self.config["inp_shape"][0] = bs
+        rep=(torch.randn(self.config["inp_shape"]).to(self.device),None)
+
         for round in range(self.config["warmup"], self.config["epochs"]):
             # Wait for the server to signal to start the protocol
             self.comm_utils.wait_for_signal(src=self.server_node,
                                             tag=self.tag.START_GEN_REPS)
-            reps = self.generate_rep()
+            rep = self.generate_rep(rep[0],round==self.config["warmup"])
             # Send the representations to the server
             self.comm_utils.send_signal(dest=self.server_node,
-                                        data=reps,
+                                        data=rep,
                                         tag=self.tag.REPS_DONE)
             # self.log_utils.log_console("Round {} done".format(round))
             # Wait for the server to send the representations

@@ -21,7 +21,7 @@ iid_clients_collab_new = {
     "position": 4, "inp_shape": [0, 256, 8, 8],
 
     # Params for gradient descent on data
-    "data_lr": 0.05, "steps": 2000,
+    "data_lr": 0.05, "steps": 50,
     "alpha_preds": 10, "alpha_tv": 2.5e-5, "alpha_l2": 3e-8, "alpha_f": 10.0,
     "distill_batch_size": 256, "distill_epochs": 10, "warmup": 20,
     

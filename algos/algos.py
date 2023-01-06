@@ -7,7 +7,7 @@ def synthesize_representations(config, obj):
     """
     Synthesize representations for each class
     """
-    lr, steps = config["data_lr"], config["steps"]
+    lr, steps = config["data_lr"], obj["steps"]
     position = config["position"]
     alpha_preds, alpha_tv, alpha_l2, alpha_f = config["alpha_preds"], config["alpha_tv"], config["alpha_l2"], config["alpha_f"]
     orig_img, target_label, model = obj["orig_img"], obj["target_label"], obj["model"]
