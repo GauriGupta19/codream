@@ -27,8 +27,10 @@ class DAREClient(BaseClient):
         self.position = config["position"]
 
     def local_warmup(self):
+        warmup = self.config["warmup"]
         # Do local warmup rounds
-        for round in range(self.config["warmup"]):
+        acc = 0.
+        for round in range(warmup):
             # Do local warmup rounds
             loss, acc = self.model_utils.train(self.model,
                                                self.optim,
@@ -39,11 +41,17 @@ class DAREClient(BaseClient):
             # self.log_utils.log_tb(f"train_acc/{self.node_id}", acc, round)
             # self.log_utils.log_console(f"train_loss for client{self.node_id} at epoch{round} - {loss}")
             # print(f"train_loss for client{self.node_id} at epoch{round} - {loss}")
+        test_loss, test_acc = self.model_utils.test(self.model,
+                                                    self._test_loader,
+                                                    self.loss_fn,
+                                                    self.device)
         # self.log_utils.log_console("Warmup round done for node {}".format(self.node_id))
-        print("Warmup round done for node {}".format(self.node_id))
+        print("Warmup round done for node {}, train_acc {}, test_acc {}".format(self.node_id,
+                                                                                acc,
+                                                                                test_acc))
 
-    def select_representations(self, reps: List[torch.Tensor], k: int) -> torch.Tensor:
-        """Returns the indices of the top k representations
+    def select_representations(self, reps: List[torch.Tensor], k: int) -> DataLoader:
+        """Returns a dataloader that consists of the top k representations
 
         Args:
             reps (List[torch.Tensor]): List of representations
@@ -56,16 +64,24 @@ class DAREClient(BaseClient):
         for rep in reps:
             # i represents the student and j represents a potential teacher
             # rep[0] is the representation and rep[1] is the label
-            z_j = rep[0].to(self.device)
-            y_j = rep[1].to(self.device)
+            z_j = rep[0]
+            y_j = rep[1]
             y_i = self.model(z_j, position=self.position)
             # TODO: make sure this is performing sum reduction and not mean reduction
             kl_divs.append(kl_loss_fn(y_i, y_j))
 
         kl_divs = torch.tensor(kl_divs)
-        top_k = kl_divs.argsort(descending=True)[:k]
+        top_k_ind = kl_divs.argsort(descending=True)[:k]
         # self.log_utils.log_console("Top k indices: {} for node_{}".format(top_k, self.node_id))
-        return top_k
+        z_j, y_j = [], []
+        for ind in top_k_ind:
+            z_j.append(reps[ind][0])
+            y_j.append(reps[ind][1])
+        r_j = TensorDataset(torch.stack(z_j).flatten(0, 1),
+                            torch.stack(y_j).flatten(0, 1))
+        dloader_reps = DataLoader(r_j,
+                                    batch_size=self.config["distill_batch_size"])
+        return dloader_reps
     
     def generate_rep(self):
         bs = self.config["distill_batch_size"]
@@ -78,9 +94,9 @@ class DAREClient(BaseClient):
             "target_label": labels,
         }
         reps = synthesize_representations(self.config, obj)
-        labels = self.model(reps, position=self.position)
-        labels = torch.nn.functional.log_softmax(labels, dim=1) # type: ignore
-        return reps, labels
+        logits = self.model(reps, position=self.position).detach()
+        logit_probs = torch.nn.functional.log_softmax(logits, dim=1) # type: ignore
+        return reps, logit_probs
 
     def run_protocol(self):
         # Wait for the server to signal to start local warmup rounds
@@ -106,25 +122,22 @@ class DAREClient(BaseClient):
             # Wait for the server to send the representations
             reps = self.comm_utils.wait_for_signal(src=self.server_node,
                                                    tag=self.tag.REPS_READY)
-            # Select the top k representations
-            top_k_ind = self.select_representations(reps, self.config["top_k"])
-            z_j, y_j = [], []
-            for ind in top_k_ind:
-                z_j.append(reps[ind][0])
-                y_j.append(reps[ind][1])
-            r_j = TensorDataset(torch.stack(z_j).flatten(0, 1),
-                                torch.stack(y_j).flatten(0, 1))
-            dloader_reps = DataLoader(r_j,
-                                      batch_size=self.config["distill_batch_size"])
 
-            # Train the model using the selected representations
-            student_loss, student_acc = self.model_utils.train(self.model,
-                                                               self.optim,
-                                                               dloader_reps,
-                                                               kl_loss_fn,
-                                                               self.device,
-                                                               apply_softmax=True,
-                                                               position=self.position)
+            # move the representations to the device
+            reps = self.model_utils.move_to_device(reps, self.device)
+
+            # Select the top k representations
+            dloader_reps = self.select_representations(reps, self.config["top_k"])
+
+            for epoch in range(self.config["distill_epochs"]):
+                # Train the model using the selected representations
+                student_loss, student_acc = self.model_utils.train(self.model,
+                                                                   self.optim,
+                                                                   dloader_reps,
+                                                                   kl_loss_fn,
+                                                                   self.device,
+                                                                   apply_softmax=True,
+                                                                   position=self.position)
             # Train the model on the local data
             tr_loss, tr_acc = self.model_utils.train(self.model,
                                                      self.optim,

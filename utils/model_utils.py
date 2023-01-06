@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
@@ -72,3 +72,8 @@ class ModelUtils():
         else:
             model_ = model
         torch.save(model_.state_dict(), path)
+
+    def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
+                       device: torch.device) -> list:
+        # Expects a list of tuples with each tupe containing two tensors
+        return [[item[0].to(device), item[1].to(device)] for item in items]
