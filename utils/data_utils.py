@@ -46,14 +46,14 @@ def get_dataset(dname, dpath):
     return dset_mapping[dname](dpath)
 
 
-def get_noniid_dataset(dname, dpath, num_users, n_class, nsamples, rate_unbalance):
+"""def get_noniid_dataset(dname, dpath, num_users, n_class, nsamples, rate_unbalance):
     obj = get_dataset(dname, dpath)
     # Chose euqal splits for every user
     if dname == "cifar10":
         obj.user_groups_train, obj.user_groups_test = cifar_extr_noniid(obj.train_dset, obj.test_dset,
                                                                         num_users, n_class, nsamples,
                                                                         rate_unbalance)
-    return obj
+    return obj"""
 
 def cifar_extr_noniid(train_dataset, test_dataset, num_users, n_class, num_samples, rate_unbalance):
     num_shards_train, num_imgs_train = int(50000/num_samples), num_samples
