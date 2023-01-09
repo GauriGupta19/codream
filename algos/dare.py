@@ -125,6 +125,8 @@ class DAREClient(BaseClient):
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=rep,
                                         tag=self.tag.REPS_DONE)
+            
+            self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
             # self.log_utils.log_console("Round {} done".format(round))
             # Wait for the server to send the representations
             reps = self.comm_utils.wait_for_signal(src=self.server_node,

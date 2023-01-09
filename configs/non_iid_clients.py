@@ -3,21 +3,21 @@ non_iid_clients_collab_new = {
     "exp_id": 1,
     "exp_type": "non_iid_clients_collab",
     "load_existing": False, "start_epoch": 500,
-    "dset": "cifar10",
+    "dset": "mnist",
     "dump_dir": "./expt_dump/",
-    "dpath": "./imgs/cifar10",
+    "dpath": "./imgs/mnist",
     "seed": 2,
     # Learning setup
-    "num_clients": 2, "top_k": 1, "samples_per_client": 1000, "class_per_client": 5,
-    "device_ids": {"node_0": [], "node_1": [1], "node_2": [2]},
+    "num_clients": 2, "top_k": 1, "samples_per_client": 1000, "class_per_client": 2, "sp": [[0,1],[2,3]],
+    "device_ids": {"node_0": [], "node_1": [4], "node_2": [5]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
     
-    "epochs": 1000, "model": "resnet34",
+    "epochs": 1000, "model": "ResNet18",
     "model_lr": 3e-4, "batch_size": 128, 
     
     # params for model
-    "position": 0, "inp_shape": [0, 3, 32, 32],
+    "position": 0, "inp_shape": [0, 1, 28, 28],
 
     # Params for gradient descent on data
     "data_lr": 0.05, "steps": 2000,

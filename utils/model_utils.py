@@ -10,14 +10,15 @@ class ModelUtils():
     def __init__(self) -> None:
         pass
 
-    def get_model(self, model_name:str, device:torch.device, device_ids:list) -> DataParallel:
+    def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
         #TODO: add support for loading checkpointed models
-        if model_name == "resnet18":
-            model = ResNet18()
-        elif model_name == "resnet34":
-            model = ResNet34()
-        elif model_name == "resnet50":
-            model = ResNet50()
+        channels = 3 if dset=="cifar10" else 1
+        if model_name == "ResNet18":
+            model = ResNet18(channels)
+        elif model_name == "ResNet34":
+            model = ResNet34(channels)
+        elif model_name == "ResNet50":
+            model = ResNet50(channels)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = DataParallel(model.to(device), device_ids=device_ids)

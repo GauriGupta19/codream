@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch, numpy
 from utils.comm_utils import CommUtils
-from utils.data_utils import cifar_extr_noniid, get_dataset
+from utils.data_utils import extr_noniid, get_dataset
 from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
@@ -39,7 +39,7 @@ class BaseNode(ABC):
     def set_model_parameters(self, config):
         # Model related parameters
         optim = torch.optim.Adam
-        self.model = self.model_utils.get_model(config["model"], self.device, self.device_ids)
+        self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids)
         self.optim = optim(self.model.parameters(), lr=config["model_lr"])
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -72,10 +72,8 @@ class BaseClient(BaseNode):
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
         if config["exp_type"].startswith("non_iid"):
-            user_groups_train, user_groups_test = cifar_extr_noniid(train_dset, test_dset,
-                                                                    config["num_clients"], config["class_per_client"],
-                                                                    config["samples_per_client"], rate_unbalance=1)
-            dset = Subset(train_dset, list(user_groups_train[client_idx].astype(int)))
+            sp = config["sp"]
+            dset = extr_noniid(train_dset,config["samples_per_client"],sp[client_idx])
         else:
             indices = numpy.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])

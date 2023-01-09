@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
-from resnet import ResNet34
+from resnet import ResNet34,ResNet18
 
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader
@@ -23,9 +23,12 @@ class ServerObj():
         self.device, self.device_id = obj["device"], obj["device_id"]
         test_dataset = obj["dset_obj"].test_dset
         batch_size = config["batch_size"]
+        num_channels = obj["dset_obj"].num_channels
 
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size)
-        self.model = ResNet34().to(self.device)
+        model_dict = {"ResNet18":ResNet18(num_channels),"ResNet34":ResNet34(num_channels),"ResNet50":ResNet50(num_channels)}
+        model = model_dict[config["model"]]
+        self.model = model.to(self.device)
 
 
 class ClientObj():
@@ -46,7 +49,7 @@ class ClientObj():
         
         if "non_iid" in self.config["exp_type]:
             perm=torch.randperm(10)
-            sp=[(0,5),(0,5)]
+            sp=[(0,2),(2,4)]
             self.c_dset=extr_noniid(train_dataset,config["samples_per_client"],perm[sp[i][0]:sp[i][1]])
         else
             # rank-1 because rank 0 is the server
