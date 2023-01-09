@@ -7,7 +7,7 @@ from resnet import ResNet34
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader
 
-from utils.data_utils import cifar_extr_noniid
+from utils.data_utils import extr_noniid
 
 
 def load_weights(model_dir: str, model: nn.Module, client_num: int):
@@ -43,9 +43,14 @@ class ClientObj():
         self.model = DataParallel(self.model.to(self.device), device_ids=self.device_id)
         self.optim = optim(self.model.parameters(), lr=lr)
         self.loss_fn = nn.CrossEntropyLoss()
-
-        # rank-1 because rank 0 is the server
-        self.c_dset = Subset(train_dataset, indices[(rank-1)*self.samples_per_client:rank*self.samples_per_client])
+        
+        if "non_iid" in self.config["exp_type]:
+            perm=torch.randperm(10)
+            sp=[(0,5),(0,5)]
+            self.c_dset=extr_noniid(train_dataset,config["samples_per_client"],perm[sp[i][0]:sp[i][1]])
+        else
+            # rank-1 because rank 0 is the server
+            self.c_dset = Subset(train_dataset, indices[(rank-1)*self.samples_per_client:rank*self.samples_per_client])
         self.c_dloader = DataLoader(self.c_dset, batch_size=batch_size)
 
 

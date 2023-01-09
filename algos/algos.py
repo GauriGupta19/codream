@@ -24,7 +24,7 @@ def synthesize_representations(config, obj):
 
     optimizer = torch.optim.Adam([updated_img], lr=lr, betas=(0.5, 0.9), eps = 1e-8)
     lim_0, lim_1 = 2, 2
-    for it in range(steps):
+    for it in range(1,steps+1):
         off1 = random.randint(-lim_0, lim_0)
         off2 = random.randint(-lim_1, lim_1)
         inputs_jit = torch.roll(updated_img, shifts=(off1, off2), dims=(2,3))
@@ -35,7 +35,7 @@ def synthesize_representations(config, obj):
         ce_loss = nn.CrossEntropyLoss()(acts, target_label)
         loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers) if hasattr(model, "r_feature")])
         loss = alpha_preds * ce_loss + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
-        if it % 500 == 0:
+        if it % 500 == 0 or it==steps:
             if len(target_label.size()) > 1:
                 acc = (acts.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts.shape[0]
             else:

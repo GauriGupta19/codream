@@ -83,9 +83,12 @@ class DAREClient(BaseClient):
                                     batch_size=self.config["distill_batch_size"])
         return dloader_reps
     
-    def generate_rep(self,reps,first_time):
-        bs = self.config["distill_batch_size"]
-        labels = next(iter(self.dloader))[1][:bs].to(self.device)
+    def generate_rep(self,reps,labels,first_time):
+        if self.config["inversion_algo"]=="random_deepinversion":
+            bs = self.config["distill_batch_size"]
+            self.config["inp_shape"][0] = bs
+            labels = next(iter(self.dloader))[1][:bs].to(self.device)
+            reps = torch.randn(self.config["inp_shape"]).to(self.device)
         obj = {
             "model": self.model,
             "orig_img": reps,
@@ -110,13 +113,14 @@ class DAREClient(BaseClient):
 
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
+        labels = next(iter(self.dloader))[1][:bs].to(self.device)
         rep=(torch.randn(self.config["inp_shape"]).to(self.device),None)
 
         for round in range(self.config["warmup"], self.config["epochs"]):
             # Wait for the server to signal to start the protocol
             self.comm_utils.wait_for_signal(src=self.server_node,
                                             tag=self.tag.START_GEN_REPS)
-            rep = self.generate_rep(rep[0],round==self.config["warmup"])
+            rep = self.generate_rep(rep[0],labels,round==self.config["warmup"])
             # Send the representations to the server
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=rep,
