@@ -1,5 +1,5 @@
 import pdb
-from typing import List
+from typing import List, Tuple
 import torch
 from algos.algos import synthesize_representations
 from algos.base_class import BaseClient, BaseServer
@@ -37,10 +37,7 @@ class DAREClient(BaseClient):
                                                self.dloader,
                                                self.loss_fn,
                                                self.device)
-            # self.log_utils.log_tb(f"train_loss/{self.node_id}", loss, round)
-            # self.log_utils.log_tb(f"train_acc/{self.node_id}", acc, round)
-            # self.log_utils.log_console(f"train_loss for client{self.node_id} at epoch{round} - {loss}")
-            # print(f"train_loss for client{self.node_id} at epoch{round} - {loss}")
+
         test_loss, test_acc = self.model_utils.test(self.model,
                                                     self._test_loader,
                                                     self.loss_fn,
@@ -50,7 +47,7 @@ class DAREClient(BaseClient):
                                                                                 acc,
                                                                                 test_acc))
 
-    def select_representations(self, reps: List[torch.Tensor], k: int) -> DataLoader:
+    def select_representations(self, reps: List[Tuple[torch.Tensor, torch.Tensor]], k: int) -> DataLoader:
         """Returns a dataloader that consists of the top k representations
 
         Args:
@@ -83,12 +80,12 @@ class DAREClient(BaseClient):
                                     batch_size=self.config["distill_batch_size"])
         return dloader_reps
     
-    def generate_rep(self,reps,labels,first_time):
-        if self.config["inversion_algo"]=="random_deepinversion":
-            bs = self.config["distill_batch_size"]
-            self.config["inp_shape"][0] = bs
-            labels = next(iter(self.dloader))[1][:bs].to(self.device)
-            reps = torch.randn(self.config["inp_shape"]).to(self.device)
+    def generate_rep(self, reps, labels, first_time):
+        # if self.config["inversion_algo"]=="random_deepinversion":
+        bs = self.config["distill_batch_size"]
+        self.config["inp_shape"][0] = bs
+        labels = next(iter(self.dloader))[1][:bs].to(self.device)
+        reps = torch.randn(self.config["inp_shape"]).to(self.device)
         obj = {
             "model": self.model,
             "orig_img": reps,
@@ -114,19 +111,19 @@ class DAREClient(BaseClient):
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
-        rep=(torch.randn(self.config["inp_shape"]).to(self.device),None)
+        rep = torch.randn(self.config["inp_shape"]).to(self.device)
 
         for round in range(self.config["warmup"], self.config["epochs"]):
             # Wait for the server to signal to start the protocol
             self.comm_utils.wait_for_signal(src=self.server_node,
                                             tag=self.tag.START_GEN_REPS)
-            rep = self.generate_rep(rep[0],labels,round==self.config["warmup"])
+            rep = self.generate_rep(rep, labels, round==self.config["warmup"])
             # Send the representations to the server
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=rep,
                                         tag=self.tag.REPS_DONE)
             
-            self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
+            # self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
             # self.log_utils.log_console("Round {} done".format(round))
             # Wait for the server to send the representations
             reps = self.comm_utils.wait_for_signal(src=self.server_node,
@@ -221,6 +218,11 @@ class DAREServer(BaseServer):
             # We subtract 1 from the client id because the client ids start from 1 while the list indices start from 0
             client_rep = reps[:client - 1] + reps[client:]
             self.comm_utils.send_signal(dest=client, data=client_rep, tag=self.tag.REPS_READY)
+        # Log the representations as images by iterating over each client
+        for client, rep in enumerate(reps):
+            # Only store first three channel and 64 images for a 8x8 grid
+            imgs = rep[0][:64, :3]
+            self.log_utils.log_image(imgs, f"client{client+1}", self.round)
         # Wait for the students to finish training
         self.log_utils.log_console("Waiting for students to finish training")
         stats = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.CLIENT_STATS)
@@ -238,6 +240,7 @@ class DAREServer(BaseServer):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
+            self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
             stats = self.single_round()
             self.update_stats(stats, round)

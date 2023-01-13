@@ -93,14 +93,13 @@ class LogUtils():
             os.makedirs(tb_path)
         self.writer = SummaryWriter(tb_path)
 
-    def log_image(self, imgs, key, iteration):
+    def log_image(self, imgs: torch.Tensor, key, iteration):
         # imgs = deprocess(imgs.detach().cpu())[:64]
-        grid = make_grid(imgs.detach().cpu(), normalize=True, scale_each=True)
-        # grid = imgs
-        # save_image(grid, f"./expt_dump/temp/expt{key}{iteration}.png")
-        im_ob = Image.fromarray(grid.permute(1, 2, 0).numpy(), mode='RGB')
-        im_ob.save(f"./expt_dump/temp/expt{key}{iteration}.png")
-        self.writer.add_image(key, grid.numpy(), iteration)
+        grid_img = make_grid(imgs.detach().cpu(), normalize=True, scale_each=True)
+        # Save the grid image using torchvision api
+        save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
+        # Save the grid image using tensorboard api
+        self.writer.add_image(key, grid_img.numpy(), iteration)
 
     def log_console(self, msg):
         logging.info(msg)
