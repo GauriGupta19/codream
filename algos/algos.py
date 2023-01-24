@@ -32,9 +32,12 @@ def synthesize_representations(config, obj):
         model.zero_grad()
         optimizer.zero_grad()
         acts = model.module(inputs_jit, position=position)[:, :10]
-        ce_loss = nn.CrossEntropyLoss()(acts, target_label)
+        # ce_loss = nn.CrossEntropyLoss()(acts, target_label)
+        probs = torch.softmax(acts, dim=1)
+        entropy = -torch.sum(probs * torch.log(probs), dim=1).mean()
         loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(loss_r_feature_layers) if hasattr(model, "r_feature")])
-        loss = alpha_preds * ce_loss + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
+        # loss = alpha_preds * ce_loss + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
+        loss = alpha_preds * entropy + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
         if it % 500 == 0 or it==steps:
             if len(target_label.size()) > 1:
                 acc = (acts.argmax(dim=1) == target_label.argmax(dim=1)).sum() / acts.shape[0]
