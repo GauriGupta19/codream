@@ -64,6 +64,8 @@ class DAREClient(BaseClient):
             z_j = rep[0]
             y_j = rep[1]
             y_i = self.model(z_j, position=self.position)
+            # turn it into probability distribution
+            y_i = torch.nn.functional.softmax(y_i, dim=1)
             # TODO: make sure this is performing sum reduction and not mean reduction
             kl_divs.append(kl_loss_fn(y_i, y_j))
 
