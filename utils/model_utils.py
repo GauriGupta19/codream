@@ -10,6 +10,17 @@ class ModelUtils():
     def __init__(self) -> None:
         pass
 
+    def adjust_learning_rate(self, optimizer: torch.optim.Optimizer, epoch: int):
+        """For resnet, the lr starts from 0.1, and is divided by 10 at 80 and 120 epochs"""
+        if epoch < 80:
+            lr = 0.1
+        elif epoch < 120:
+            lr = 0.01
+        else:
+            lr = 0.001
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
     def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
         #TODO: add support for loading checkpointed models
         channels = 3 if dset=="cifar10" else 1
@@ -34,6 +45,11 @@ class ModelUtils():
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
             position = kwargs.get("position", 0)
             output = model(data, position=position)
             if kwargs.get("apply_softmax", False):

@@ -22,6 +22,7 @@ class BaseNode(ABC):
         self.set_constants()
 
     def set_constants(self):
+        self.best_loss = torch.inf
         self.best_acc = 0.
 
     def setup_cuda(self, config):
@@ -38,9 +39,9 @@ class BaseNode(ABC):
 
     def set_model_parameters(self, config):
         # Model related parameters
-        optim = torch.optim.Adam
+        optim = torch.optim.SGD
         self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids)
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"])
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod

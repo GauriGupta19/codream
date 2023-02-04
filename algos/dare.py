@@ -36,7 +36,9 @@ class DAREClient(BaseClient):
                                                self.optim,
                                                self.dloader,
                                                self.loss_fn,
-                                               self.device)
+                                               self.device,
+                                               epoch=round)
+            print("Local Warmup -- loss {}, acc {}, round {}".format(loss, acc, round))
 
         test_loss, test_acc = self.model_utils.test(self.model,
                                                     self._test_loader,
@@ -46,6 +48,10 @@ class DAREClient(BaseClient):
         print("Warmup round done for node {}, train_acc {}, test_acc {}".format(self.node_id,
                                                                                 acc,
                                                                                 test_acc))
+        # save the model if the test loss is lower than the best loss
+        if test_loss < self.best_loss:
+            self.best_loss = test_loss
+            self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
 
     def select_representations(self, reps: List[Tuple[torch.Tensor, torch.Tensor]], k: int) -> DataLoader:
         """Returns a dataloader that consists of the top k representations
@@ -115,7 +121,7 @@ class DAREClient(BaseClient):
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         rep = torch.randn(self.config["inp_shape"]).to(self.device)
 
-        for round in range(self.config["warmup"], self.config["epochs"]):
+        for round in range(self.config["epochs"]):
             # Wait for the server to signal to start the protocol
             self.comm_utils.wait_for_signal(src=self.server_node,
                                             tag=self.tag.START_GEN_REPS)
@@ -131,21 +137,23 @@ class DAREClient(BaseClient):
             reps = self.comm_utils.wait_for_signal(src=self.server_node,
                                                    tag=self.tag.REPS_READY)
 
-            # move the representations to the device
-            reps = self.model_utils.move_to_device(reps, self.device)
+            if False:
+                # move the representations to the device
+                reps = self.model_utils.move_to_device(reps, self.device)
 
-            # Select the top k representations
-            dloader_reps = self.select_representations(reps, self.config["top_k"])
+                # Select the top k representations
+                dloader_reps = self.select_representations(reps, self.config["top_k"])
 
-            for epoch in range(self.config["distill_epochs"]):
-                # Train the model using the selected representations
-                student_loss, student_acc = self.model_utils.train(self.model,
-                                                                   self.optim,
-                                                                   dloader_reps,
-                                                                   kl_loss_fn,
-                                                                   self.device,
-                                                                   apply_softmax=True,
-                                                                   position=self.position)
+                for epoch in range(self.config["distill_epochs"]):
+                    # Train the model using the selected representations
+                    student_loss, student_acc = self.model_utils.train(self.model,
+                                                                    self.optim,
+                                                                    dloader_reps,
+                                                                    kl_loss_fn,
+                                                                    self.device,
+                                                                    apply_softmax=True,
+                                                                    position=self.position)
+            student_loss, student_acc = 0., 0.
             # Train the model on the local data
             tr_loss, tr_acc = self.model_utils.train(self.model,
                                                      self.optim,
@@ -166,6 +174,12 @@ class DAREClient(BaseClient):
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=current_stats,
                                         tag=self.tag.CLIENT_STATS)
+
+            # save the model if the test loss is lower than the best loss
+            if test_loss < self.best_loss:
+                self.best_loss = test_loss
+                self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+
             print("Round {} done for node_{}".format(round, self.node_id))
 
 
@@ -178,16 +192,17 @@ class DAREServer(BaseServer):
         super().__init__(config)
         self.tag = CommProtocol()
         self.config = config
+        self.set_model_parameters(self.config)
 
-    def set_parameters(self, config):
-        # this function basically overrides the set_parameters function
-        # of the BaseServer class
-        pass
+    # def set_parameters(self, config):
+    #     # this function basically overrides the set_parameters function
+    #     # of the BaseServer class
+    #     pass
 
-    def setup_cuda(self, config):
-        # this function basically overrides the setup_cuda function
-        # of the BaseServer class because the server is only for relay
-        pass
+    # def setup_cuda(self, config):
+    #     # this function basically overrides the setup_cuda function
+    #     # of the BaseServer class because the server is only for relay
+    #     pass
 
     def update_stats(self, stats: List[List[float]], round: int):
         """
@@ -220,6 +235,33 @@ class DAREServer(BaseServer):
             # We subtract 1 from the client id because the client ids start from 1 while the list indices start from 0
             client_rep = reps[:client - 1] + reps[client:]
             self.comm_utils.send_signal(dest=client, data=client_rep, tag=self.tag.REPS_READY)
+        
+        #TODO: Remove this later but for now we will train a model on the representations
+        # Move the representations to the device
+        self.log_utils.log_console("Training the server model on the representations")
+        # Create a dataloader for the server using reps
+        z_j = [rep[0].to(self.device) for rep in reps]
+        y_j = [rep[1].to(self.device) for rep in reps]
+        r_j = TensorDataset(torch.stack(z_j).flatten(0, 1),
+                            torch.stack(y_j).flatten(0, 1))
+        dloader_reps = DataLoader(r_j,
+                                  batch_size=self.config["distill_batch_size"])
+        for epoch in range(self.config["distill_epochs"]):
+            self.model_utils.train(self.model,
+                                self.optim,
+                                dloader_reps,
+                                kl_loss_fn,
+                                self.device,
+                                apply_softmax=True)
+        loss, acc = self.model_utils.test(self.model,
+                                          self._test_loader,
+                                          self.loss_fn,
+                                          self.device)
+        self.log_utils.log_console(f"Server test accuracy: {acc}")
+        self.log_utils.log_console(f"Server test loss: {loss}")
+        self.log_utils.log_tb("server_loss", loss, self.round)
+        self.log_utils.log_tb("server_acc", acc, self.round)
+        
         # Log the representations as images by iterating over each client
         for client, rep in enumerate(reps):
             # Only store first three channel and 64 images for a 8x8 grid

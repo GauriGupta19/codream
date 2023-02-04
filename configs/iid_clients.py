@@ -8,21 +8,22 @@ iid_clients_collab_new = {
     "dpath": "./imgs/cifar10",
     "seed": 2,
     # Learning setup
-    "num_clients": 2, "top_k": 1, "samples_per_client": 1000,
-    "device_ids": {"node_0": [], "node_1": [0], "node_2": [1]},
+    "num_clients": 1, "top_k": 1, "samples_per_client": 25000,
+    "device_ids": {"node_0": [1], "node_1": [3]},
+    # "device_ids": {"node_0": [], "node_1": [0], "node_2": [1]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
     
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 64, 
+    "model_lr": 3e-4, "batch_size": 256,
     
     # params for model
-    "position": 4, "inp_shape": [0, 256, 8, 8],
+    "position": 0, "inp_shape": [0, 3, 32, 32],
 
     # Params for gradient descent on data
     "data_lr": 0.05, "steps": 2000,
-    "alpha_preds": 10, "alpha_tv": 2.5e-7, "alpha_l2": 0., "alpha_f": 10.0,
-    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 20,
+    "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
+    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 150,
     "first_time_steps": 2000,
     
     "exp_keys": ["distill_epochs", "steps", "position", "warmup"]
@@ -37,15 +38,15 @@ iid_clients_isolated_new = {
     "dpath": "./imgs/cifar10",
     "seed": 1,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [1,2]},
+    "device_ids": {"node_0": [0,2]},
 
     # Learning setup
-    "num_clients": 1, "samples_per_client": 2000,
+    "num_clients": 1, "samples_per_client": 50000,
 
-    "epochs": 1000,
+    "epochs": 150,
     "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
-    
+    "model_lr": 0.1, "batch_size": 256,
+
     "exp_keys": []
 }
 
@@ -72,3 +73,4 @@ iid_clients_federated_new = {
 }
 
 current_config = iid_clients_collab_new
+# current_config = iid_clients_isolated_new
