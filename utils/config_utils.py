@@ -9,7 +9,7 @@ def load_config(config_path):
 
 def process_config(config):
     config['num_gpus'] = len(config.get('device_ids'))
-    config['batch_size'] = config.get('batch_size', 64) * config['num_gpus']
+    # config['batch_size'] = config.get('batch_size', 64) * config['num_gpus']
     config['seed'] = config.get('seed') or 1
     config['load_existing'] = config.get('load_existing') or False
 

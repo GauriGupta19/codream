@@ -42,36 +42,32 @@ def copy_source_code(config: dict) -> None:
     """
     path = config["results_path"]
     print("exp path:", path)
-    if config["load_existing"]:
-        print("Continue with loading checkpoint")
-        return
-    else:
-        # throw a prompt
-        check_and_create_path(path)
-        # the last folder is the path where all the expts are stored
-        denylist = ["./__pycache__/", "./.ipynb_checkpoints/",
-                    "./imgs/", "./expt_dump_old/",
-                    '/'.join(path.split('/')[:-1])+'/']
-        folders = glob(r'./*/')
-        print(denylist, folders)
+    # throw a prompt
+    check_and_create_path(path)
+    # the last folder is the path where all the expts are stored
+    denylist = ["./__pycache__/", "./.ipynb_checkpoints/",
+                "./imgs/", "./expt_dump_old/",
+                '/'.join(path.split('/')[:-1])+'/']
+    folders = glob(r'./*/')
+    print(denylist, folders)
 
-        # For copying python files
-        for file_ in glob(r'./*.py'):
-            copy2(file_, path)
+    # For copying python files
+    for file_ in glob(r'./*.py'):
+        copy2(file_, path)
 
-        # For copying json files
-        for file_ in glob(r'./*.json'):
-            copy2(file_, path)
+    # For copying json files
+    for file_ in glob(r'./*.json'):
+        copy2(file_, path)
 
-        for folder in folders:
-            if folder not in denylist:
-                # Remove first char which is . due to the glob
-                copytree(folder, path + folder[1:])
+    for folder in folders:
+        if folder not in denylist:
+            # Remove first char which is . due to the glob
+            copytree(folder, path + folder[1:])
 
-        # For saving models in the future
-        os.mkdir(config['saved_models'])
-        os.mkdir(config['log_path'])
-        print("source code copied to exp_dump")
+    # For saving models in the future
+    os.mkdir(config['saved_models'])
+    os.mkdir(config['log_path'])
+    print("source code copied to exp_dump")
 
 
 class LogUtils():
@@ -106,3 +102,6 @@ class LogUtils():
 
     def log_tb(self, key, value, iteration):
         self.writer.add_scalar(key, value, iteration)
+
+    def log_tensor_to_disk(self, tensor, key, iteration):
+        torch.save(tensor, f"{self.log_dir}/{iteration}_{key}.pt")

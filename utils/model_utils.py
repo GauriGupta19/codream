@@ -21,7 +21,8 @@ class ModelUtils():
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
-    def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
+    @staticmethod
+    def get_model(model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
         #TODO: add support for loading checkpointed models
         channels = 3 if dset=="cifar10" else 1
         model_name = model_name.lower()
@@ -90,6 +91,13 @@ class ModelUtils():
         else:
             model_ = model
         torch.save(model_.state_dict(), path)
+
+    def load_model(self, model, path):
+        if type(model) == DataParallel:
+            model_ = model.module
+        else:
+            model_ = model
+        model_.load_state_dict(torch.load(path))
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:

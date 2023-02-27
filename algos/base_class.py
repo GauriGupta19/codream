@@ -30,9 +30,8 @@ class BaseNode(ABC):
         device_ids_map = config["device_ids"]
         node_name = "node_{}".format(self.node_id)
         self.device_ids = device_ids_map[node_name]
-        gpu_id = self.device_ids[0]
-
-        if torch.cuda.is_available():
+        if len(self.device_ids) > 0:
+            gpu_id = self.device_ids[0]
             self.device = torch.device('cuda:{}'.format(gpu_id))
         else:
             self.device = torch.device('cpu')
@@ -41,6 +40,18 @@ class BaseNode(ABC):
         # Model related parameters
         optim = torch.optim.SGD
         self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids)
+        # load a checkpoint if load_existing is set to True
+        if config["load_existing"]:
+            node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
+            if node_checkpoint_path is not None:
+                try:
+                    self.model_utils.load_model(self.model, node_checkpoint_path)
+                except FileNotFoundError:
+                    print("No saved model found for node {}".format(self.node_id))
+            else:
+                print("No checkpoint path specified for node {}".format(self.node_id))
+            # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
+            # self.model_utils.load_model(self.model, config["checkpoint"])
         self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
