@@ -1,7 +1,7 @@
 import pdb
 from typing import List, Tuple
 import torch
-from algos.algos import synthesize_representations
+from algos.algos import FastMetaSynthesizer
 from algos.base_class import BaseClient, BaseServer
 from algos.modules import kl_loss_fn
 from torch.utils.data import TensorDataset, DataLoader
@@ -25,6 +25,11 @@ class DAREClient(BaseClient):
         self.tag = CommProtocol()
         self.config = config
         self.position = config["position"]
+        self.method = config["method"]
+        if self.method == "fast_meta":
+            self.synthesizer = FastMetaSynthesizer(config, self.dset_obj, self.device)
+        if self.method == "orig":
+            self.synthesizer = Synthesizer(config)
 
     def local_warmup(self):
         warmup = self.config["warmup"]
@@ -86,6 +91,7 @@ class DAREClient(BaseClient):
         # if self.config["inversion_algo"]=="random_deepinversion":
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
+        self.config["out_shape"][0] = bs
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         reps = torch.randn(self.config["inp_shape"]).to(self.device)
         obj = {
@@ -94,7 +100,7 @@ class DAREClient(BaseClient):
             "target_label": labels,
             "steps": self.config["first_time_steps"] if first_time else self.config["steps"],
         }
-        reps = synthesize_representations(self.config, obj)
+        reps = self.synthesizer.synthesize_representations(self.config, obj)
         logits = self.model(reps, position=self.position).detach()
         logit_probs = torch.nn.functional.log_softmax(logits, dim=1) # type: ignore
         return reps, logit_probs
@@ -112,8 +118,10 @@ class DAREClient(BaseClient):
 
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
+        self.config["out_shape"][0] = bs
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         rep = torch.randn(self.config["inp_shape"]).to(self.device)
+        
 
         for round in range(self.config["warmup"], self.config["epochs"]):
             # Wait for the server to signal to start the protocol
