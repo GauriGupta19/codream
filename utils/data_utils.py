@@ -14,6 +14,16 @@ class CIFAR10_DSET():
         self.mean = np.array((0.4914, 0.4822, 0.4465))
         self.std = np.array((0.2023, 0.1994, 0.2010))
         self.num_channels = 3
+        self.gen_transform = T.Compose(
+            [
+                T.RandomCrop(32, padding=4),
+                T.RandomHorizontalFlip(),
+                T.Normalize(
+                    self.mean, 
+                    self.std
+                ),
+            ]
+        )
         train_transform = T.Compose(
             [
                 T.RandomCrop(32, padding=4),
@@ -50,6 +60,14 @@ class MNIST_DSET():
         self.mean = 0.1307
         self.std = 0.3081
         self.num_channels = 1
+        self.gen_transform = T.Compose(
+            [
+                T.Normalize(
+                    self.mean, 
+                    self.std
+                ),
+            ]
+        )
         train_transform = T.Compose(
             [
                 T.ToTensor(),
