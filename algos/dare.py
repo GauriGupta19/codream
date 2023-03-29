@@ -97,7 +97,8 @@ class DAREClient(BaseClient):
         return dloader_reps
     
     def generate_rep(self, reps, labels, first_time):
-        if self.config["inversion_algo"]=="send_reps":
+        inv_algo = self.config.get("inversion_algo", "send_reps")
+        if inv_algo =="send_reps":
             bs = self.config["distill_batch_size"]
             self.config["inp_shape"][0] = bs
             labels = next(iter(self.dloader))[1][:bs].to(self.device)
@@ -112,7 +113,7 @@ class DAREClient(BaseClient):
             logits = self.model(reps, position=self.position).detach()
             logit_probs = torch.nn.functional.log_softmax(logits, dim=1) # type: ignore
             return reps, logit_probs
-        elif self.config["inversion_algo"] == "send_model":
+        elif inv_algo  == "send_model":
             return self.model.module.state_dict()
 
     def run_protocol(self):
@@ -249,7 +250,8 @@ class DAREServer(BaseServer):
         self.log_utils.log_console("Waiting for students to finish generating representations")
         reps = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
         self.log_utils.log_console("Sending representations to all students")
-        if self.config["inversion_algo"] == "send_model":
+        inv_algo = self.config.get("inversion_algo", "send_reps")
+        if inv_algo == "send_model":
             bs = self.config["distill_batch_size"]
             self.config["inp_shape"][0] = bs
             obj = {

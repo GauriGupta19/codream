@@ -45,7 +45,7 @@ class BaseNode(ABC):
             node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
             if node_checkpoint_path is not None:
                 try:
-                    self.model_utils.load_model(self.model, node_checkpoint_path)
+                    self.model_utils.load_model(self.model, node_checkpoint_path, self.device)
                 except FileNotFoundError:
                     print("No saved model found for node {}".format(self.node_id))
             else:

@@ -92,12 +92,12 @@ class ModelUtils():
             model_ = model
         torch.save(model_.state_dict(), path)
 
-    def load_model(self, model, path):
+    def load_model(self, model, path, device):
         if type(model) == DataParallel:
             model_ = model.module
         else:
             model_ = model
-        model_.load_state_dict(torch.load(path))
+        model_.load_state_dict(torch.load(path, map_location=device))
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:

@@ -2,6 +2,7 @@ from mpi4py import MPI
 import torch, random, numpy
 from algos.base_class import BaseNode
 from algos.dare import DAREClient, DAREServer
+from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedServer
 from utils.log_utils import copy_source_code
@@ -13,6 +14,7 @@ algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
     "dare": [DAREServer, DAREClient],
+    "distill_reps": [DistillRepsServer, DistillRepsClient],
 }
 
 def get_node(config: dict, rank) -> BaseNode:
