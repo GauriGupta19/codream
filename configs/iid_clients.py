@@ -37,22 +37,27 @@ iid_clients_collab_new = {
 
 iid_clients_distill = {
     "algo": "distill_reps",
-    "exp_id": "mvt2_data_log2",
+    "exp_id": "mvt2_data_log3",
     "exp_type": "iid_clients_distill_reps",
     "load_existing": True,
-    "checkpoint_paths": {"1": "expt_dump/iid_clients_collab_entropy_cifar10_5clients_5000samples_mvt2_distill_epochs_25_steps_2000_position_0_warmup_150_seed2/saved_models/user1.pt",
-                         "2": "expt_dump/iid_clients_collab_entropy_cifar10_5clients_5000samples_mvt2_distill_epochs_25_steps_2000_position_0_warmup_150_seed2/saved_models/user2.pt",
-                         "3": "expt_dump/iid_clients_collab_entropy_cifar10_5clients_5000samples_mvt2_distill_epochs_25_steps_2000_position_0_warmup_150_seed2/saved_models/user3.pt"},
-                        #  "4": "expt_dump/iid_clients_collab_entropy_cifar10_5clients_5000samples_mvt2_distill_epochs_25_steps_2000_position_0_warmup_150_seed2/saved_models/user4.pt",
-                        #  "5": "expt_dump/iid_clients_collab_entropy_cifar10_5clients_5000samples_mvt2_distill_epochs_25_steps_2000_position_0_warmup_150_seed2/saved_models/user5.pt"},
+    "checkpoint_paths": {
+      "1": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user1.pt",
+      "2": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user2.pt",
+      "3": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user3.pt",
+      "4": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user4.pt",
+      "5": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user5.pt",
+      "6": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user6.pt",
+      "7": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user7.pt",
+      "8": "expt_dump/iid_clients_distill_reps_cifar10_8clients_3000samples_mvt2_data_log2_distill_epochs_10_steps_500_position_0_warmup_250_inversion_algo_send_model_seed2/saved_models/user8.pt",
+    },
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 2,
     # Learning setup
-    "num_clients": 3, "top_k": 1, "samples_per_client": 5000,
+    "num_clients": 8, "top_k": 1, "samples_per_client": 3000,
     # "device_ids": {"node_0": [6,1,4,2,5], "node_1": [6], "node_2": [1], "node_3": [4], "node_4": [2], "node_5": [5]},
-    "device_ids": {"node_0": [6,1,4], "node_1": [6], "node_2": [1], "node_3": [4]},
+    "device_ids": {"node_0": [6,1,2,3,4,5,7,0], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [4], "node_5": [5], "node_6": [6], "node_7": [7], "node_8": [3]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
     
@@ -67,7 +72,7 @@ iid_clients_distill = {
     "inversion_algo": "send_model",
     "data_lr": 0.05, "steps": 2000,
     "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
-    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 150,
+    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 250,
     "first_time_steps": 2000,
     
     "exp_keys": ["distill_epochs", "steps", "position", "warmup", "inversion_algo"]

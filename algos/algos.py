@@ -1,3 +1,4 @@
+import math
 import pdb
 import time
 import torch.nn as nn
@@ -34,16 +35,33 @@ class GradFn(nn.Module):
             probs = torch.softmax(acts, dim=1)
             entropy = -torch.sum(probs * torch.log(probs + EPS), dim=1).mean()
             loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(self.loss_r_feature_layers) if hasattr(model, "r_feature")])
-            # print(loss_r_feature, entropy.device, inputs_jit.device)
             loss = self.alpha_preds * entropy + self.alpha_tv * total_variation_loss(inputs_jit).to(entropy.device) +\
                 self.alpha_l2 * torch.linalg.norm(inputs_jit).to(entropy.device) + self.alpha_f * loss_r_feature
             loss.backward()
-        #     inputs.data = inputs.data - inputs.grad.data * 0.05
-            # if self.id == 1:
-                # print("...", self.num, inputs.grad.data.mean(), inputs.grad.data.std(), inputs.grad.data.min(), inputs.grad.data.max())
             self.num += 1
-        # exit()
-        return inputs.grad.unsqueeze(dim=0), loss_r_feature, entropy, self.id
+        return inputs.grad.unsqueeze(dim=0)
+
+
+def adam_update(optimizer, updated_img, grad):
+    betas = optimizer.param_groups[0]['betas']
+    # access the optimizer's state
+    state = optimizer.state[updated_img]
+    if 'exp_avg' not in state:
+        state['exp_avg'] = torch.zeros_like(updated_img.data)
+    if 'exp_avg_sq' not in state:
+        state['exp_avg_sq'] = torch.zeros_like(updated_img.data)
+    if 'step' not in state:
+        state['step'] = 1
+    exp_avg = state['exp_avg']
+    exp_avg_sq = state['exp_avg_sq']
+    bias_correction1 = 1 - betas[0] ** state['step']
+    bias_correction2 = 1 - betas[1] ** state['step']
+    exp_avg.mul_(betas[0]).add_(grad, alpha=1 - betas[0])
+    exp_avg_sq.mul_(betas[1]).addcmul_(grad, grad, value=1 - betas[1])
+    denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(optimizer.param_groups[0]['eps'])
+    step_size = optimizer.param_groups[0]['lr'] / bias_correction1
+    updated_img.data.addcdiv_(exp_avg, denom, value=-step_size)
+    optimizer.state[updated_img]['step'] += 1
 
 
 def synthesize_representations_collaborative_parallel(config, obj):
@@ -67,22 +85,19 @@ def synthesize_representations_collaborative_parallel(config, obj):
         models.append(model)
         grad_fns.append(grad_fn)
 
-    orig_img = torch.load("orig_img.pt").to(obj["device"])
     updated_img = orig_img.clone()
-    # updated_img.requires_grad = True
-    # updated_img.retain_grad()
 
-    optimizer = torch.optim.SGD([updated_img], lr=lr, momentum=0., weight_decay=0.)
+    optimizer = torch.optim.Adam([updated_img], lr=lr, betas=(0.5, 0.9), eps = 1e-8)
     lim_0, lim_1 = 2, 2
 
     def _agg_grads(grads):
         grads_on_same_device = nn.parallel.scatter_gather.gather(grads, main_device)
         grads = grads_on_same_device
+        # TODO: check whether mean is better than sum
         return grads.mean(dim=0)
 
     # time the following loop
     start = time.time()
-    steps = 500
     for it in range(steps + 1):
         off1 = random.randint(-lim_0, lim_0)
         off2 = random.randint(-lim_1, lim_1)
@@ -98,31 +113,13 @@ def synthesize_representations_collaborative_parallel(config, obj):
         kwargs = {'position': position, 'off1': off1, 'off2': off2}
         kwargs_tup = (kwargs,) * len(grad_fns)
 
-        # optimizer.zero_grad()
-        # pdb.set_trace()
-        output = nn.parallel.parallel_apply(grad_fns, inputs, kwargs_tup=kwargs_tup, devices=obj["device_ids"])
-        # grads = [output[0][0], output[1][0], output[2][0]]
-        grads = []
-        for i in range(len(output)):
-            grads.append(output[i][0])
-        # updated_img = output[0][0].unsqueeze(dim=0)
-        # loss_r_features = [output[0][1].cuda(), output[1][1].cuda(), output[2][1].cuda()]
-        # entropies = [output[0][2].cuda(), output[1][2].cuda(), output[2][2].cuda()]
-        ids = [output[0][3], output[1][3], output[2][3]]
-
-        # for i in range(len(ids)):
-        #     if ids[i] == 1:
-        #         grad = grads[i][0].to(main_device)
-        # grad = grads[0][0].to(main_device)
+        optimizer.zero_grad()
+        grads = nn.parallel.parallel_apply(grad_fns, inputs, kwargs_tup=kwargs_tup, devices=obj["device_ids"])
         grad = _agg_grads(grads)
-        # print(f"{it}/{steps}", sum(loss_r_features).item(), sum(entropies).item())
-        # print(it, grad.data.mean(), grad.std(), grad.min(), grad.max())
-        updated_img.grad = grad
+        adam_update(optimizer, updated_img, grad)
         if it % 500 == 0 or it==steps:
             print(f"{it}/{steps}")
-        # optimizer.step()
-        updated_img.data = updated_img.data - lr * updated_img.grad.data
-        updated_img.grad.zero_()
+
 
     for grad_fn in grad_fns:
         for item in grad_fn.loss_r_feature_layers:
@@ -162,7 +159,6 @@ def synthesize_representations_collaborative(config, obj):
 
     optimizer = torch.optim.Adam([updated_img], lr=lr, betas=(0.5, 0.9), eps = 1e-8)
     lim_0, lim_1 = 2, 2
-    steps = 500
     for it in range(steps + 1):
         off1 = random.randint(-lim_0, lim_0)
         off2 = random.randint(-lim_1, lim_1)
@@ -184,14 +180,14 @@ def synthesize_representations_collaborative(config, obj):
 
         # loss = alpha_preds * ce_loss + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_feature
         loss = alpha_preds * entropies + alpha_tv * total_variation_loss(updated_img) + alpha_l2 * torch.linalg.norm(updated_img) + alpha_f * loss_r_features
-        if it % 1 == 0 or it==steps:
+        if it % 5000 == 0 or it==steps:
             print(f"{it}/{steps}", loss_r_features.item(), entropies.item()) # type: ignore
 
         loss.backward()
-        # optimizer.step()
-        grad = updated_img.grad
-        print(grad.mean(), grad.std())
-        updated_img.data = updated_img.data - lr * updated_img.grad.data * (1 / len(models))
+        optimizer.step()
+        # grad = updated_img.grad
+        # print(grad.mean(), grad.std())
+        # updated_img.data = updated_img.data - lr * updated_img.grad.data * (1 / len(models))
 
     # Removing the hook frees up memory otherwise every call to this function adds up extra Forwardhook
     # making the forward pass expensive and hog up memory
