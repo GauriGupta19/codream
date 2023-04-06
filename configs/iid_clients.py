@@ -57,7 +57,8 @@ iid_clients_distill = {
     # Learning setup
     "num_clients": 8, "top_k": 1, "samples_per_client": 3000,
     # "device_ids": {"node_0": [6,1,4,2,5], "node_1": [6], "node_2": [1], "node_3": [4], "node_4": [2], "node_5": [5]},
-    "device_ids": {"node_0": [6,1,2,3,4,5,7,0], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [4], "node_5": [5], "node_6": [6], "node_7": [7], "node_8": [3]},
+    # "device_ids": {"node_0": [6,1,2,3,4,5,7,0], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [4], "node_5": [5], "node_6": [6], "node_7": [7], "node_8": [3]},
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0], "node_4": [0], "node_5": [0], "node_6": [0], "node_7": [0], "node_8": [0]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
     

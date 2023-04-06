@@ -34,7 +34,8 @@ class ModelUtils():
             model = ResNet50(channels)
         else:
             raise ValueError(f"Model name {model_name} not supported")
-        model = DataParallel(model.to(device), device_ids=device_ids)
+        model = model.to(device)
+        #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
     def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
@@ -97,7 +98,10 @@ class ModelUtils():
             model_ = model.module
         else:
             model_ = model
-        model_.load_state_dict(torch.load(path, map_location=device))
+        wts = torch.load(path, map_location=torch.device('cpu'))
+        for key in wts:
+            wts[key] = wts[key].to(device)
+        model_.load_state_dict(wts)
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:
