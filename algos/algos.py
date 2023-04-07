@@ -74,7 +74,7 @@ def synthesize_representations_collaborative_parallel(config, obj):
         loss_r_feature_layers = []
         device = obj["device_ids"][i]
         model = ModelUtils.get_model(config["model"], config["dset"], device, [device,])
-        model.module.load_state_dict(obj["model_wts"][i])
+        model.load_state_dict(obj["model_wts"][i])
         model.eval()
         for module in model.modules():
             if isinstance(module, nn.BatchNorm2d):
