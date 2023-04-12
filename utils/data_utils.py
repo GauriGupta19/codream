@@ -4,7 +4,23 @@ import torch
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10
 from torchvision.datasets import MNIST
-from torch.utils.data import Subset
+from torch.utils.data import Subset, Dataset
+
+
+class CustomDataset(Dataset):
+    def __init__(self):
+        self.samples = []
+        
+    def __getitem__(self, index):
+        sample = self.samples[index]
+        return sample
+        
+    def __len__(self):
+        return len(self.samples)
+
+    def append(self, sample):
+        # Add a new sample to the dataset
+        self.samples.append(sample)
 
 
 class CIFAR10_DSET():
