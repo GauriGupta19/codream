@@ -154,6 +154,7 @@ class DistillRepsServer(BaseServer):
             self.dset = CustomDataset()
             test_dset = self.dset_obj.test_dset
             self._test_loader = DataLoader(test_dset, batch_size=self.config["batch_size"], shuffle=False)
+            self.eval_loss_fn = nn.CrossEntropyLoss()
 
     def adam_update(self, grad):
         betas = self.data_optimizer.param_groups[0]['betas']
@@ -183,8 +184,7 @@ class DistillRepsServer(BaseServer):
             for client in self.clients:
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)
             # TODO: choice of 50 is arbitrary so need to experimentally arrive at a better number
-            # if self.round > 50 and self.adaptive_distill:
-            if self.round >= 0 and self.adaptive_distill:
+            if self.round > 50 and self.adaptive_distill:
                 # pass reps on the local model and get the gradients
                 inputs = self.reps.clone().detach().requires_grad_(True)
                 acts = self.model(inputs)
@@ -196,8 +196,7 @@ class DistillRepsServer(BaseServer):
             grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
             grads = torch.stack(grads).to(self.device)
             grads = grads.mean(dim=0)
-            # if self.round > 50 and self.adaptive_distill:
-            if self.round >= 0 and self.adaptive_distill:
+            if self.round > 50 and self.adaptive_distill:
                 # negative gradient update to maximize entropy of the server model
                 # TODO: choice of lambda is arbitrary so need to experimentally arrive at a better number
                 self.config["lambda"] = 0.1
@@ -231,11 +230,20 @@ class DistillRepsServer(BaseServer):
             self.reps = torch.randn(self.config["inp_shape"]).to(self.device)
             self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["data_lr"])
             inp, out = self.single_round()
-            self.dset.append((inp, out))
-            if self.adaptive_distill and round >= 0:
+            self.dset.append((inp[0], out[0]))
+            if self.adaptive_distill and round > 10:
                 self.dloader = DataLoader(self.dset, batch_size=1, shuffle=True)
-                self.model_utils.train(self.model, self.dloader, self.loss_fn, self.device, apply_softmax=True)
-                self.model_utils.test(self.model, self._test_loader, self.device)
+                tr_loss, tr_acc = self.model_utils.train(self.model, self.optim, self.dloader, self.loss_fn, self.device, apply_softmax=True)
+                te_loss, te_acc = self.model_utils.test(self.model, self._test_loader, self.eval_loss_fn, self.device)
+                self.log_utils.log_tb("tr_loss", tr_loss, round)
+                self.log_utils.log_tb("tr_acc", tr_acc, round)
+                self.log_utils.log_tb("te_loss", te_loss, round)
+                self.log_utils.log_tb("te_acc", te_acc, round)
+                self.log_utils.log_console(f"Round {round} tr_loss: {tr_loss}, tr_acc: {tr_acc}, te_loss: {te_loss}, te_acc: {te_acc}")
+                if te_acc > self.best_acc:
+                    self.best_acc = te_acc
+                    # save the model
+                    self.model_utils.save_model(self.model, self.config["saved_models"] + "server_model.pt")
             self.log_utils.log_tensor_to_disk((inp, out), f"node", round)
             # Only store first three channel and 64 images for a 8x8 grid
             imgs = self.reps[:64, :3]
