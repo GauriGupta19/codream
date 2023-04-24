@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
 
-from resnet import ResNet18, ResNet34, ResNet50
+from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
 
 class ModelUtils():
@@ -32,6 +32,8 @@ class ModelUtils():
             model = ResNet34(channels)
         elif model_name == "resnet50":
             model = ResNet50(channels)
+        elif model_name == "resnet101":
+            model = ResNet101(channels)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
