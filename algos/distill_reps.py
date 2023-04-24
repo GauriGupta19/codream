@@ -151,7 +151,7 @@ class DistillRepsServer(BaseServer):
             # set up the server model
             self.set_model_parameters(config)
             self.loss_fn = nn.KLDivLoss(reduction="batchmean", log_target=True)
-            self.dset = CustomDataset()
+            self.dset = CustomDataset(config)
             test_dset = self.dset_obj.test_dset
             self._test_loader = DataLoader(test_dset, batch_size=self.config["batch_size"], shuffle=False)
             self.eval_loss_fn = nn.CrossEntropyLoss()
@@ -184,7 +184,7 @@ class DistillRepsServer(BaseServer):
             for client in self.clients:
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)
             # TODO: choice of 50 is arbitrary so need to experimentally arrive at a better number
-            if self.round > 50 and self.adaptive_distill:
+            if self.round > 5 and self.adaptive_distill:
                 # pass reps on the local model and get the gradients
                 inputs = self.reps.clone().detach().requires_grad_(True)
                 acts = self.model(inputs)
@@ -196,7 +196,7 @@ class DistillRepsServer(BaseServer):
             grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
             grads = torch.stack(grads).to(self.device)
             grads = grads.mean(dim=0)
-            if self.round > 50 and self.adaptive_distill:
+            if self.round > 5 and self.adaptive_distill:
                 # negative gradient update to maximize entropy of the server model
                 # TODO: choice of lambda is arbitrary so need to experimentally arrive at a better number
                 self.config["lambda"] = 0.1
@@ -230,10 +230,12 @@ class DistillRepsServer(BaseServer):
             self.reps = torch.randn(self.config["inp_shape"]).to(self.device)
             self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["data_lr"])
             inp, out = self.single_round()
-            self.dset.append((inp[0], out[0]))
+            self.dset.append((inp, out))
             if self.adaptive_distill and round > 10:
                 self.dloader = DataLoader(self.dset, batch_size=1, shuffle=True)
-                tr_loss, tr_acc = self.model_utils.train(self.model, self.optim, self.dloader, self.loss_fn, self.device, apply_softmax=True)
+                # the choice of 100 here is rather arbitrary
+                for _ in range(100):
+                    tr_loss, tr_acc = self.model_utils.train(self.model, self.optim, self.dloader, self.loss_fn, self.device, apply_softmax=True, extra_batch=True)
                 te_loss, te_acc = self.model_utils.test(self.model, self._test_loader, self.eval_loss_fn, self.device)
                 self.log_utils.log_tb("tr_loss", tr_loss, round)
                 self.log_utils.log_tb("tr_acc", tr_acc, round)
