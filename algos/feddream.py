@@ -31,6 +31,7 @@ class FedDreamClient(BaseClient):
         super().__init__(config)
         self.tag = CommProtocol()
         self.config = config
+        self.set_algo_params()
         self.position = config["position"]
 
     def set_algo_params(self):
@@ -192,7 +193,7 @@ class FedDreamServer(BaseServer):
         self.config = config
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
-        self.adaptive_distill = self.config.get("adaptive_distill", False)
+        self.adaptive_distill = self.config.get("adaptive_server", False)
         if self.adaptive_distill:
             self.EPS = 1e-8
             self.lambda_server = self.config.get("lambda_server", 0.1)

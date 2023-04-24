@@ -23,7 +23,7 @@ class CustomDataset(Dataset):
         
     def __getitem__(self, index):
         sample = self.samples[index]
-        return sample[0], nn.functional.log_softmax(sample[1], dim=1)
+        return sample[0], sample[1]
  
     def __len__(self):
         return len(self.samples)
