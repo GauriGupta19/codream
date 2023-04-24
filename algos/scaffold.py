@@ -33,13 +33,12 @@ class ScaffoldOptimizer(Optimizer):
             # print(group['params'])
             # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
             # print(client_controls.values())
-            for p, c, ci in zip(group['params'].values(), server_controls.values(), client_controls.values()):
+            for p, c, ci in zip(group['params'], server_controls.values(), client_controls.values()):
                 if p.grad is None:
                     print("what is going on?", p.shape, c.shape, ci.shape)
                     continue
-                print(c.shape, ci.shape, p.grad.shape)
-                # dp = p.grad.data + c.data - ci.data
-                # p.data = p.data - dp.data * group['lr']
+                dp = p.grad.data + c.data - ci.data
+                p.data = p.data - dp.   data * group['lr']
 
         return loss
 
@@ -51,11 +50,8 @@ class SCAFFOLDClient(BaseClient):
         self.tag = CommProtocol
         # create a dictionary to store the client controls
         self.c_i = OrderedDict()
-        # initialize it as zero for all the parameters
-        for k, v in self.model.state_dict().items():
-            # print(k)
-            self.c_i[k] = torch.zeros_like(v)
-        # exit()
+        for n, p in self.model.named_parameters():
+            self.c_i[n] = torch.zeros_like(p)
         self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
     
     def local_train(self, model, optim, dloader, loss_fn, device, c, c_i):
@@ -100,7 +96,7 @@ class SCAFFOLDClient(BaseClient):
             # and update the client control
             K = len(self.dloader)
             local_pseudo_grad, c_i_plus, c_i_delta = OrderedDict(), OrderedDict(), OrderedDict()
-            for k, v in self.model.state_dict().items():
+            for k, v in self.model.named_parameters():
                 local_pseudo_grad[k] = v - x[k]
                 c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
                 c_i_delta[k] = c_i_plus[k] - self.c_i[k]
@@ -116,8 +112,9 @@ class SCAFFOLDServer(BaseServer):
         self.config = config
         self.set_model_parameters(config)
         self.c = OrderedDict()
-        for k, v in self.model.state_dict().items():
-            self.c[k] = torch.zeros_like(v)
+        for n, p in self.model.named_parameters():
+            self.c[n] = torch.zeros_like(p)
+
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
@@ -135,9 +132,9 @@ class SCAFFOLDServer(BaseServer):
             local_tensors = generic_tensors[client_num]
             for key in first_model.keys():
                 if client_num == 0:
-                    avgd_tensors[key] = coeff * local_tensors[key].to(self.device)
+                    avgd_tensors[key] = coeff * local_tensors[key].detach().to(self.device)
                 else:
-                    avgd_tensors[key] += coeff * local_tensors[key].to(self.device)
+                    avgd_tensors[key] += coeff * local_tensors[key].detach().to(self.device)
         return avgd_tensors
 
     def test(self) -> float:
@@ -158,7 +155,7 @@ class SCAFFOLDServer(BaseServer):
         """
         Update the model weights
         """
-        for k, v in self.model.state_dict().items():
+        for k, v in self.model.named_parameters():
             self.model.state_dict()[k] = v + self.config["lr_server"] * delta_x[k]
 
     def update_covariates(self, delta_c: OrderedDict[str, Tensor]):
@@ -173,7 +170,7 @@ class SCAFFOLDServer(BaseServer):
         Get the covariates
         """
         c_temp = OrderedDict()
-        for k, _ in self.model.state_dict().items():
+        for k, _ in self.model.named_parameters():
             c_temp[k] = copy.deepcopy(self.c[k]).to("cpu")
         return c_temp
     
