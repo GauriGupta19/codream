@@ -127,12 +127,13 @@ iid_clients_scaffold = {
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 1,
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [0],},
+    "device_ids": {"node_0": [], "node_1": [], "node_2": [],},
     # Learning setup
     "num_clients": 2, "samples_per_client": 500,
     "epochs": 1000, "model": "resnet34",
-    "lr_client": 0.1, "batch_size": 256,
+    "lr_client": 0.1, "batch_size": 128,
     "lr_server": 1.,
+    "model_lr": 0.1, # decoy parameter not used in scaffold
     "exp_keys": []
 }
 
@@ -309,8 +310,9 @@ iid_clients_distill_fedadam = {
 # current_config = iid_clients_collab_new
 # current_config = iid_clients_isolated_new
 # current_config = iid_clients_federated_new
-#current_config = iid_clients_distill_fedavg
+# current_config = iid_clients_distill_fedavg
 # current_config = iid_clients_distill_fedadam
-current_config = feddream
+# current_config = feddream
 # current_config = iid_clients_distill_distadam
-#current_config = iid_clients_distill_fedadam
+# current_config = iid_clients_distill_fedadam
+current_config = iid_clients_scaffold

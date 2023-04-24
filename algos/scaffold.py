@@ -30,13 +30,16 @@ class ScaffoldOptimizer(Optimizer):
             loss = closure
 
         for group in self.param_groups:
-            for p, c, ci in zip(group['params'], server_controls.values(), client_controls.values()):
+            # print(group['params'])
+            # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            # print(client_controls.values())
+            for p, c, ci in zip(group['params'].values(), server_controls.values(), client_controls.values()):
                 if p.grad is None:
                     print("what is going on?", p.shape, c.shape, ci.shape)
                     continue
                 print(c.shape, ci.shape, p.grad.shape)
-                dp = p.grad.data + c.data - ci.data
-                p.data = p.data - dp.data * group['lr']
+                # dp = p.grad.data + c.data - ci.data
+                # p.data = p.data - dp.data * group['lr']
 
         return loss
 
@@ -50,7 +53,9 @@ class SCAFFOLDClient(BaseClient):
         self.c_i = OrderedDict()
         # initialize it as zero for all the parameters
         for k, v in self.model.state_dict().items():
+            # print(k)
             self.c_i[k] = torch.zeros_like(v)
+        # exit()
         self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
     
     def local_train(self, model, optim, dloader, loss_fn, device, c, c_i):
