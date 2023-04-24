@@ -2,6 +2,7 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
+import os
 
 from resnet import ResNet18, ResNet34, ResNet50
 
@@ -10,7 +11,19 @@ class ModelUtils():
     def __init__(self) -> None:
         pass
 
-    def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
+    def adjust_learning_rate(self, optimizer: torch.optim.Optimizer, epoch: int):
+        """For resnet, the lr starts from 0.1, and is divided by 10 at 80 and 120 epochs"""
+        if epoch < 80:
+            lr = 0.1
+        elif epoch < 120:
+            lr = 0.01
+        else:
+            lr = 0.001
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
+    @staticmethod
+    def get_model(model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
         #TODO: add support for loading checkpointed models
         channels = 3 if dset=="cifar10" else 1
         model_name = model_name.lower()
@@ -34,6 +47,11 @@ class ModelUtils():
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
             position = kwargs.get("position", 0)
             output = model(data, position=position)
             if kwargs.get("apply_softmax", False):
@@ -49,6 +67,88 @@ class ModelUtils():
             correct += pred.eq(target.view_as(pred)).sum().item()
         acc = correct / len(dloader.dataset)
         return train_loss, acc
+    
+    def train_fedprox(self, model:nn.Module, global_model, mu, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        for batch_idx, (data, target) in enumerate(dloader):
+            data, target = data.to(device), target.to(device)
+            optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
+            position = kwargs.get("position", 0)
+            output = model(data, position=position)
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1) # type: ignore
+            loss = loss_fn(output, target)
+            
+            # for fedprox
+            fed_prox_reg = 0.0
+            global_weight_collector = list(global_model.parameters())
+            for param_index, param in enumerate(model.parameters()):
+                fed_prox_reg += ((mu / 2) * torch.norm((param - global_weight_collector[param_index])) ** 2)
+            loss += fed_prox_reg
+            
+            loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+        acc = correct / len(dloader.dataset)
+        return train_loss, acc
+    
+    
+    def train_fedcon(self, model:nn.Module, gloabl_model, previous_nets, cos, mu, temperature, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        for batch_idx, (data, target) in enumerate(dloader):
+            data, target = data.to(device), target.to(device)
+            optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
+            position = kwargs.get("position", 0)
+            feat, output = model(data, position=position, out_feature=True)
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1) # type: ignore
+            loss = loss_fn(output, target)
+            
+            feat_g, _ = gloabl_model(data, position=position, out_feature=True)
+            posi = cos(feat, feat_g)
+            logits = posi.reshape(-1,1)
+            for previous_net in previous_nets:
+                feat_p, _ = previous_net(data, position=position, out_feature=True)
+                nega = cos(feat, feat_p)
+                logits = torch.cat((logits, nega.reshape(-1,1)), dim=1)
+            logits /= temperature
+            labels = torch.zeros(data.size(0)).long()
+            loss += mu * loss_fn(logits, labels.to(device))
+
+            loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+        acc = correct / len(dloader.dataset)
+        return train_loss, acc
+    
 
     def test(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
@@ -74,6 +174,15 @@ class ModelUtils():
         else:
             model_ = model
         torch.save(model_.state_dict(), path)
+
+    def load_model(self, model, path):
+        if type(model) == DataParallel:
+            model_ = model.module
+            # print(model.module)
+        else:
+            model_ = model
+        # model_.load_state_dict(torch.load(path, map_location='cuda:0'))
+        model_.load_state_dict(torch.load(path)['state_dict'])
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:
