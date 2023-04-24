@@ -46,6 +46,7 @@ class DistillRepsClient(BaseClient):
         self.optimizer = torch.optim.Adam
 
     def set_algo_params(self):
+        self.distadam = self.config["distadam"]
         self.fedadam = self.config["fedadam"]
         self.inversion_algo = self.config.get("inversion_algo", "send_reps")
         self.server_lr = self.config["server_lr"]
@@ -131,6 +132,8 @@ class DistillRepsClient(BaseClient):
 
         if self.config["fedadam"]:
             return inputs - reps.clone().detach()
+        elif self.config["distadam"]:
+            return inputs.grad
         else:
             return inputs
 
@@ -208,27 +211,48 @@ class DistillRepsServer(BaseServer):
 
     def adam_update(self, grad):
 
-        # ---- FedAdam ----
+        if self.config['distadam']:
+            betas = self.data_optimizer.param_groups[0]['betas']
+            # access the optimizer's state
+            state = self.data_optimizer.state[self.reps]
+            if 'exp_avg' not in state:
+                state['exp_avg'] = torch.zeros_like(self.reps.data)
+            if 'exp_avg_sq' not in state:
+                state['exp_avg_sq'] = torch.zeros_like(self.reps.data)
+            if 'step' not in state:
+                state['step'] = 1
+            exp_avg = state['exp_avg']
+            exp_avg_sq = state['exp_avg_sq']
+            bias_correction1 = 1 - betas[0] ** state['step']
+            bias_correction2 = 1 - betas[1] ** state['step']
+            exp_avg.mul_(betas[0]).add_(grad, alpha=1 - betas[0])
+            exp_avg_sq.mul_(betas[1]).addcmul_(grad, grad, value=1 - betas[1])
+            denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(self.data_optimizer.param_groups[0]['eps'])
+            step_size = self.data_optimizer.param_groups[0]['lr'] / bias_correction1
+            self.reps.data.addcdiv_(exp_avg, denom, value=-step_size)
+            self.data_optimizer.state[self.reps]['step'] += 1
 
-        lr = self.config["server_lr"]
-        beta_1 = self.config["server_beta_1"]
-        beta_2 = self.config["server_beta_2"]
-        tau = self.config["server_tau"]
-        state = self.data_optimizer.state[self.reps]
 
-        if "m" not in state:
-            state["m"] = torch.zeros_like(self.reps.data)
+        else:
+            # ---- FedAdam ----
+            lr = self.config["server_lr"]
+            beta_1 = self.config["server_beta_1"]
+            beta_2 = self.config["server_beta_2"]
+            tau = self.config["server_tau"]
+            state = self.data_optimizer.state[self.reps]
 
-        if "v" not in state:
-            state["v"] = torch.zeros_like(self.reps.data)
+            if "m" not in state:
+                state["m"] = torch.zeros_like(self.reps.data)
 
-        state["m"] = beta_1 * state["m"] + (1 - beta_1) * grad
-        state["v"] = beta_2 * state["v"] + (1 - beta_2) * grad**2
+            if "v" not in state:
+                state["v"] = torch.zeros_like(self.reps.data)
 
-        # update = self.reps.data - lr * state["m"] / (state["v"] ** 0.5 + tau)
-        update = self.reps.data + lr * state["m"] / (state["v"] ** 0.5 + tau)
-        update = update.detach()
-        self.reps.data = update
+            state["m"] = beta_1 * state["m"] + (1 - beta_1) * grad
+            state["v"] = beta_2 * state["v"] + (1 - beta_2) * grad**2
+
+            update = self.reps.data + lr * state["m"] / (state["v"] ** 0.5 + tau)
+            update = update.detach()
+            self.reps.data = update
 
 
     def single_round(self):
@@ -268,6 +292,8 @@ class DistillRepsServer(BaseServer):
             grads = grads.detach()
 
             if self.config["fedadam"]:
+                self.adam_update(grads)
+            elif self.config["distadam"]:
                 self.adam_update(grads)
             else:
                 self.reps.data = grads
@@ -309,7 +335,8 @@ class DistillRepsServer(BaseServer):
             )
             inp, out = self.single_round()
 
-            self.dset.append((inp, out))
+            if self.adaptive_distill:
+                self.dset.append((inp, out))
 
             if self.adaptive_distill and round > 10:
                 self.dloader = DataLoader(self.dset, batch_size=1, shuffle=True)
