@@ -1,20 +1,30 @@
 import pdb
 import numpy as np
 import torch
+import torch.nn as nn
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10
 from torchvision.datasets import MNIST
 from torch.utils.data import Subset, Dataset
+from glob import glob
 
 
 class CustomDataset(Dataset):
-    def __init__(self):
+    def __init__(self, config):
         self.samples = []
+        ld_path = config.get("load_data_path", None)
+        if ld_path is not None:
+            filepaths = ld_path + "/*.pt"
+            filepaths = glob(filepaths)
+            print(f"found {len(filepaths)} batches in data checkpoints")
+            for fp in filepaths:
+                samples = torch.load(fp)
+                self.samples.append(samples)
         
     def __getitem__(self, index):
         sample = self.samples[index]
-        return sample
-        
+        return sample[0], nn.functional.log_softmax(sample[1], dim=1)
+ 
     def __len__(self):
         return len(self.samples)
 

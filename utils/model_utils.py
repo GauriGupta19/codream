@@ -48,6 +48,9 @@ class ModelUtils():
         correct = 0
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
+            if "extra_batch" in kwargs:
+                data = data.view(data.size(0) * data.size(1), *data.size()[2:])
+                target = target.view(target.size(0) * target.size(1), *target.size()[2:])
             optim.zero_grad()
             # check if epoch is passed as a keyword argument
             # if so, call adjust_learning_rate
