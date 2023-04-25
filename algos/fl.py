@@ -37,17 +37,17 @@ class FedAvgClient(BaseClient):
         """
         pass
 
-    def get_representation(self) -> OrderedDict[str, Tensor]:
+    def get_representation(self) -> Dict[str, Tensor]:
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
 
-    def set_representation(self, representation: OrderedDict[str, Tensor]):
+    def set_representation(self, representation: Dict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -112,7 +112,7 @@ class FedAvgServer(BaseServer):
             self.comm_utils.send_signal(client_node,
                                         representation,
                                         self.tag.UPDATES)
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
