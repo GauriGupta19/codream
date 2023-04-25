@@ -21,7 +21,6 @@ class MoonClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        self.global_model = self.model_utils.get_model(self.config["model"], self.config["dset"], self.device, self.device_ids)
         
         self.model_buffer_size = 1
         self.pool_option = 'FIFO'
@@ -30,10 +29,14 @@ class MoonClient(BaseClient):
         old_model.eval()
         for param in old_model.parameters():
             param.requires_grad = False
-        if len(self.prev_models) < self.model_buffer_size:  
-            self.prev_models.append(old_model)
+        self.prev_models.append(old_model)
         
-        self.mu = 1
+        self.global_model = self.model_utils.get_model(self.config["model"], self.config["dset"], self.device, self.device_ids)
+        self.global_model.eval()
+        for param in self.global_model.parameters():
+            param.requires_grad = False
+        
+        self.mu = 5
         self.temperature = 0.5
         self.cos=nn.CosineSimilarity(dim=-1)
         
@@ -53,13 +56,24 @@ class MoonClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
-        pass
-
+        # test_loss, acc = self.model_utils.test(self.model,
+        #                                        self._test_loader,
+        #                                        self.loss_fn,
+        #                                        self.device)
+        # print(f'localclient test acc {acc}')
+        pass 
+    
     def get_representation(self) -> OrderedDict[str, Tensor]:
         """
         Share the model weights
         """
         return self.model.module.state_dict()
+    
+    def set_representation(self, representation: OrderedDict[str, Tensor]):
+        """
+        Set the model weights
+        """
+        self.model.module.load_state_dict(representation)
     
     def set_previous_models(self):
         old_model = copy.deepcopy(self.model)
@@ -78,6 +92,9 @@ class MoonClient(BaseClient):
         Set the model weights
         """
         self.global_model.module.load_state_dict(representation)
+        self.global_model.eval()
+        for param in self.global_model.parameters():
+            param.requires_grad = False
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -96,6 +113,7 @@ class MoonClient(BaseClient):
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
             repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
             # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
+            self.set_representation(repr)
             self.set_global(repr)
             # self.log_utils.logging.info("Round {} done".format(round))
             

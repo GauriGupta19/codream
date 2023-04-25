@@ -21,6 +21,9 @@ class FedProxClient(BaseClient):
         self.config = config
         self.tag = CommProtocol
         self.global_model = self.model_utils.get_model(self.config["model"], self.config["dset"], self.device, self.device_ids)
+        self.global_model.eval()
+        for param in self.global_model.parameters():
+            param.requires_grad = False
         self.mu = 1
 
     def local_train(self):
@@ -45,12 +48,21 @@ class FedProxClient(BaseClient):
         Share the model weights
         """
         return self.model.module.state_dict()
+    
+    def set_representation(self, representation: OrderedDict[str, Tensor]):
+        """
+        Set the model weights
+        """
+        self.model.module.load_state_dict(representation)
 
     def set_global(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
         self.global_model.module.load_state_dict(representation)
+        self.global_model.eval()
+        for param in self.global_model.parameters():
+            param.requires_grad = False
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -66,9 +78,10 @@ class FedProxClient(BaseClient):
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
-            global_reps = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
+            repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
             # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
-            self.set_global(global_reps)
+            self.set_representation(repr)
+            self.set_global(repr)
             # self.log_utils.logging.info("Round {} done".format(round))
 
 

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch, numpy
 from utils.comm_utils import CommUtils
-from utils.data_utils import extr_noniid, get_dataset
+from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced, non_iid_unbalanced_dataidx_map
 from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
@@ -19,9 +19,14 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
+        
+        if self.node_id == 1:
+            if config["exp_type"].startswith("non_iid"):
+                self.split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
         self.set_constants()
 
     def set_constants(self):
+        self.best_loss = torch.inf
         self.best_acc = 0.
 
     def setup_cuda(self, config):
@@ -29,18 +34,31 @@ class BaseNode(ABC):
         device_ids_map = config["device_ids"]
         node_name = "node_{}".format(self.node_id)
         self.device_ids = device_ids_map[node_name]
-        gpu_id = self.device_ids[0]
-
-        if torch.cuda.is_available():
+        if len(self.device_ids) > 0:
+            gpu_id = self.device_ids[0]
             self.device = torch.device('cuda:{}'.format(gpu_id))
         else:
             self.device = torch.device('cpu')
 
     def set_model_parameters(self, config):
         # Model related parameters
-        optim = torch.optim.Adam
+        optim = torch.optim.SGD
         self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids)
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"])
+        # load a checkpoint if load_existing is set to True
+        if config["load_existing"]:
+            node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
+            if node_checkpoint_path is not None:
+                try:
+                    self.model_utils.load_model(self.model, node_checkpoint_path)
+                except FileNotFoundError:
+                    print("No saved model found for node {}".format(self.node_id))
+            else:
+                print("No checkpoint path specified for node {}".format(self.node_id))
+            # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
+            # self.model_utils.load_model(self.model, config["checkpoint"])
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4)
+        milestones = [ ms for ms in [120,150,180] ]
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optim, milestones=milestones, gamma=0.2)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod
@@ -72,8 +90,12 @@ class BaseClient(BaseNode):
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
         if config["exp_type"].startswith("non_iid"):
+            train_x, train_y = self.split_data
+            dset = (train_x[client_idx], train_y[client_idx])
+            
+        if config["exp_type"].startswith("non_iid_labels"):
             sp = config["sp"]
-            dset = extr_noniid(train_dset,config["samples_per_client"],sp[client_idx])
+            dset = non_iid_labels(train_dset,config["samples_per_client"],sp[client_idx])
         else:
             indices = numpy.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
