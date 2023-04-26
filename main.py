@@ -1,7 +1,7 @@
 import argparse
 from scheduler import Scheduler
 
-b_default = "./configs/iid_clients.py"
+# b_default = "./configs/iid_clients.py"
 b_default = "./configs/non_iid_clients.py"
 parser = argparse.ArgumentParser(description='Run collaborative learning experiments')
 parser.add_argument('-b', nargs='?', default=b_default, type=str,

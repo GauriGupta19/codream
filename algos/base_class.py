@@ -19,10 +19,7 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
-        
-        if self.node_id == 1:
-            if config["exp_type"].startswith("non_iid"):
-                self.split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
+            
         self.set_constants()
 
     def set_constants(self):
@@ -90,7 +87,8 @@ class BaseClient(BaseNode):
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
         if config["exp_type"].startswith("non_iid"):
-            train_x, train_y = self.split_data
+            split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
+            train_x, train_y = split_data
             dset = (train_x[client_idx], train_y[client_idx])
             
         if config["exp_type"].startswith("non_iid_labels"):
