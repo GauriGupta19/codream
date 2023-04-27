@@ -104,8 +104,11 @@ class DistillRepsClient(BaseClient):
         self, reps: torch.Tensor, local_lr: float = 1e-1, local_steps: int = 1
     ):
         inputs = reps.clone().detach().requires_grad_(True)
-        # if self.config['fedadam']:
-        opt = self.optimizer([inputs], lr=local_lr)
+        opt = torch.optim.Adam([inputs], lr=local_lr)
+
+        # load previous optimizer state
+        opt_state = self.optimizer.state_dict()
+        opt.load_state_dict(opt_state)
 
         for _ in range(local_steps + 1):
             self.model.zero_grad()
@@ -129,6 +132,9 @@ class DistillRepsClient(BaseClient):
 
             if local_steps > 0:
                 opt.step()
+
+        # replace optimizer to save settings
+        self.optimizer = opt
 
         if self.config["fedadam"]:
             return inputs - reps.clone().detach()
@@ -163,6 +169,13 @@ class DistillRepsClient(BaseClient):
                     src=self.server_node, tag=self.tag.START_GEN_REPS
                 )
                 reps = reps.to(self.device)
+
+                # initialize local opt
+                if g_step == 0:
+                    inputs = reps.clone().detach().requires_grad_(True)
+                    opt = torch.optim.Adam([inputs], lr=self.config["local_lr"])
+                    self.optimizer = opt
+
                 grads = self.generate_rep(
                     reps,
                     local_lr=self.config["local_lr"],
