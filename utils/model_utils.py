@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
 
-from resnet import ResNet18, ResNet34, ResNet50
+from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
 
 class ModelUtils():
@@ -32,6 +32,8 @@ class ModelUtils():
             model = ResNet34(channels)
         elif model_name == "resnet50":
             model = ResNet50(channels)
+        elif model_name == "resnet101":
+            model = ResNet101(channels)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
@@ -44,11 +46,13 @@ class ModelUtils():
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             if "extra_batch" in kwargs:
                 data = data.view(data.size(0) * data.size(1), *data.size()[2:])
                 target = target.view(target.size(0) * target.size(1), *target.size()[2:])
+            total_samples += data.size(0)
             optim.zero_grad()
             # check if epoch is passed as a keyword argument
             # if so, call adjust_learning_rate
@@ -68,7 +72,7 @@ class ModelUtils():
             if len(target.size()) > 1:
                 target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
-        acc = correct / len(dloader.dataset)
+        acc = correct / total_samples
         return train_loss, acc
 
     def test(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:

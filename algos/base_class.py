@@ -89,7 +89,10 @@ class BaseClient(BaseNode):
         else:
             indices = numpy.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
-        self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+        if len(self.device_ids) > 0:
+            self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+        else:
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):
