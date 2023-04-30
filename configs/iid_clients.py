@@ -23,7 +23,15 @@ iid_clients_collab_new = {
     "model_lr": 3e-4, "batch_size": 256,
 
     # params for model
+
     "position": 0, "inp_shape": [0, 3, 32, 32],
+    # "method": "orig", "ismaml": 0,
+    # "position": 4, "inp_shape": [0, 256, 8, 8], "out_shape": [0, 256, 8, 8],
+    
+    "method": "fast_meta", "ismaml": 1,
+    "lr_g": 5e-3, "lr_z": 0.015,
+    
+    "position": 0, "inp_shape": [0, 256], "out_shape": [0, 3, 32, 32],
 
     # Params for gradient descent on data
     "inversion_algo": "send_model",

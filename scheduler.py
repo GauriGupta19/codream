@@ -6,6 +6,8 @@ from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.feddream import FedDreamClient, FedDreamServer
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
+from algos.fedprox import FedProxClient, FedProxServer
+from algos.moon import MoonClient, MoonServer
 from algos.isolated import IsolatedServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
@@ -14,6 +16,8 @@ from utils.config_utils import load_config
 # If rank is 0, then it returns the server class otherwise the client class
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
+    "fedprox": [FedAvgServer, FedProxClient],
+    "moon": [MoonServer, MoonClient],
     "isolated": [IsolatedServer],
     "dare": [DAREServer, DAREClient],
     "distill_reps": [DistillRepsServer, DistillRepsClient],

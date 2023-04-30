@@ -1,7 +1,19 @@
 # Collab Learning
 Collaborative learning by sharing distilled images
 
+# Code Structure
+<img src = "image2.png" height = 300><br />
+When MPI run is called, it calls main.py in three different processors, one server and two clients.<br />
+
+<img src = "image1.png" width = 500><br />
+This is what the structure looks like in the server node. The arrows indicate which class calls which. For example, the arrow going from Scheduler to DAREServer indicates that Scheduler calls DAREServer at some point.<br />
+
+<img src = "image4.png" width = 500> <br />
+This is the structural diagram for both client nodes. It is nearly identical to the server’s. The main difference is that Scheduler calls DAREClient instead of DAREServer, and DareClient goes on to call FastMetaSynthesizer, which calls Generator. Only the structure for DARE is shown here for simplicity, but the server and client files being called are dependent on the algorithm specified in the configuration file (DARE, Federated, or Isolated).
+
+
 # Control Flow
+
 
 ## Main
 The application first runs main.py, which handles running the application from the command line. It takes as argument a config file path, where the default config file is ```iid_clients.py```.  
@@ -49,6 +61,26 @@ This is the same as clients colab, but the dataset is not mutually exclusive any
 #### 6) Non-IID Federated
 This is also the same as the IID Federated method, with the exception that the datasets now are not necessarily independent or identically distributed.
 
+## General Code Flow
+<img src = "image3.png"> <br /><br />
+After being assigned the config file, the Scheduler is initialized, setting the seed that will be used to generate random values, establishing the node as a communicator, and snapshotting the experiment to save the results.<br />
+
+After initializing, the program checks the rank of the current processor. The server has rank 0, and clients have ranks 1 and 2. We check the config file for the appropriate algorithm(DARE, Federated, or Isolated), and depending on the rank, we either run the Server class or Client class of each algorithm. If the algorithm specified is Isolated, there is only one processor, which has rank 0, so we simply run the Server class.<br />
+
+The Client class gets the tags from the CommProtocol class and creates an optimizer according to the config.
+If running on the server, the program decides whether to use GPU or CPU depending on the availability of Cuda on the device.<br />
+
+The dataset, either MNIST or CFAR10 depending on the config, is transformed. We set important values like the mean and number of cycles, train and test the data, and create a dataloader object.
+The server and client continue to work in parallel, now using MPI to send signals to each other.<br />
+
+Server:
+The server sends a signal to start the warmup rounds. Once it receives the signal from the client class that the warmup rounds are over, it runs a single round and updates the data statistics to the terminal for as many epochs as the config file specifies.
+A single round involves signaling to the students to start their representations, receiving them, and sending each representation to each student except for the student who generated it. We store each client’s representations as images and update the statistics once all the students are done.<br />
+
+Client:
+Upon receiving the signal to begin from the server, the algorithm starts the training process with warmup rounds, signaling to the server when these rounds are completed. It generates representations of the data and sends them to the server. Once the server sends those representations back, it chooses the best n among them(where n is a number specified by config). Afterward, for each epoch specified by the config, it trains the model on the test data, local data, and representations from the server, and sends it to the server.<br />
+
+The program terminates when both the server and the client have run their rounds for the correct number of epochs.<br />
 
 
 

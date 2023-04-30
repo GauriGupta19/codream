@@ -53,21 +53,23 @@ non_iid_clients_collab = {
 }
 
 non_iid_clients_federated = {
+    "algo": "fedprox",
     "exp_id": 0,
     "exp_type": "non_iid_clients_federated",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 1,
-    "device_ids": [0,1,2,3],
-
+    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [4]},
+    
     # Learning setup
-    "num_clients": 2, "samples_per_client": 2000, "class_per_client": 2,
+    "num_clients":4, "samples_per_client": 3000, "alpha": 1,
+    # "class_per_client": 2,
     
     "epochs": 500,
-    "model_lr": 3e-4, "batch_size": 256,
+    "model": "resnet34", "model_lr": 3e-4, "batch_size": 256,
     
-    "exp_keys": ["num_clients", "class_per_client"]
+    "exp_keys": ["algo", "num_clients", "alpha"]
 }
 
-current_config = non_iid_clients_collab_new
+current_config = non_iid_clients_federated
