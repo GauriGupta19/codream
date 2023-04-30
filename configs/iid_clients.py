@@ -20,7 +20,7 @@ iid_clients_collab_new = {
     # we are not including the client itself
 
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
 
@@ -60,7 +60,7 @@ feddream = {
     "num_clients": 2, "samples_per_client": 2000,
     "device_ids": {"node_0": [0], "node_1": [1], "node_2": [0]},
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
@@ -110,7 +110,7 @@ iid_clients_distill = {
         "3": "resnet50",
         "4": "resnet101",
     },
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
@@ -184,7 +184,7 @@ iid_clients_federated_new = {
 
     "epochs": 1000,
     "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     "exp_keys": []
 }
@@ -213,7 +213,7 @@ iid_clients_distill_distadam = {
     # we are not including the client itself
 
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
@@ -255,7 +255,7 @@ iid_clients_distill_fedavg = {
     # we are not including the client itself
 
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
@@ -297,7 +297,7 @@ iid_clients_distill_fedadam = {
     # we are not including the client itself
 
     "epochs": 1000, "model": "resnet34",
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
 
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],

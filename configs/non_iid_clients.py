@@ -14,7 +14,7 @@ non_iid_clients_collab_new = {
     # we are not including the client itself
     
     "epochs": 1000, "model": "ResNet18",
-    "model_lr": 3e-4, "batch_size": 128, 
+    "model_lr": 0.1, "batch_size": 128, 
     
     # params for model
     "position": 0, "inp_shape": [0, 1, 28, 28],
@@ -42,7 +42,7 @@ non_iid_clients_collab = {
     "num_clients": 2, "samples_per_client": 5000, "class_per_client": 2,
     
     "epochs": 500,
-    "model_lr": 3e-4, "batch_size": 256,
+    "model_lr": 0.1, "batch_size": 256,
     
     # Params for gradient descent on data
     "warmup": 10,
@@ -67,9 +67,49 @@ non_iid_clients_federated = {
     # "class_per_client": 2,
     
     "epochs": 500,
-    "model": "resnet34", "model_lr": 3e-4, "batch_size": 256,
+    "model": "resnet34", "model_lr": 0.1, "batch_size": 256,
     
     "exp_keys": ["algo", "num_clients", "alpha"]
 }
 
-current_config = non_iid_clients_federated
+feddream = {
+    "seed": 2,
+    "algo": "feddream",
+    "exp_id": "1",
+    "exp_type": "non_iid_clients_feddream",
+    "load_existing": False,
+    "checkpoint_paths": {
+        '1': './expt_dump/2k_clients/user1.pt',
+        '2': './expt_dump/2k_clients/user2.pt',
+    },
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./imgs/cifar10",
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 3000, "alpha": 1,
+    "device_ids": {"node_0": [2], "node_1": [3], "node_2": [4], "node_3": [5], "node_4":[6]},
+    "epochs": 1000, "model": "resnet34",
+    "model_lr": 0.1, "batch_size": 256,
+
+    # params for model
+    "position": 0, "inp_shape": [0, 3, 32, 32],
+
+    # Params for gradient descent on data
+    "inversion_algo": "send_grads",
+    "data_lr": 0.05, "global_steps": 2000, "local_steps": 1,
+    "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
+    # for local training
+    "warmup": 150,
+    "distill_batch_size": 128, "distill_epochs": 20,
+    "local_train_freq": 5,
+
+    # adaptive distillation parameters
+    "adaptive_server": True,
+    "adaptive_client": False,
+    "lambda_server": 0.1,
+
+    "exp_keys": ["adaptive_server"]
+}
+
+# current_config = non_iid_clients_federated
+current_config = feddream

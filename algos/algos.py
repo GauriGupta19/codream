@@ -7,6 +7,8 @@ from torch.autograd import Variable
 from algos.modules import DeepInversionFeatureHook, total_variation_loss
 from utils.model_utils import ModelUtils
 from torchvision import utils
+from algos.generator import Generator
+from torchvision import transforms
 
 
 EPS = 1e-8
@@ -251,9 +253,6 @@ def synthesize_representations(config, obj):
 
         loss.backward()
         optimizer.step()
-=======
-from algos.generator import Generator
-from torchvision import transforms
 
 
 class FastMetaSynthesizer():
