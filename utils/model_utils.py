@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn.parallel import DataParallel
 import os
 
-from resnet import ResNet18, ResNet34, ResNet50
+from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
 
 class ModelUtils():
@@ -33,9 +33,12 @@ class ModelUtils():
             model = ResNet34(channels)
         elif model_name == "resnet50":
             model = ResNet50(channels)
+        elif model_name == "resnet101":
+            model = ResNet101(channels)
         else:
             raise ValueError(f"Model name {model_name} not supported")
-        model = DataParallel(model.to(device), device_ids=device_ids)
+        model = model.to(device)
+        #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
     def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
@@ -44,8 +47,13 @@ class ModelUtils():
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
+            if "extra_batch" in kwargs:
+                data = data.view(data.size(0) * data.size(1), *data.size()[2:])
+                target = target.view(target.size(0) * target.size(1), *target.size()[2:])
+            total_samples += data.size(0)
             optim.zero_grad()
             # check if epoch is passed as a keyword argument
             # if so, call adjust_learning_rate
@@ -81,7 +89,6 @@ class ModelUtils():
             # if so, call adjust_learning_rate
             if "epoch" in kwargs:
                 self.adjust_learning_rate(optim, kwargs["epoch"])
-
             position = kwargs.get("position", 0)
             output = model(data, position=position)
             if kwargs.get("apply_softmax", False):
@@ -146,7 +153,7 @@ class ModelUtils():
             if len(target.size()) > 1:
                 target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
-        acc = correct / len(dloader.dataset)
+        acc = correct / total_samples
         return train_loss, acc
     
 
@@ -175,14 +182,15 @@ class ModelUtils():
             model_ = model
         torch.save(model_.state_dict(), path)
 
-    def load_model(self, model, path):
+    def load_model(self, model, path, device):
         if type(model) == DataParallel:
             model_ = model.module
-            # print(model.module)
         else:
             model_ = model
-        # model_.load_state_dict(torch.load(path, map_location='cuda:0'))
-        model_.load_state_dict(torch.load(path)['state_dict'])
+        wts = torch.load(path, map_location=torch.device('cpu'))
+        for key in wts:
+            wts[key] = wts[key].to(device)
+        model_.load_state_dict(wts)
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:

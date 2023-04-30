@@ -46,16 +46,14 @@ class BaseNode(ABC):
             node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
             if node_checkpoint_path is not None:
                 try:
-                    self.model_utils.load_model(self.model, node_checkpoint_path)
+                    self.model_utils.load_model(self.model, node_checkpoint_path, self.device)
                 except FileNotFoundError:
                     print("No saved model found for node {}".format(self.node_id))
             else:
                 print("No checkpoint path specified for node {}".format(self.node_id))
             # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
             # self.model_utils.load_model(self.model, config["checkpoint"])
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4)
-        milestones = [ ms for ms in [120,150,180] ]
-        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optim, milestones=milestones, gamma=0.2)
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod
@@ -97,7 +95,10 @@ class BaseClient(BaseNode):
         else:
             indices = numpy.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
-        self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+        if len(self.device_ids) > 0:
+            self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+        else:
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):

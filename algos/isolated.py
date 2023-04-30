@@ -48,7 +48,8 @@ class IsolatedServer(BaseServer):
                                       self.optim,
                                       self.dloader,
                                       self.loss_fn,
-                                      self.device)
+                                      self.device,
+                                      epoch=self.round)
         self.log_utils.log_console("Training epoch done")
         return loss
 
@@ -57,6 +58,7 @@ class IsolatedServer(BaseServer):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
+            self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
             
             loss, tr_acc = self.train()

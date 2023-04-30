@@ -2,7 +2,10 @@ from mpi4py import MPI
 import torch, random, numpy
 from algos.base_class import BaseNode
 from algos.dare import DAREClient, DAREServer
+from algos.distill_reps import DistillRepsClient, DistillRepsServer
+from algos.feddream import FedDreamClient, FedDreamServer
 from algos.fl import FedAvgClient, FedAvgServer
+from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
 from algos.moon import MoonClient, MoonServer
 from algos.isolated import IsolatedServer
@@ -17,6 +20,9 @@ algo_map = {
     "moon": [MoonServer, MoonClient],
     "isolated": [IsolatedServer],
     "dare": [DAREServer, DAREClient],
+    "distill_reps": [DistillRepsServer, DistillRepsClient],
+    "scaffold": [SCAFFOLDServer, SCAFFOLDClient],
+    "feddream": [FedDreamServer, FedDreamClient],
 }
 
 def get_node(config: dict, rank) -> BaseNode:
