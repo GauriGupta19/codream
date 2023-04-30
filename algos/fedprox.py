@@ -47,19 +47,19 @@ class FedProxClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
     
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def set_global(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.global_model.module.load_state_dict(representation)
+        self.global_model.load_state_dict(representation)
         self.global_model.eval()
         for param in self.global_model.parameters():
             param.requires_grad = False
@@ -128,7 +128,7 @@ class FedProxServer(BaseServer):
             self.comm_utils.send_signal(client_node,
                                         representation,
                                         self.tag.UPDATES)
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
