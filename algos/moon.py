@@ -67,13 +67,13 @@ class MoonClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
     
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
     
     def set_previous_models(self):
         old_model = copy.deepcopy(self.model)
@@ -91,7 +91,7 @@ class MoonClient(BaseClient):
         """
         Set the model weights
         """
-        self.global_model.module.load_state_dict(representation)
+        self.global_model.load_state_dict(representation)
         self.global_model.eval()
         for param in self.global_model.parameters():
             param.requires_grad = False
@@ -152,7 +152,6 @@ class MoonServer(BaseServer):
         Aggregate the model weights
         """
         avg_wts = self.fed_avg(representation_list)
-        print(1)
         return avg_wts
 
     def set_representation(self, representation):
@@ -163,7 +162,7 @@ class MoonServer(BaseServer):
             self.comm_utils.send_signal(client_node,
                                         representation,
                                         self.tag.UPDATES)
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
@@ -204,5 +203,8 @@ class MoonServer(BaseServer):
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
                 round, acc
+            ))
+            self.log_utils.log_console("round: {} Best test_acc:{:.4f}".format(
+                round, self.best_acc
             ))
             self.log_utils.log_console("Round {} done".format(round))

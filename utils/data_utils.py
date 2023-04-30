@@ -1,36 +1,10 @@
 import pdb
 import numpy as np
 import torch
-import torch.nn as nn
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10
 from torchvision.datasets import MNIST
-from torch.utils.data import Subset, Dataset
-from glob import glob
-
-
-class CustomDataset(Dataset):
-    def __init__(self, config):
-        self.samples = []
-        ld_path = config.get("load_data_path", None)
-        if ld_path is not None:
-            filepaths = ld_path + "/*.pt"
-            filepaths = glob(filepaths)
-            print(f"found {len(filepaths)} batches in data checkpoints")
-            for fp in filepaths:
-                samples = torch.load(fp)
-                self.samples.append(samples)
-        
-    def __getitem__(self, index):
-        sample = self.samples[index]
-        return sample[0], sample[1]
- 
-    def __len__(self):
-        return len(self.samples)
-
-    def append(self, sample):
-        # Add a new sample to the dataset
-        self.samples.append(sample)
+from torch.utils.data import Subset
 
 
 class CIFAR10_DSET():
@@ -163,7 +137,7 @@ def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
     return net_dataidx_map
 
         
-def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):
+def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):            
     
     trn_y = np.array(dset_obj.train_dset.targets)
     trn_x = np.array(dset_obj.train_dset.data)
@@ -204,6 +178,22 @@ def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):
     
     return clnt_x, clnt_y
 
+import matplotlib.pyplot as plt
+def plot_training_distribution(alpha):
+    clnt_x, clnt_y = non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha)            
+
+    x = [[i]*n_cls for i in range(n_client)]
+    y = [np.arange(n_cls) for i in range(n_client)]
+    s = []
+    for clt in range(n_client):
+        labels = [np.where(clnt_y[clt]==i)[0].shape[0] for i in range(n_cls)]
+        s.append(np.array(labels))
+    
+    plt.scatter(x, y, s = s)
+    plt.title('Training label distribution')
+    plt.xlabel('Client id')
+    plt.ylabel('Training labels')
+    plt.show()
     
     
 def non_iid_labels(train_dataset, samples_per_client, classes):
@@ -211,3 +201,6 @@ def non_iid_labels(train_dataset, samples_per_client, classes):
     all_data=Subset(train_dataset,[i for i,(x, y) in enumerate(train_dataset) if y in classes])
     perm=torch.randperm(len(all_data))
     return Subset(all_data,perm[:samples_per_client])
+
+
+

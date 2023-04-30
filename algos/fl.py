@@ -154,4 +154,7 @@ class FedAvgServer(BaseServer):
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
                 round, acc
             ))
+            self.log_utils.log_console("round: {} Best test_acc:{:.4f}".format(
+                round, self.best_acc
+            ))
             self.log_utils.log_console("Round {} done".format(round))
