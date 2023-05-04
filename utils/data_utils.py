@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms as T
-from torchvision.datasets.cifar import CIFAR10
+from torchvision.datasets.cifar import CIFAR10, CIFAR100
 from torchvision.datasets import MNIST
 from torch.utils.data import Subset, Dataset
 from glob import glob
@@ -32,6 +32,54 @@ class CustomDataset(Dataset):
         # Add a new sample to the dataset
         self.samples.append(sample)
 
+class CIFAR100_DSET():
+    def __init__(self, dset) -> None:
+        dpath = "./imgs/"
+        self.IMAGE_SIZE = 32
+        self.NUM_CLS = 100
+        CIFAR100_TRAIN_MEAN = (0.5070751592371323, 0.48654887331495095, 0.4409178433670343)
+        CIFAR100_TRAIN_STD = (0.2673342858792401, 0.2564384629170883, 0.27615047132568404)
+        self.mean = np.array(CIFAR100_TRAIN_MEAN)
+        self.std = np.array(CIFAR100_TRAIN_STD)
+        self.num_channels = 3
+        self.gen_transform = T.Compose(
+            [
+                T.RandomCrop(size=[32, 32], padding=4),
+                T.RandomHorizontalFlip(),
+                T.Normalize(
+                    self.mean, 
+                    self.std
+                ),
+            ]
+        )
+        train_transform = T.Compose(
+            [
+                T.RandomCrop(32, padding=4),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+                T.Normalize(
+                    self.mean, 
+                    self.std
+                ),
+            ]
+        )
+        test_transform = T.Compose(
+            [
+                T.ToTensor(),
+                T.Normalize(
+                    self.mean, 
+                    self.std
+                ),
+            ]
+        )
+        self.train_dset = CIFAR100(
+            root=dpath, train=True, download=True, transform=train_transform
+        )
+        self.test_dset = CIFAR100(
+            root=dpath, train=False, download=True, transform=test_transform
+        )
+        self.IMAGE_BOUND_L = torch.tensor((-self.mean / self.std).reshape(1, -1, 1, 1)).float()
+        self.IMAGE_BOUND_U = torch.tensor(((1 - self.mean) / self.std).reshape(1, -1, 1, 1)).float()
 
 class CIFAR10_DSET():
     def __init__(self, dpath) -> None:
@@ -121,7 +169,7 @@ class MNIST_DSET():
 
 
 def get_dataset(dname, dpath):
-    dset_mapping = {"cifar10": CIFAR10_DSET,"mnist":MNIST_DSET}
+    dset_mapping = {"cifar10": CIFAR10_DSET, "mnist":MNIST_DSET, "cifar100": CIFAR100_DSET}
     return dset_mapping[dname](dpath)
 
 
@@ -205,7 +253,6 @@ def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):
     return clnt_x, clnt_y
 
 
-import matplotlib.pyplot as plt
 def plot_training_distribution(alpha):
     clnt_x, clnt_y = non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha)            
 

@@ -89,10 +89,8 @@ class FedDreamClient(BaseClient):
         probs = torch.softmax(acts, dim=1)
         entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
         loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(self.loss_r_feature_layers) if hasattr(model, "r_feature")])
-        loss_fed_prox = inputs - reps
         loss = self.alpha_preds * entropy + self.alpha_tv * total_variation_loss(inputs).to(entropy.device) +\
-                self.alpha_l2 * torch.linalg.norm(inputs).to(entropy.device) + self.alpha_f * loss_r_feature +\
-                0.5 * torch.linalg.norm(loss_fed_prox).to(entropy.device)
+                self.alpha_l2 * torch.linalg.norm(inputs).to(entropy.device) + self.alpha_f * loss_r_feature
         loss.backward()
         return inputs.grad
 
@@ -156,11 +154,11 @@ class FedDreamClient(BaseClient):
                                                                         apply_softmax=True,
                                                                         position=self.position,
                                                                         extra_batch=True)
-                    tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                             self.optim,
-                                                             self.dloader,
-                                                             self.loss_fn,
-                                                             self.device)
+                tr_loss, tr_acc = self.model_utils.train(self.model,
+                                                         self.optim,
+                                                         self.dloader,
+                                                         self.loss_fn,
+                                                         self.device)
                 print("student_loss: {}, student_acc: {} at client {}".format(student_loss, student_acc, self.node_id))
                 print("tr_loss: {}, tr_acc: {}".format(tr_loss, tr_acc))
                 test_loss, test_acc = self.model_utils.test(self.model,

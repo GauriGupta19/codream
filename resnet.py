@@ -110,19 +110,19 @@ class ResNet(nn.Module):
             return x,feature
  
  
-def ResNet18(num_channels=3,num_classes=10):
+def ResNet18(num_channels=3, num_classes=10):
     return ResNet(BasicBlock, [2,2,2,2], num_classes, num_channels)
  
-def ResNet34(num_channels=3,num_classes=10):
+def ResNet34(num_channels=3, num_classes=10):
     return ResNet(BasicBlock, [3,4,6,3], num_classes, num_channels)
  
-def ResNet50(num_channels=3,num_classes=10):
+def ResNet50(num_channels=3, num_classes=10):
     return ResNet(Bottleneck, [3,4,6,3], num_classes, num_channels)
  
-def ResNet101(num_channels=3,num_classes=10):
+def ResNet101(num_channels=3, num_classes=10):
     return ResNet(Bottleneck, [3,4,23,3], num_classes, num_channels)
  
-def ResNet152(num_channels=3,num_classes=10):
+def ResNet152(num_channels=3, num_classes=10):
     return ResNet(Bottleneck, [3,8,36,3], num_classes, num_channels)
  
 # model=ResNet34()

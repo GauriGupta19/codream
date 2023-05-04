@@ -23,18 +23,18 @@ class ModelUtils():
             param_group['lr'] = lr
 
     @staticmethod
-    def get_model(model_name:str, dset:str, device:torch.device, device_ids:list) -> DataParallel:
+    def get_model(model_name:str, dset:str, device:torch.device, device_ids:list, **kwargs) -> nn.Module:
         #TODO: add support for loading checkpointed models
-        channels = 3 if dset=="cifar10" else 1
+        channels = 3 if dset in ["cifar10", "cifar100"] else 1
         model_name = model_name.lower()
         if model_name == "resnet18":
-            model = ResNet18(channels)
+            model = ResNet18(channels, **kwargs)
         elif model_name == "resnet34":
-            model = ResNet34(channels)
+            model = ResNet34(channels, **kwargs)
         elif model_name == "resnet50":
-            model = ResNet50(channels)
+            model = ResNet50(channels, **kwargs)
         elif model_name == "resnet101":
-            model = ResNet101(channels)
+            model = ResNet101(channels, **kwargs)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)

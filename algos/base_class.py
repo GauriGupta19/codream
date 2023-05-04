@@ -40,7 +40,11 @@ class BaseNode(ABC):
     def set_model_parameters(self, config):
         # Model related parameters
         optim = torch.optim.SGD
-        self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids)
+        num_classes = self.dset_obj.NUM_CLS
+        if config.get("heterogeneous_models", False):
+            self.model = self.model_utils.get_model(config["models"][str(self.node_id)], config["dset"], self.device, self.device_ids, num_classes=num_classes)
+        else:
+            self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids, num_classes=num_classes)
         # load a checkpoint if load_existing is set to True
         if config["load_existing"]:
             node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
@@ -53,7 +57,8 @@ class BaseNode(ABC):
                 print("No checkpoint path specified for node {}".format(self.node_id))
             # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
             # self.model_utils.load_model(self.model, config["checkpoint"])
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4)
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4, nesterov=False)
+        # self.optim = optim(self.model.parameters(), lr=3e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod
@@ -88,10 +93,11 @@ class BaseClient(BaseNode):
             split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
             train_x, train_y = split_data
             dset = (train_x[client_idx], train_y[client_idx])
-            
+            print("using non_iid_balanced", config["alpha"])            
         if config["exp_type"].startswith("non_iid_labels"):
             sp = config["sp"]
-            dset = non_iid_labels(train_dset,config["samples_per_client"],sp[client_idx])
+            dset = non_iid_labels(train_dset, config["samples_per_client"], sp[client_idx])
+            print("using non_iid_labels", sp)
         else:
             indices = numpy.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])

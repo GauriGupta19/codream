@@ -23,7 +23,7 @@ class IsolatedServer(BaseServer):
         client_idx = self.node_id
         indices = numpy.random.permutation(len(train_dset))
         dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
-        self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
 
     def test(self) -> float:
         """

@@ -6,6 +6,12 @@ import torch.nn as nn
 from algos.base_class import BaseClient, BaseServer
 
 
+def put_on_cpu(wts):
+    for k, v in wts.items():
+        wts[k] = v.to("cpu")
+    return wts
+
+
 class CommProtocol(object):
     """
     Communication protocol tags for the server and clients
@@ -59,7 +65,7 @@ class FedAvgClient(BaseClient):
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
             self.local_train()
             self.local_test()
-            repr = self.get_representation()
+            repr = put_on_cpu(self.get_representation())
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
@@ -108,6 +114,8 @@ class FedAvgServer(BaseServer):
         """
         Set the model
         """
+        # put it on cpu first due to supercloud incompatibility
+        representation = put_on_cpu(representation)
         for client_node in self.clients:
             self.comm_utils.send_signal(client_node,
                                         representation,
