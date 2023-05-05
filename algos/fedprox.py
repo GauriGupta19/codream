@@ -20,7 +20,9 @@ class FedProxClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        self.global_model = self.model_utils.get_model(self.config["model"], self.config["dset"], self.device, self.device_ids)
+        print(self.config["dset"])
+        self.global_model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids, num_classes=self.dset_obj.NUM_CLS)
+        
         self.global_model.eval()
         for param in self.global_model.parameters():
             param.requires_grad = False
@@ -72,7 +74,8 @@ class FedProxClient(BaseClient):
             # print("Client waiting for semaphore from {}".format(self.server_node))
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
-            self.local_train()
+            for i in range(self.config["local_runs"]):
+                self.local_train()
             self.local_test()
             repr = self.get_representation()
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))

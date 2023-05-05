@@ -63,7 +63,8 @@ class FedAvgClient(BaseClient):
             # print("Client waiting for semaphore from {}".format(self.server_node))
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
-            self.local_train()
+            for i in range(self.config["local_runs"]):
+                self.local_train()
             self.local_test()
             repr = put_on_cpu(self.get_representation())
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
