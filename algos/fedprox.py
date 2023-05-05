@@ -20,7 +20,6 @@ class FedProxClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        print(self.config["dset"])
         self.global_model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids, num_classes=self.dset_obj.NUM_CLS)
         
         self.global_model.eval()
