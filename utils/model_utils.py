@@ -99,8 +99,6 @@ class ModelUtils():
             fed_prox_reg = 0.0
             global_weight_collector = list(global_model.parameters())
             for param_index, param in enumerate(model.parameters()):
-                print(param.shape)
-                print(global_weight_collector[param_index].shape)
                 fed_prox_reg += ((mu / 2) * torch.norm((param - global_weight_collector[param_index])) ** 2)
             loss += fed_prox_reg
             
