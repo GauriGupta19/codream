@@ -5,14 +5,18 @@ import torch.nn as nn
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10, CIFAR100
 from torchvision.datasets import MNIST
+import medmnist
 from torch.utils.data import Subset, Dataset
+from PIL import Image
 from glob import glob
-
+import matplotlib.pyplot as plt
 
 class CustomDataset(Dataset):
-    def __init__(self, config):
+    def __init__(self, config, transform = None, buffer_size=1*256):
         self.samples = []
+        self.max_size = buffer_size
         ld_path = config.get("load_data_path", None)
+        self.transform = transform
         if ld_path is not None:
             filepaths = ld_path + "/*.pt"
             filepaths = glob(filepaths)
@@ -23,14 +27,39 @@ class CustomDataset(Dataset):
         
     def __getitem__(self, index):
         sample = self.samples[index]
-        return sample[0], sample[1]
+        img = sample[0]
+        if self.transform is not None:
+            img = self.transform(img)
+        return img.unsqueeze(0), sample[1].unsqueeze(0)
  
     def __len__(self):
         return len(self.samples)
 
     def append(self, sample):
-        # Add a new sample to the dataset
-        self.samples.append(sample)
+        # Add a new sample to the datasret
+        # self.samples.append(sample)
+        list_of_tuples = list(zip(sample[0], sample[1]))
+        self.samples += list_of_tuples
+        if len(self.samples) > self.max_size:
+            self.samples = self.samples[-self.max_size:]
+
+    def reset(self):
+       self.samples = [] 
+        
+class PathMNIST_DSET():
+    def __init__(self, dpath) -> None:
+        dpath = "./imgs/"
+        self.IMAGE_SIZE = 28
+        self.NUM_CLS = 9
+        self.mean = np.array([0.5])
+        self.std = np.array([0.5])
+        data_flag = 'pathmnist'
+        info = medmnist.INFO[data_flag]
+        self.num_channels = info['n_channels']
+        self.data_class = getattr(medmnist, info['python_class'])
+        transform = T.Compose([T.ToTensor(), T.Normalize(mean=[.5], std=[.5])])
+        self.train_dset = self.data_class(root=dpath, split='train', transform=transform, download=True)
+        self.test_dset = self.data_class(root=dpath, split='test', transform=transform, download=True)
 
 class CIFAR100_DSET():
     def __init__(self, dset) -> None:
@@ -52,7 +81,7 @@ class CIFAR100_DSET():
                 ),
             ]
         )
-        train_transform = T.Compose(
+        self.train_transform = T.Compose(
             [
                 T.RandomCrop(32, padding=4),
                 T.RandomHorizontalFlip(),
@@ -73,7 +102,7 @@ class CIFAR100_DSET():
             ]
         )
         self.train_dset = CIFAR100(
-            root=dpath, train=True, download=True, transform=train_transform
+            root=dpath, train=True, download=True, transform=self.train_transform
         )
         self.test_dset = CIFAR100(
             root=dpath, train=False, download=True, transform=test_transform
@@ -98,7 +127,7 @@ class CIFAR10_DSET():
                 ),
             ]
         )
-        train_transform = T.Compose(
+        self.train_transform = T.Compose(
             [
                 T.RandomCrop(32, padding=4),
                 T.RandomHorizontalFlip(),
@@ -119,7 +148,7 @@ class CIFAR10_DSET():
             ]
         )
         self.train_dset = CIFAR10(
-            root=dpath, train=True, download=True, transform=train_transform
+            root=dpath, train=True, download=True, transform=self.train_transform
         )
         self.test_dset = CIFAR10(
             root=dpath, train=False, download=True, transform=test_transform
@@ -142,7 +171,7 @@ class MNIST_DSET():
                 ),
             ]
         )
-        train_transform = T.Compose(
+        self.train_transform = T.Compose(
             [
                 T.ToTensor(),
                 T.Normalize(
@@ -161,17 +190,19 @@ class MNIST_DSET():
             ]
         )
         self.train_dset = MNIST(
-            root=dpath, train=True, download=True, transform=train_transform
+            root=dpath, train=True, download=True, transform=self.train_transform
         )
         self.test_dset = MNIST(
             root=dpath, train=False, download=True, transform=test_transform
         )
 
-
+        
 def get_dataset(dname, dpath):
-    dset_mapping = {"cifar10": CIFAR10_DSET, "mnist":MNIST_DSET, "cifar100": CIFAR100_DSET}
+    dset_mapping = {"cifar10": CIFAR10_DSET,
+                    "mnist": MNIST_DSET,
+                    "cifar100": CIFAR100_DSET,
+                    "pathmnist": PathMNIST_DSET}
     return dset_mapping[dname](dpath)
-
 
 """def get_noniid_dataset(dname, dpath, num_users, n_class, nsamples, rate_unbalance):
     obj = get_dataset(dname, dpath)
@@ -181,7 +212,6 @@ def get_dataset(dname, dpath):
                                                                         num_users, n_class, nsamples,
                                                                         rate_unbalance)
     return obj"""
-
 
 def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
     train_dset = dset_obj.train_dset
@@ -209,25 +239,21 @@ def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
         np.random.shuffle(idx_batch[j])
         net_dataidx_map[j] = idx_batch[j]
     return net_dataidx_map
-
         
-def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):
-    
+def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):    
     trn_y = np.array(dset_obj.train_dset.targets)
     trn_x = np.array(dset_obj.train_dset.data)
     n_cls = dset_obj.NUM_CLS
     height = width = dset_obj.IMAGE_SIZE
     channels = dset_obj.num_channels
-
     clnt_data_list = (np.ones(n_client) * n_data_per_clnt).astype(int)
     cls_priors   = np.random.dirichlet(alpha=[alpha]*n_cls,size=n_client)
     prior_cumsum = np.cumsum(cls_priors, axis=1)
     idx_list = [np.where(trn_y==i)[0] for i in range(n_cls)]
     cls_amount = [len(idx_list[i]) for i in range(n_cls)]
-
-    clnt_x = [ np.zeros((clnt_data_list[clnt__], height, width, channels)).astype(np.float32) for clnt__ in range(n_client) ]
+    indices = [ [-1]*clnt_data_list[clnt__] for clnt__ in range(n_client) ]
+    # clnt_x = [ np.zeros((clnt_data_list[clnt__], height, width, channels)).astype(np.float32) for clnt__ in range(n_client) ]
     clnt_y = [ np.zeros((clnt_data_list[clnt__], 1)).astype(np.int64) for clnt__ in range(n_client) ]
-
     while(np.sum(clnt_data_list)!=0):
         curr_clnt = np.random.randint(n_client)
         # If current node is full resample a client
@@ -242,20 +268,17 @@ def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):
             if cls_amount[cls_label] <= 0:
                 continue
             cls_amount[cls_label] -= 1
-            clnt_x[curr_clnt][clnt_data_list[curr_clnt]] = trn_x[idx_list[cls_label][cls_amount[cls_label]]]
+            
+            indices[curr_clnt][clnt_data_list[curr_clnt]] = idx_list[cls_label][cls_amount[cls_label]]
+            # clnt_x[curr_clnt][clnt_data_list[curr_clnt]] = trn_x[idx_list[cls_label][cls_amount[cls_label]]]
             clnt_y[curr_clnt][clnt_data_list[curr_clnt]] = trn_y[idx_list[cls_label][cls_amount[cls_label]]]
-
             break
-
-    clnt_x = np.asarray(clnt_x)
+    # clnt_x = np.asarray(clnt_x)
     clnt_y = np.asarray(clnt_y)
-    
-    return clnt_x, clnt_y
+    return indices, clnt_y
 
-
-def plot_training_distribution(alpha):
-    clnt_x, clnt_y = non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha)            
-
+def plot_training_distribution(indices, clnt_y, n_client, n_cls, path):
+    # indices, clnt_y = non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha)         
     x = [[i]*n_cls for i in range(n_client)]
     y = [np.arange(n_cls) for i in range(n_client)]
     s = []
@@ -267,12 +290,10 @@ def plot_training_distribution(alpha):
     plt.title('Training label distribution')
     plt.xlabel('Client id')
     plt.ylabel('Training labels')
-    plt.show()
-
-    
+    plt.savefig(path + f"noniid_data.png", bbox_inches='tight')
+    torch.save(s, path + f"size_labels.pt")    
     
 def non_iid_labels(train_dataset, samples_per_client, classes):
-    print(classes)
     all_data=Subset(train_dataset,[i for i,(x, y) in enumerate(train_dataset) if y in classes])
     perm=torch.randperm(len(all_data))
     return Subset(all_data,perm[:samples_per_client])

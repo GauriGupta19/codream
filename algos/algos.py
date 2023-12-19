@@ -4,10 +4,10 @@ import time
 import torch.nn as nn
 import random, torch
 from torch.autograd import Variable
-from algos.modules import DeepInversionFeatureHook, total_variation_loss
+from utils.modules import DeepInversionHook, total_variation_loss
 from utils.model_utils import ModelUtils
 from torchvision import utils
-from algos.generator import Generator
+from utils.generator import Generator
 from torchvision import transforms
 
 
@@ -81,7 +81,7 @@ def synthesize_representations_collaborative_parallel(config, obj):
         model.eval()
         for module in model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+                loss_r_feature_layers.append(DeepInversionHook(module))
         grad_fn = GradFn(model, loss_r_feature_layers, position,
                          alpha_preds=alpha_preds, alpha_tv=alpha_tv, alpha_l2=alpha_l2, alpha_f=alpha_f,
                          id_=i)
@@ -153,7 +153,7 @@ def synthesize_representations_collaborative(config, obj):
         loss_r_feature_layers.append([])
         for module in model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                loss_r_feature_layers[i].append(DeepInversionFeatureHook(module))
+                loss_r_feature_layers[i].append(DeepInversionHook(module))
         models.append(model)
     orig_img = torch.load("orig_img.pt").to(obj["device"])
     updated_img = orig_img.clone()
@@ -172,9 +172,7 @@ def synthesize_representations_collaborative(config, obj):
         for i in range(len(models)):
             model = models[i]
             model.zero_grad()
-            # print(inputs_jit.shape)
             acts = model.module(inputs_jit, position=position)
-            # print(acts.shape)
             probs = torch.softmax(acts, dim=1)
             entropy = -torch.sum(probs * torch.log(probs + EPS), dim=1).mean()
             loss_r_feature = sum([m_.r_feature for (idx, m_) in enumerate(loss_r_feature_layers[i]) if hasattr(m_, "r_feature")])
@@ -221,7 +219,7 @@ def synthesize_representations(config, obj):
     model.eval()
     for module in model.modules():
         if isinstance(module, nn.BatchNorm2d):
-            loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+            loss_r_feature_layers.append(DeepInversionHook(module))
 
     updated_img = orig_img.clone()
     updated_img.requires_grad = True
@@ -236,7 +234,7 @@ def synthesize_representations(config, obj):
 
         model.zero_grad()
         optimizer.zero_grad()
-        acts = model.module(inputs_jit, position=position)
+        acts = model(inputs_jit, position=position)
         # ce_loss = nn.CrossEntropyLoss()(acts, target_label)
         probs = torch.softmax(acts, dim=1)
         entropy = -torch.sum(probs * torch.log(probs), dim=1).mean()
@@ -300,7 +298,7 @@ class FastMetaSynthesizer():
         model.eval()
         for module in model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+                loss_r_feature_layers.append(DeepInversionHook(module))
         
         z = orig_img.clone()
         z.requires_grad = True
@@ -315,7 +313,7 @@ class FastMetaSynthesizer():
         for it in range(1,steps+1):
             inputs = fast_generator(z)
             inputs_aug = self.aug(inputs) # crop and normalize
-            acts = model.module(inputs_aug, position=position)
+            acts = model(inputs_aug, position=position)
             # ce_loss = nn.CrossEntropyLoss()(acts, target_label)
             probs = torch.softmax(acts, dim=1)
 
@@ -350,7 +348,7 @@ class FastMetaSynthesizer():
     
 class Synthesizer():
         
-    def synthesize_representations(config, obj):
+    def synthesize_representations(self, config, obj):
         """
         Synthesize representations for each class
         """
@@ -363,7 +361,7 @@ class Synthesizer():
         model.eval()
         for module in model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+                loss_r_feature_layers.append(DeepInversionHook(module))
 
         updated_img = orig_img.clone()
         updated_img.requires_grad = True
@@ -378,7 +376,7 @@ class Synthesizer():
 
             model.zero_grad()
             optimizer.zero_grad()
-            acts = model.module(inputs_jit, position=position)[:, :10]
+            acts = model(inputs_jit, position=position)[:, :10]
             # ce_loss = nn.CrossEntropyLoss()(acts, target_label)
             probs = torch.softmax(acts, dim=1)
             entropy = -torch.sum(probs * torch.log(probs), dim=1).mean()

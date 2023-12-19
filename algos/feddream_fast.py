@@ -1,17 +1,28 @@
 import math
 import pdb
 import time
-from typing import List
+from typing import List, Tuple
 from collections import OrderedDict
 import torch
 import torch.nn as nn
-from algos.algos import synthesize_representations, synthesize_representations_collaborative
 from algos.base_class import BaseClient, BaseServer
+from utils.generator import Generator
 from utils.modules import DeepInversionHook, KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
+from torchvision import transforms
+from kornia import augmentation
 from PIL import Image
-    
+import torchvision.transforms as T
+from algos.fedadam import FedadamOptimizer
+import itertools
+
+## change g_step-setup for 10, after aug input same to each model, ismaml, 
+# reset, adv=10/1.22-apative distill, 
+# check optimizers -> use adam
+## done: fedadam for self.generator
+
+#s_model
 class CommProtocol(object):
     """
     Communication protocol tags for the server and clients
@@ -27,8 +38,9 @@ class CommProtocol(object):
     FINAL_GLOBAL_REPS = 6 # Used by the server to send the final global representations to the clients for a given epoch
     GENERATOR_UPDATES = 4 # Used by client to send the updated genertor model state
     GENERATOR_DONE = 3 # Used by server to send the updates genertor model state
+    STUDENT_UPDATES = 2
 
-class FedDreamClient(BaseClient):
+class FedDreamFastClient(BaseClient):
     def __init__(self, config):
         super().__init__(config)
         self.tag = CommProtocol()
@@ -38,14 +50,6 @@ class FedDreamClient(BaseClient):
     def set_algo_params(self):
         self.epochs = self.config["epochs"]
         self.position = self.config["position"]
-        self.inversion_algo = self.config.get("inversion_algo", "send_reps")
-        self.data_lr = self.config["data_lr"]
-        self.global_steps = self.config["global_steps"]
-        self.local_steps = self.config["local_steps"]
-        self.alpha_preds = self.config["alpha_preds"]
-        self.alpha_tv = self.config["alpha_tv"]
-        self.alpha_l2 = self.config["alpha_l2"]
-        self.alpha_f = self.config["alpha_f"]
         self.distill_batch_size = self.config["distill_batch_size"]
         self.distill_epochs = self.config["distill_epochs"]
         self.warmup = self.config["warmup"]
@@ -58,9 +62,22 @@ class FedDreamClient(BaseClient):
         self.kl_loss_fn = KLDiv(T=20)
         self.hooks = []
         self.bn_mmt = None
+        self.bn_mmt = 0.9
+        self.lr_z = self.config["lr_z"]
+        self.lr_g = self.config["lr_g"]
+        self.global_steps = self.config["global_steps"]
+        self.local_steps = self.config["local_steps"]
+        self.optimizer_type = self.config["optimizer_type"]
+        self.nx_samples = self.config["nx_samples"] #number of batches of dreams generated
+        self.adv = self.config["adv"]
+        self.bn = self.config["bn"]
+        self.oh = self.config["oh"]
+        self.nz = 256
+        self.generator = Generator(nz=self.nz, ngf=64, img_size=self.config["inp_shape"][-1], nc=self.config["inp_shape"][1]).to(self.device)
+        self.aug = self.dset_obj.gen_transform
         for module in self.model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                self.hooks.append(DeepInversionHook(module, self.bn_mmt))         
+                self.hooks.append(DeepInversionHook(module, self.bn_mmt))           
 
     def local_warmup(self):
         warmup = self.config["warmup"]
@@ -87,7 +104,7 @@ class FedDreamClient(BaseClient):
         if test_loss < self.best_loss:
             self.best_loss = test_loss
             # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
-    
+        
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
         for _ in range(5):
@@ -128,44 +145,79 @@ class FedDreamClient(BaseClient):
                                                 tag = self.tag.START_DISTILL)
         reps = reps.to(self.device)
         # send the output of the last layer to the server
-        out = self.model(reps, position=self.position).to("cpu")
+        out = self.model(reps).to("cpu")
+        # loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")]).to("cpu")
         self.comm_utils.send_signal(dest=self.server_node,
                                     data=out,
                                     tag=self.tag.FINAL_REPS)
+        # self.comm_utils.send_signal(dest=self.server_node,
+        #                             data=loss_bn,
+        #                             tag=self.tag.FINAL_REPS)
         x, y = self.comm_utils.wait_for_signal(src=self.server_node,
                                                 tag=self.tag.FINAL_GLOBAL_REPS)
         # self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
         # self.log_utils.log_console("Round {} done".format(round))
         self.synth_dset.append((x, y))
 
-    def generate_rep(self, reps: torch.Tensor):
-        for l_step in range(self.config["local_steps"]):
-            inputs = reps.clone().detach().requires_grad_(True)
+    def fast_synthesize(self, reps):
+        self.model.eval()
+        self.z.data = reps.clone().detach().requires_grad_(True)
+        for _ in range(self.local_steps):
             self.model.zero_grad()
-            acts = self.model(inputs, position=self.position)
-            probs = torch.softmax(acts, dim=1)
-            entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
-            loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")])
-            loss = self.alpha_preds * entropy + self.alpha_tv * total_variation_loss(inputs).to(entropy.device) +\
-                    self.alpha_l2 * torch.linalg.norm(inputs).to(entropy.device) + self.alpha_f * loss_r_feature
+            inputs = self.generator(self.z)
+            inputs = self.aug(inputs) # crop and normalize
+            t_out = self.model(inputs)
+            # loss_oh = F.cross_entropy( t_out, targets )
+            probs = torch.softmax(t_out, dim=1)
+            entropy = -torch.sum(probs * torch.log(probs  + self.EPS), dim=1).mean()
+            loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")])
+            loss_adv = entropy.new_zeros(1)
+            if self.adv>0 and (self.round >= 15):
+                s_out = self.s_model(inputs)
+                mask = (s_out.max(1)[1]==t_out.max(1)[1]).float()
+                loss_adv = -(kldiv(s_out, t_out, reduction='none').sum(1) * mask).mean() # decision adversarial distillation
+            loss = self.oh * entropy + self.bn * loss_bn + self.adv * loss_adv
+            self.optimizer.zero_grad()
             loss.backward()
-        return inputs.grad
+            self.optimizer.step()
+        if self.optimizer_type=="avg":
+            return self.z
+        elif self.optimizer_type=="adam":
+            return self.z.grad
+        elif self.optimizer_type=="fedadam":
+            return self.z - reps.clone().detach()
+        return self.z
+        
     
-    def single_round(self):
+    def single_round_fast(self):
+        self.model.eval()
         for g_step in range(self.global_steps):
             # Wait for the server to send the latest representations
+            gen_state = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                        tag=self.tag.GENERATOR_UPDATES)
+            self.generator.load_state_dict(gen_state)
             reps = self.comm_utils.wait_for_signal(src=self.server_node,
                                                     tag=self.tag.START_GEN_REPS)
             reps = reps.to(self.device)
-            grads = self.generate_rep(reps)
+            if g_step==0:
+                self.z = reps.clone().detach().requires_grad_(True)
+                self.optimizer = torch.optim.Adam([
+                    {'params': self.generator.parameters()},
+                    {'params': [self.z], 'lr': self.lr_z}
+                ], lr=self.lr_g, betas=[0.5, 0.999])
+            grads = self.fast_synthesize(reps)
             # Send the grads to the server
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=grads.to("cpu"),
                                         tag=self.tag.REPS_DONE)
-            if g_step == self.global_steps/2 -1:
-                self.add_dreams()
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=put_on_cpu(self.generator.state_dict()),
+                                        tag=self.tag.GENERATOR_DONE)      
+        if self.bn_mmt != 0:
+            for h in self.hooks:
+                h.update_mmt()  
         self.add_dreams()
-        
+    
     def run_protocol(self):
         # Wait for the server to signal to start local warmup rounds
         self.comm_utils.wait_for_signal(src=0, tag=self.tag.START_WARMUP)
@@ -186,9 +238,16 @@ class FedDreamClient(BaseClient):
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
         start_epochs = self.config.get("start_epochs", 0)
+        self.s_model = self.model_utils.get_model("resnet18", self.config["dset"], 
+                                   self.device, self.device_ids, num_classes=10)
         for round in range(start_epochs, self.epochs):
+            s_state = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                        tag=self.tag.STUDENT_UPDATES)
+            self.s_model.load_state_dict(s_state)
+            self.s_model = self.s_model.to(self.device)
             self.round = round
-            self.single_round()
+            for i in range(self.nx_samples):
+                self.single_round_fast()
             self.update_local_model()
             if self.round % self.log_tb_freq == 0:
                 self.comm_utils.send_signal(dest=self.server_node,
@@ -202,7 +261,7 @@ class FedDreamClient(BaseClient):
                 print("Round {} done for node_{}".format(round, self.node_id))
 
 
-class FedDreamServer(BaseServer):
+class FedDreamFastServer(BaseServer):
     """
     This is a relay server for the orchestration of the clients
     and not actually a server.
@@ -220,7 +279,6 @@ class FedDreamServer(BaseServer):
             self.distill_epochs = self.config["distill_epochs"]
             self.adaptive_distill_start_round = self.config["adaptive_distill_start_round"]
             self.EPS = 1e-8
-            self.lambda_server = self.config["lambda_server"]
             # set up the server model
             self.set_model_parameters(config)
             self.kl_loss_fn = KLDiv(T=20)
@@ -231,8 +289,23 @@ class FedDreamServer(BaseServer):
             self._test_loader = DataLoader(test_dset, batch_size=self.config["batch_size"], shuffle=False)
             self.eval_loss_fn = nn.CrossEntropyLoss()
             self.local_train_freq = self.config["local_train_freq"]
+        self.ep = 0
+        self.global_steps = self.config["global_steps"]
+        self.local_steps = self.config["local_steps"]
+        self.nx_samples = self.config["nx_samples"] #number of batches of dreams generated
+        self.adv = self.config["adv"]
+        self.lr_g = self.config["lr_g"]
+        self.ismaml = self.config["ismaml"]
+        self.reset_l0 = reset_l0
+        self.aug = self.dset_obj.gen_transform
+        self.optimizer_type = self.config["optimizer_type"]
+        self.nz = 256
+        self.meta_generator = Generator(nz=self.nz, ngf=64, img_size=self.config["inp_shape"][-1], nc=self.config["inp_shape"][1]).to(self.device)
+        self.generator = Generator(nz=self.nz, ngf=64, img_size=self.config["inp_shape"][-1], nc=self.config["inp_shape"][1]).to(self.device)
+        self.meta_optimizer = torch.optim.Adam(self.meta_generator.parameters(), 
+                                               self.lr_g*self.local_steps, betas=[0.5, 0.999])
     
-    def aggregate(self, model_wts):
+    def aggregate(self, model_wts, probs=None):
         """
         Aggregaste the model weights
         """
@@ -241,18 +314,42 @@ class FedDreamServer(BaseServer):
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
         num_clients = len(model_wts)
-        coeff = 1 / num_clients
+        # coeff = 1 / num_clients
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
 
         for client_num in range(num_clients):
             local_wts = model_wts[client_num]
             for key in first_model.keys():
+                coeff = probs[client_num] if probs is not None else 1 / num_clients
                 if client_num == 0:
                     avgd_wts[key] = coeff * local_wts[key]
                 else:
                     avgd_wts[key] += coeff * local_wts[key]
         return avgd_wts
+    
+    def _aggregate(self, model_wts):
+        # All models are sampled currently at every round
+        # Each model is assumed to have equal amount of data and hence
+        # coeff is same for everyone
+        num_clients = len(model_wts)
+        coeff = 1 / num_clients
+        check_if=lambda name: 'num_batches_tracked' in name
+        # accumulate weights
+        for client_num in range(num_clients):
+            local_wts = model_wts[client_num]
+            itr = itertools.chain.from_iterable([self.generator.named_parameters(), self.generator.named_buffers()])
+            for name, server_param in itr:
+                if check_if(name):
+                    server_param.data.zero_()
+                    server_param.data.grad = torch.zeros_like(server_param)
+                    continue
+                local_delta = (server_param - local_wts[name].to(self.device)).mul(coeff).data.type(server_param.dtype)
+                if server_param.grad is None: # NOTE: grad buffer is used to accumulate local updates!
+                    server_param.grad = local_delta
+                else:
+                    server_param.grad.data.add_(local_delta)
+        return 
     
     def adam_update(self, grad):
         betas = self.data_optimizer.param_groups[0]['betas']
@@ -312,7 +409,6 @@ class FedDreamServer(BaseServer):
 
     def update_server_model(self):
         self.dloader = DataLoader(self.dset, batch_size=256, shuffle=True)
-        # the choice of 20 here is rather arbitrary
         tr_loss, tr_acc = 0., 0.
         distill_epochs = self.distill_epochs
         for _ in range(distill_epochs):
@@ -334,10 +430,21 @@ class FedDreamServer(BaseServer):
                     # self.model_utils.save_model(self.model, self.config["saved_models"] + "server_model.pt")
             
     def add_dreams(self):
+        reps = self.reps
+        imgs = (reps.detach().clamp(0, 1).cpu().numpy()*255).astype('uint8')
+        # performance depends on model output of the transformed input
+        for i in range(len(imgs)):
+            img = Image.fromarray(imgs[i].transpose(1, 2, 0))
+            inp = self.transform(img)
+            self.reps[i] = inp
         self.reps = self.reps.detach()   
         for client in self.clients:
             self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_DISTILL)
+        
         acts = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.FINAL_REPS)
+        # loss_bn = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.FINAL_REPS)
+        # coeff = [(1/x)/sum([1/x for x in loss_bn]) for x in loss_bn]
+        # acts = sum([g*coeff[i] for i, g in enumerate(acts)]).to(self.device)
         acts = torch.stack(acts)
         acts = acts.mean(dim=0)
         acts = acts.detach()
@@ -351,40 +458,55 @@ class FedDreamServer(BaseServer):
         if self.log_console:
                 self.log_utils.log_tensor_to_disk((self.reps, acts), f"node", self.round)
                 # Only store first three channel and 64 images for a 8x8 grid
-                imgs = self.reps[:64, :3]
+                imgs = reps[:64, :3]
                 self.log_utils.log_image(imgs, f"reps", self.round)
-
-    def single_round(self):
+    
+    def single_round_fast(self):
         start = time.time()
-        if self.log_console:
-            self.log_utils.log_console("Starting round {}".format(round))
-        global_steps = self.config["global_steps"]
-        self.reps = torch.randn(self.config["inp_shape"]).to(self.device)
-        self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["data_lr"])
-        # TODO: choice of 20 is arbitrary so need to experimentally arrive at a better number
-        for g_step in range(global_steps):
+        self.reps = torch.randn(size=(self.distill_batch_size, self.nz), device=self.device).requires_grad_()
+        self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
+        self.generator.load_state_dict(self.meta_generator.state_dict())
+        self.ep += 1
+        if (self.ep == 140) and self.reset_l0:
+            reset_l0(self.generator)
+        for it in range(self.global_steps):
             for client in self.clients:
+                self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.generator.state_dict()), 
+                                            tag=self.tag.GENERATOR_UPDATES)
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)
             grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
             grads = torch.stack(grads).to(self.device)
-            grads = grads.mean(dim=0)
-            if self.round > self.adaptive_distill_start_round and self.adaptive_distill:
-                # pass reps on the local model and get the gradients
-                inputs = self.reps.clone().detach().requires_grad_(True)
-                acts = self.model(inputs)
-                probs = torch.softmax(acts, dim=1)
-                entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
-                loss = entropy
-                loss.backward()
-                server_grads = inputs.grad
-                # negative gradient update to maximize entropy of the server model
-                grads = grads - self.lambda_server * server_grads
-            self.adam_update(grads)
-            if self.log_console:
-                if g_step % 500 == 0 or g_step== (global_steps - 1):
-                    print(f"{g_step}/{global_steps}", time.time() - start)
-            if g_step == global_steps/2 -1:    
-                self.add_dreams()
+            grads = grads.mean(dim=0) 
+            # if self.adaptive_distill and self.round > self.adaptive_distill_start_round:
+            #     # pass reps on the local model and get the gradients
+            #     z_server = self.reps.clone().detach().requires_grad_(True)
+            #     inputs = self.generator(z_server)
+            #     inputs = self.aug(inputs) # crop and normalize
+            #     acts = self.model(inputs)
+            #     probs = torch.softmax(acts, dim=1)
+            #     entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
+            #     loss = entropy
+            #     loss.backward()
+            #     server_grads = z_server.grad
+            #     # negative gradient update to maximize entropy of the server model
+            #     grads = grads - self.adv * server_grads
+            if self.optimizer_type=="avg":
+                self.reps = grads
+            if self.optimizer_type=="adam":
+                self.adam_update(grads)
+            gen_state_dict = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.GENERATOR_DONE)
+            avg_gen_state_dict = self.aggregate(gen_state_dict)
+            self.generator.load_state_dict(avg_gen_state_dict)
+            if self.ismaml:
+                if it==0: self.meta_optimizer.zero_grad()
+                fomaml_grad(self.meta_generator, self.generator, self.device)
+                if it == (self.global_steps-1): self.meta_optimizer.step()
+        # REPTILE meta gradient
+        if not self.ismaml:
+            self.meta_optimizer.zero_grad()
+            reptile_grad(self.meta_generator, self.generator, self.device)
+            self.meta_optimizer.step()
+        self.reps = self.generator(self.reps)
         self.add_dreams()
         end = time.time()
         if self.log_console:
@@ -405,7 +527,11 @@ class FedDreamServer(BaseServer):
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             self.round = round
-            self.single_round()
+            for client in self.clients:
+                self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.model.state_dict()), 
+                                            tag=self.tag.STUDENT_UPDATES)
+            for i in range(self.nx_samples):
+                self.single_round_fast()
             if self.adaptive_distill and round>=10 and round % self.local_train_freq == 0:
                 self.update_server_model()
             if round % self.log_tb_freq == 0:

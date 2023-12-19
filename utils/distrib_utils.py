@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
-from resnet import ResNet34,ResNet18
+from models.resnet import ResNet34,ResNet18
 
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader

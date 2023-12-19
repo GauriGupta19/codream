@@ -24,7 +24,8 @@ def check_and_create_path(path):
         if inp == "e":
             exit()
         elif inp == "r":
-            shutil.rmtree(path)
+            shutil.rmtree(path, ignore_errors=True)
+            shutil.rmtree(path, ignore_errors=True)
             os.makedirs(path)
         else:
             print("Input not understood")
@@ -46,7 +47,7 @@ def copy_source_code(config: dict) -> None:
     check_and_create_path(path)
     # the last folder is the path where all the expts are stored
     denylist = ["./__pycache__/", "./.ipynb_checkpoints/",
-                "./imgs/", "./expt_dump_old/",
+                "./imgs/", "./expt_dump_old/" ,"./expt_dump/",
                 '/'.join(path.split('/')[:-1])+'/']
     folders = glob(r'./*/')
     print(denylist, folders)

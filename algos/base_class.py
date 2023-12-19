@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-import torch, numpy
+import torch
+import numpy as np
 from utils.comm_utils import CommUtils
-from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced, non_iid_unbalanced_dataidx_map
+from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced, non_iid_unbalanced_dataidx_map, plot_training_distribution
 from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
@@ -15,7 +16,6 @@ class BaseNode(ABC):
         if self.node_id == 0:
             self.log_utils = LogUtils(config)
             self.log_utils.log_console("Config: {}".format(config))
-
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
@@ -57,7 +57,7 @@ class BaseNode(ABC):
                 print("No checkpoint path specified for node {}".format(self.node_id))
             # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
             # self.model_utils.load_model(self.model, config["checkpoint"])
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=5e-4, nesterov=False)
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4,)
         # self.optim = optim(self.model.parameters(), lr=3e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -89,17 +89,21 @@ class BaseClient(BaseNode):
         batch_size = config["batch_size"]
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
-        if config["exp_type"].startswith("non_iid"):
+        if config["exp_type"].startswith("non_iid_balanced"):
+            #all nodes will eventually generate the same data
+            print("starting creating data")
             split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
-            train_x, train_y = split_data
-            dset = (train_x[client_idx], train_y[client_idx])
-            print("using non_iid_balanced", config["alpha"])            
-        if config["exp_type"].startswith("non_iid_labels"):
-            sp = config["sp"]
-            dset = non_iid_labels(train_dset, config["samples_per_client"], sp[client_idx])
+            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            indices, train_y = split_data
+            dset = Subset(train_dset, indices[client_idx]) 
+            print("using non_iid_balanced", config["alpha"])      
+        elif config["exp_type"].startswith("non_iid_labels"):
+            num_classes = config["class_per_client"]
+            sp = np.arange(client_idx*num_classes, (client_idx+1)*num_classes)
+            dset = non_iid_labels(train_dset, config["samples_per_client"], sp)
             print("using non_iid_labels", sp)
         else:
-            indices = numpy.random.permutation(len(train_dset))
+            indices = np.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
         if len(self.device_ids) > 0:
             self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)

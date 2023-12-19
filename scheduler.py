@@ -4,11 +4,13 @@ from algos.base_class import BaseNode
 from algos.dare import DAREClient, DAREServer
 from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.feddream import FedDreamClient, FedDreamServer
+from algos.feddream_fast import FedDreamFastClient, FedDreamFastServer
 from algos.fl import FedAvgClient, FedAvgServer
+from algos.isolated import IsolatedClient, IsolatedServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
 from algos.moon import MoonClient, MoonServer
-from algos.isolated import IsolatedServer
+from algos.centralized import CentralizedServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
 
@@ -16,17 +18,20 @@ from utils.config_utils import load_config
 # If rank is 0, then it returns the server class otherwise the client class
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
+    "isolated": [IsolatedClient, IsolatedServer],
     "fedprox": [FedProxServer, FedProxClient],
     "moon": [MoonServer, MoonClient],
-    "isolated": [IsolatedServer],
+    "centralized": [CentralizedServer],
     "dare": [DAREServer, DAREClient],
     "distill_reps": [DistillRepsServer, DistillRepsClient],
     "scaffold": [SCAFFOLDServer, SCAFFOLDClient],
     "feddream": [FedDreamServer, FedDreamClient],
+    "feddream_fast": [FedDreamFastServer, FedDreamFastClient],
 }
 
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
+    print(algo_name)
     return algo_map[algo_name][rank>0](config)
 
 

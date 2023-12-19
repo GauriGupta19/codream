@@ -19,6 +19,7 @@ class CommProtocol(object):
     DONE = 0 # Used to signal that the client is done with the current round
     START = 1 # Used to signal by the server to start the current round
     UPDATES = 2 # Used to send the updates from the server to the clients
+    CLIENT_STATS = 3 # Used by the client to send the stats to the server
 
 
 class FedAvgClient(BaseClient):
@@ -41,7 +42,12 @@ class FedAvgClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
-        pass
+        test_loss, acc = self.model_utils.test(self.model,
+                                               self._test_loader,
+                                               self.loss_fn,
+                                               self.device)
+        # pass
+        return acc
 
     def get_representation(self) -> Dict[str, Tensor]:
         """
@@ -65,7 +71,6 @@ class FedAvgClient(BaseClient):
             # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
             for i in range(self.config["local_runs"]):
                 self.local_train()
-            self.local_test()
             repr = put_on_cpu(self.get_representation())
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
@@ -73,6 +78,8 @@ class FedAvgClient(BaseClient):
             repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
             # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
             self.set_representation(repr)
+            test_acc = self.local_test()
+            self.comm_utils.send_signal(dest=self.server_node, data=test_acc, tag=self.tag.CLIENT_STATS)
             # self.log_utils.logging.info("Round {} done".format(round))
 
 
@@ -85,6 +92,18 @@ class FedAvgServer(BaseServer):
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
+
+    def update_stats(self, stats: List[List[float]], round: int):
+        """
+        Updates the statistics from all the clients
+        the reason the server is doing it because
+        the server only has the access to the log file as of now
+        Args:
+            stats (List[List[float]]): List of statistics of the clients
+        """
+        for client, stat in enumerate(stats):
+            if stat is not None:
+                self.log_utils.log_tb(f"test_acc/client{client}", stat, round)
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         # All models are sampled currently at every round
@@ -116,11 +135,6 @@ class FedAvgServer(BaseServer):
         Set the model
         """
         # put it on cpu first due to supercloud incompatibility
-        representation = put_on_cpu(representation)
-        for client_node in self.clients:
-            self.comm_utils.send_signal(client_node,
-                                        representation,
-                                        self.tag.UPDATES)
         self.model.load_state_dict(representation)
 
     def test(self) -> float:
@@ -149,17 +163,25 @@ class FedAvgServer(BaseServer):
         reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
         self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
+        avg_wts = put_on_cpu(avg_wts)
         self.set_representation(avg_wts)
+        for client_node in self.clients:
+            self.comm_utils.send_signal(client_node,
+                                        avg_wts,
+                                        self.tag.UPDATES)
+        local_test_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.CLIENT_STATS)
+        self.update_stats(local_test_acc, self.round)
 
     def run_protocol(self):
         self.log_utils.log_console("Starting iid clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
+            self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
             acc = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            self.log_utils.log_tb(f"test_acc", acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
                 round, acc
             ))

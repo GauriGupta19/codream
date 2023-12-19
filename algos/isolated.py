@@ -1,76 +1,91 @@
-import numpy
-from torch.utils.data import DataLoader, Subset
+from collections import OrderedDict
+from typing import Any, Dict, List
+from torch import Tensor
+import torch.nn as nn
+
+from algos.base_class import BaseClient, BaseServer
+
+class CommProtocol(object):
+    """
+    Communication protocol tags for the server and clients
+    """
+    DONE = 0 # Used to signal that the client is done with the current round
+    START = 1 # Used to signal by the server to start the current round
+    UPDATES = 2 # Used to send the updates from the server to the clients
+    CLIENT_STATS = 3 # Used by the client to send the stats to the server
 
 
-from algos.base_class import BaseServer
-
-
-class IsolatedServer(BaseServer):
+class IsolatedClient(BaseClient):
     def __init__(self, config) -> None:
         super().__init__(config)
-        # self.set_parameters()
         self.config = config
-        self.set_model_parameters(config)
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
-                                                                   self.node_id)
-        self.set_training_data(config)
+        self.tag = CommProtocol
 
-    def set_training_data(self, config):
-        train_dset = self.dset_obj.train_dset
-        test_dset = self.dset_obj.test_dset
-        samples_per_client = config["samples_per_client"]
-        batch_size = config["batch_size"]
-        client_idx = self.node_id
-        indices = numpy.random.permutation(len(train_dset))
-        dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
-        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
-
-    def test(self) -> float:
+    def local_train(self):
         """
-        Test the model on the server
+        Train the model locally
+        """
+        avg_loss = self.model_utils.train(self.model, self.optim,
+                                          self.dloader, self.loss_fn,
+                                          self.device)
+        print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
+        # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
+    
+    def local_test(self, **kwargs):
+        """
+        Test the model locally, not to be used in the traditional FedAvg
         """
         test_loss, acc = self.model_utils.test(self.model,
                                                self._test_loader,
                                                self.loss_fn,
                                                self.device)
-        # TODO save the model if the accuracy is better than the best accuracy so far
-        if acc > self.best_acc:
-            self.best_acc = acc
-            self.model_utils.save_model(self.model, self.model_save_path)
+        # pass
         return acc
 
-    def train(self):
+    def run_protocol(self):
+        start_epochs = self.config.get("start_epochs", 0)
+        total_epochs = self.config["epochs"]
+        for round in range(start_epochs, total_epochs):
+            # self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
+            # print("Client waiting for semaphore from {}".format(self.server_node))
+            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
+            # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
+            for i in range(self.config["local_runs"]):
+                self.local_train()
+            test_acc = self.local_test()
+            self.comm_utils.send_signal(dest=self.server_node, data=test_acc, tag=self.tag.CLIENT_STATS)
+            # self.log_utils.logging.info("Round {} done".format(round))
+
+
+class IsolatedServer(BaseServer):
+    def __init__(self, config) -> None:
+        super().__init__(config)
+        self.config = config
+        self.tag = CommProtocol
+
+    def update_stats(self, stats: List[List[float]], round: int):
         """
-        Runs the whole training procedure
+        Updates the statistics from all the clients
+        the reason the server is doing it because
+        the server only has the access to the log file as of now
+        Args:
+            stats (List[List[float]]): List of statistics of the clients
         """
-        self.log_utils.log_console("Starting training epoch")
-        loss = self.model_utils.train(self.model,
-                                      self.optim,
-                                      self.dloader,
-                                      self.loss_fn,
-                                      self.device,
-                                      epoch=self.round)
-        self.log_utils.log_console("Training epoch done")
-        return loss
+        for client, stat in enumerate(stats):
+            if stat is not None:
+                self.log_utils.log_tb(f"test_acc/client{client}", stat, round)
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting isolated client training")
+        self.log_utils.log_console("Starting independent training")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
-            
-            loss, tr_acc = self.train()
-            self.log_utils.log_tb(f"train_loss/clients", loss, round)
-            self.log_utils.log_console("round: {} train_loss:{:.4f}".format(
-                round, loss
-            ))
-            
-            acc = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
-            self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
-                round, acc
-            ))
+            for client_node in self.clients:
+                self.log_utils.log_console("Server sending semaphore from {} to {}".format(self.node_id,
+                                                                                        client_node))
+                self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
+            local_test_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.CLIENT_STATS)
+            self.update_stats(local_test_acc, self.round)
             self.log_utils.log_console("Round {} done".format(round))
-        self.log_utils.log_console("Isolated client training over")

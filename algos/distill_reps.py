@@ -12,26 +12,23 @@ from algos.algos import (synthesize_representations,
                          synthesize_representations_collaborative,
                          synthesize_representations_collaborative_parallel)
 from algos.base_class import BaseClient, BaseServer
-from algos.modules import (DeepInversionFeatureHook, kl_loss_fn,
+from utils.modules import (DeepInversionHook, kl_loss_fn,
                            total_variation_loss)
 
-
+#collaborative dreamns are generated and saved on the disk
+#adaptive distill: server model is also trained
+#local models not trained on dreams
 class CommProtocol(object):
     """
     Communication protocol tags for the server and clients
     """
-
     DONE_WARMUP = 0
     START_WARMUP = 1  # Used to signal by the server to start the warmup rounds
-    START_GEN_REPS = (
-        2  # Used to signal by the server to start generating representations
-    )
+    START_GEN_REPS = 2  # Used to signal by the server to start generating representations
     REPS_DONE = 3  # Used to signal by the client to the server that it has finished generating representations
     REPS_READY = 4  # Used to signal by the server to the client that it can start using the representations from other clients
     CLIENT_STATS = 5  # Used by the client to send the stats to the server
-    FINAL_REPS = (
-        6  # Used by the clients to send the output of the final layer to the server
-    )
+    FINAL_REPS = 6  # Used by the clients to send the output of the final layer to the server
     START_DISTILL = 7  # Used by the server to signal the clients to start distillation
 
 
@@ -65,9 +62,10 @@ class DistillRepsClient(BaseClient):
         self.first_time_steps = self.config["first_time_steps"]
         self.loss_r_feature_layers = []
         self.EPS = 1e-8
+        self.bn_mmt = None
         for module in self.model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                self.loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+                self.loss_r_feature_layers.append(DeepInversionHook(module, self.bn_mmt))
 
     def local_warmup(self):
         # Do local warmup rounds
@@ -82,17 +80,17 @@ class DistillRepsClient(BaseClient):
                 self.device,
                 epoch=round,
             )
-            print("Local Warmup -- loss {}, acc {}, round {}".format(loss, acc, round))
+            # print("Local Warmup -- loss {}, acc {}, round {}".format(loss, acc, round))
 
         test_loss, test_acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
         # self.log_utils.log_console("Warmup round done for node {}".format(self.node_id))
-        print(
-            "Warmup round done for node {}, train_acc {}, test_acc {}".format(
-                self.node_id, acc, test_acc
-            )
-        )
+        # print(
+        #     "Warmup round done for node {}, train_acc {}, test_acc {}".format(
+        #         self.node_id, acc, test_acc
+        #     )
+        # )
         # save the model if the test loss is lower than the best loss
         if test_loss < self.best_loss:
             self.best_loss = test_loss
@@ -150,11 +148,11 @@ class DistillRepsClient(BaseClient):
         if not self.config["load_existing"]:
             self.local_warmup()
         else:
-            print("skipping local warmup because checkpoints are loaded")
+            # print("skipping local warmup because checkpoints are loaded")
             test_loss, test_acc = self.model_utils.test(
                 self.model, self._test_loader, self.loss_fn, self.device
             )
-            print("test_acc {}".format(test_acc))
+            # print("test_acc {}".format(test_acc))
             bs = self.config["distill_batch_size"]
             self.config["inp_shape"][0] = bs
             # reps = torch.randn(self.config["inp_shape"]).to(self.device)
@@ -195,6 +193,29 @@ class DistillRepsClient(BaseClient):
             self.comm_utils.send_signal(
                 dest=self.server_node, data=out, tag=self.tag.FINAL_REPS
             )
+            tr_loss, tr_acc = 0., 0.
+            for _ in range(5):
+                tr_loss, tr_acc = self.model_utils.train(self.model,
+                                                         self.optim,
+                                                         self.dloader,
+                                                         self.loss_fn,
+                                                         self.device)
+            test_loss, test_acc = self.model_utils.test(self.model,
+                                                        self._test_loader,
+                                                        self.loss_fn,
+                                                        self.device)
+            # print("test_loss: {}, test_acc: {}".format(test_loss, test_acc))
+            current_stats = [tr_loss, tr_acc,
+                            test_loss, test_acc]
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=current_stats,
+                                        tag=self.tag.CLIENT_STATS)
+            # save the model if the test loss is lower than the best loss
+            if test_loss < self.best_loss:
+                self.best_loss = test_loss
+                self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+            # self.log_utils.log_console("Round {} done for node_{}".format(round, self.node_id))
+            # print("Round {} done for node_{}".format(round, self.node_id))
 
 
 class DistillRepsServer(BaseServer):
@@ -210,6 +231,10 @@ class DistillRepsServer(BaseServer):
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
         self.adaptive_distill = self.config.get("adaptive_distill", False)
+        self.position = self.config["position"]
+        self.distill_epochs = self.config["distill_epochs"]
+        self.first_time_steps = self.config["first_time_steps"]
+        self.append_dataset = self.config["append_dataset"]
         if self.adaptive_distill:
             self.EPS = 1e-8
             # set up the server model
@@ -223,7 +248,6 @@ class DistillRepsServer(BaseServer):
             self.eval_loss_fn = nn.CrossEntropyLoss()
 
     def adam_update(self, grad):
-
         if self.config['distadam']:
             betas = self.data_optimizer.param_groups[0]['betas']
             # access the optimizer's state
@@ -244,8 +268,6 @@ class DistillRepsServer(BaseServer):
             step_size = self.data_optimizer.param_groups[0]['lr'] / bias_correction1
             self.reps.data.addcdiv_(exp_avg, denom, value=-step_size)
             self.data_optimizer.state[self.reps]['step'] += 1
-
-
         else:
             # ---- FedAdam ----
             lr = self.config["server_lr"]
@@ -253,20 +275,32 @@ class DistillRepsServer(BaseServer):
             beta_2 = self.config["server_beta_2"]
             tau = self.config["server_tau"]
             state = self.data_optimizer.state[self.reps]
-
             if "m" not in state:
                 state["m"] = torch.zeros_like(self.reps.data)
-
             if "v" not in state:
                 state["v"] = torch.zeros_like(self.reps.data)
-
             state["m"] = beta_1 * state["m"] + (1 - beta_1) * grad
             state["v"] = beta_2 * state["v"] + (1 - beta_2) * grad**2
-
             update = self.reps.data + lr * state["m"] / (state["v"] ** 0.5 + tau)
             update = update.detach()
             self.reps.data = update
 
+    def update_stats(self, stats: List[List[float]], round: int):
+        """
+        Updates the statistics from all the clients
+        the reason the server is doing it because
+        the server only has the access to the log file as of now
+        Args:
+            stats (List[List[float]]): List of statistics of the clients
+        """
+        labels = ["train_loss", "train_acc", "test_loss", "test_acc"]
+        for client, stat in enumerate(stats):
+            if stat is not None:
+                # for i in range(len(stat)):
+                for i in [1,3]:
+                    if stat[i] is not None:
+                        self.log_utils.log_tb(f"{labels[i]}/client{client}", stat[i], round)
+                # self.log_utils.log_console(f"Round {round} test accuracy for client {client}: {stat[5]}")
 
     def single_round(self):
         start = time.time()
@@ -281,7 +315,7 @@ class DistillRepsServer(BaseServer):
             if self.round > 5 and self.adaptive_distill:
                 # pass reps on the local model and get the gradients
                 inputs = self.reps.clone().detach().requires_grad_(True)
-                acts = self.model(inputs)
+                acts = self.model(inputs, position=self.position)
                 probs = torch.softmax(acts, dim=1)
                 entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
                 loss = entropy
@@ -296,21 +330,17 @@ class DistillRepsServer(BaseServer):
             if self.round > 5 and self.adaptive_distill:
                 # negative gradient update to maximize entropy of the server model
                 # TODO: choice of lambda is arbitrary so need to experimentally arrive at a better number
-                self.config["lambda"] = 0.1
                 grads = grads - self.config["lambda"] * server_grads
             self.adam_update(grads)
-            if g_step % 500 == 0 or g_step == (g_steps - 1):
-                print(f"{g_step}/{g_steps}", time.time() - start)
-
+            # if g_step % 500 == 0 or g_step == (g_steps - 1):
+            #     print(f"{g_step}/{g_steps}", time.time() - start)
             grads = grads.detach()
-
             if self.config["fedadam"]:
                 self.adam_update(grads)
             elif self.config["distadam"]:
                 self.adam_update(grads)
             else:
                 self.reps.data = grads
-
             torch.cuda.empty_cache()
 
         for client in self.clients:
@@ -324,7 +354,7 @@ class DistillRepsServer(BaseServer):
         acts = acts.mean(dim=0)
         acts = torch.log_softmax(acts, dim=1)
         end = time.time()
-        print(f"Time taken: {end - start} seconds")
+        # print(f"Time taken: {end - start} seconds")
         return self.reps.detach(), acts.detach()
 
     def run_protocol(self):
@@ -354,7 +384,7 @@ class DistillRepsServer(BaseServer):
             if self.adaptive_distill and round > 10:
                 self.dloader = DataLoader(self.dset, batch_size=1, shuffle=True)
                 # the choice of 100 here is rather arbitrary
-                for _ in range(100):
+                for _ in range(self.distill_epochs):
                     tr_loss, tr_acc = self.model_utils.train(
                         self.model,
                         self.optim,
@@ -363,14 +393,17 @@ class DistillRepsServer(BaseServer):
                         self.device,
                         apply_softmax=True,
                         extra_batch=True,
+                        position=self.position
                     )
                 te_loss, te_acc = self.model_utils.test(
                     self.model, self._test_loader, self.eval_loss_fn, self.device
                 )
-                self.log_utils.log_tb("tr_loss", tr_loss, round)
-                self.log_utils.log_tb("tr_acc", tr_acc, round)
-                self.log_utils.log_tb("te_loss", te_loss, round)
-                self.log_utils.log_tb("te_acc", te_acc, round)
+                if round < self.first_time_steps and self.append_dataset:
+                    self.dset.reset()
+                # self.log_utils.log_tb("tr_loss", tr_loss, round)
+                self.log_utils.log_tb("train_acc", tr_acc, round)
+                # self.log_utils.log_tb("te_loss", te_loss, round)
+                self.log_utils.log_tb("test_acc", te_acc, round)
                 self.log_utils.log_console(
                     f"Round {round} tr_loss: {tr_loss}, tr_acc: {tr_acc}, te_loss: {te_loss}, te_acc: {te_acc}"
                 )
@@ -380,8 +413,10 @@ class DistillRepsServer(BaseServer):
                     self.model_utils.save_model(
                         self.model, self.config["saved_models"] + "server_model.pt"
                     )
+            stats = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.CLIENT_STATS)
+            self.update_stats(stats, round)
             self.log_utils.log_tensor_to_disk((inp, out), f"node", round)
             # Only store first three channel and 64 images for a 8x8 grid
             imgs = self.reps[:64, :3]
             self.log_utils.log_image(imgs, f"reps", round)
-            self.log_utils.log_console("Round {} done".format(round))
+            # self.log_utils.log_console("Round {} done".format(round))

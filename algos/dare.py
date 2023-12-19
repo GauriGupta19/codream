@@ -2,11 +2,12 @@ import pdb
 from typing import List, Tuple
 import torch
 from algos.algos import synthesize_representations, synthesize_representations_collaborative
-from algos.algos import FastMetaSynthesizer
+from algos.algos import FastMetaSynthesizer, Synthesizer
 from algos.base_class import BaseClient, BaseServer
-from algos.modules import kl_loss_fn
+from utils.modules import kl_loss_fn
 from torch.utils.data import TensorDataset, DataLoader
 
+#maybe independently optimized dreams
 
 class CommProtocol(object):
     """
@@ -31,7 +32,7 @@ class DAREClient(BaseClient):
         if self.method == "fast_meta":
             self.synthesizer = FastMetaSynthesizer(config, self.dset_obj, self.device)
         if self.method == "orig":
-            self.synthesizer = Synthesizer(config)
+            self.synthesizer = Synthesizer()
 
     def local_warmup(self):
         warmup = self.config["warmup"]
@@ -59,6 +60,7 @@ class DAREClient(BaseClient):
         if test_loss < self.best_loss:
             self.best_loss = test_loss
             self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+            torch.save(test_acc, self.config["saved_models"] + f"user_acc{self.node_id}.pt")
 
     def select_representations(self, reps: List[Tuple[torch.Tensor, torch.Tensor]], k: int) -> DataLoader:
         """Returns a dataloader that consists of the top k representations
@@ -99,7 +101,6 @@ class DAREClient(BaseClient):
                             torch.stack(self.y_j).flatten(0, 1))
         dloader_reps = DataLoader(r_j,
                                   batch_size=self.config["distill_batch_size"])
-        print(self.z_j[0].shape)
         return dloader_reps
     
     def generate_rep(self, reps, labels, first_time):
@@ -115,7 +116,7 @@ class DAREClient(BaseClient):
                 "target_label": labels,
                 "steps": self.config["first_time_steps"] if first_time else self.config["steps"],
             }
-            reps = synthesize_representations(self.config, obj)
+            reps = self.synthesizer.synthesize_representations(self.config, obj)
             logits = self.model(reps, position=self.position).detach()
             logit_probs = torch.nn.functional.log_softmax(logits, dim=1) # type: ignore
             return reps, logit_probs
@@ -124,7 +125,7 @@ class DAREClient(BaseClient):
         # if self.config["inversion_algo"]=="random_deepinversion":
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
-        self.config["out_shape"][0] = bs
+        # self.config["out_shape"][0] = bs
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         reps = torch.randn(self.config["inp_shape"]).to(self.device)
         obj = {
@@ -159,7 +160,7 @@ class DAREClient(BaseClient):
 
         bs = self.config["distill_batch_size"]
         self.config["inp_shape"][0] = bs
-        self.config["out_shape"][0] = bs
+        # self.config["out_shape"][0] = bs
         labels = next(iter(self.dloader))[1][:bs].to(self.device)
         rep = torch.randn(self.config["inp_shape"]).to(self.device)
         

@@ -2,10 +2,34 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
-import os
+import models
 
-from resnet import ResNet18, ResNet34, ResNet50, ResNet101
+MODEL_DICT = {
+    # https://github.com/polo5/ZeroShotKnowledgeTransfer
+    'wrn16_1': models.wresnet.wrn_16_1,
+    'wrn16_2': models.wresnet.wrn_16_2,
+    'wrn40_1': models.wresnet.wrn_40_1,
+    'wrn40_2': models.wresnet.wrn_40_2,
 
+    # https://github.com/HobbitLong/RepDistiller
+    'resnet8': models.resnet_tiny.resnet8,
+    'resnet20': models.resnet_tiny.resnet20,
+    'resnet32': models.resnet_tiny.resnet32,
+    'resnet56': models.resnet_tiny.resnet56,
+    'resnet110': models.resnet_tiny.resnet110,
+    'resnet8x4': models.resnet_tiny.resnet8x4,
+    'resnet32x4': models.resnet_tiny.resnet32x4,
+    'vgg8': models.vgg.vgg8_bn,
+    'vgg11': models.vgg.vgg11_bn,
+    'vgg13': models.vgg.vgg13_bn,
+    'shufflenetv2': models.shufflenetv2.shuffle_v2,
+    'mobilenetv2': models.mobilenetv2.mobilenet_v2,
+    
+    # https://github.com/huawei-noah/Data-Efficient-Model-Compression/tree/master/DAFL
+    'resnet50':  models.resnet.resnet50,
+    'resnet18':  models.resnet.resnet18,
+    'resnet34':  models.resnet.resnet34,
+}
 
 class ModelUtils():
     def __init__(self) -> None:
@@ -25,19 +49,15 @@ class ModelUtils():
     @staticmethod
     def get_model(model_name:str, dset:str, device:torch.device, device_ids:list, **kwargs) -> nn.Module:
         #TODO: add support for loading checkpointed models
-        channels = 3 if dset in ["cifar10", "cifar100"] else 1
         model_name = model_name.lower()
-        if model_name == "resnet18":
-            model = ResNet18(channels, **kwargs)
-        elif model_name == "resnet34":
-            model = ResNet34(channels, **kwargs)
-        elif model_name == "resnet50":
-            model = ResNet50(channels, **kwargs)
-        elif model_name == "resnet101":
-            model = ResNet101(channels, **kwargs)
+        num_cls = kwargs.get("num_classes", 10)
+        if model_name in MODEL_DICT:
+            model = MODEL_DICT[model_name](**kwargs)
         else:
             raise ValueError(f"Model name {model_name} not supported")
+        print(f"Model {model_name} loading on device {device}")
         model = model.to(device)
+        print(f"Model {model_name} loaded on device {device}")
         #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
@@ -61,9 +81,14 @@ class ModelUtils():
                 self.adjust_learning_rate(optim, kwargs["epoch"])
 
             position = kwargs.get("position", 0)
-            output = model(data, position=position)
+            if position==0:
+                output = model(data)
+            else:
+                output = model(data, position=position)
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1) # type: ignore
+            if len(target.size()) > 1 and target.size(1) == 1:
+                target = target.squeeze(dim=1)
             loss = loss_fn(output, target)
             loss.backward()
             optim.step()
@@ -73,7 +98,7 @@ class ModelUtils():
             if len(target.size()) > 1:
                 target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
-        acc = correct / len(dloader.dataset)
+        acc = correct / total_samples
         return train_loss, acc
     
     def train_fedprox(self, model:nn.Module, global_model, mu, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
@@ -113,7 +138,6 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return train_loss, acc
     
-    
     def train_fedcon(self, model:nn.Module, gloabl_model, previous_nets, cos, mu, temperature, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
@@ -127,7 +151,6 @@ class ModelUtils():
             # if so, call adjust_learning_rate
             if "epoch" in kwargs:
                 self.adjust_learning_rate(optim, kwargs["epoch"])
-
             position = kwargs.get("position", 0)
             output, feat = model(data, position=position, out_feature=True)
             if kwargs.get("apply_softmax", False):
@@ -153,10 +176,9 @@ class ModelUtils():
             if len(target.size()) > 1:
                 target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
-        acc = correct / len(dloader.dataset)
+        acc = correct / total_samples
         return train_loss, acc
     
-
     def test(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
@@ -167,7 +189,12 @@ class ModelUtils():
             for data, target in dloader:
                 data, target = data.to(device), target.to(device)
                 position = kwargs.get("position", 0)
-                output = model(data, position=position)
+                if position==0:
+                    output = model(data)
+                else:
+                    output = model(data, position=position)
+                if len(target.size()) > 1 and target.size(1) == 1:
+                    target = target.squeeze(dim=1)
                 test_loss += loss_fn(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 # view_as() is used to make sure the shape of pred and target are the same

@@ -25,7 +25,7 @@ def process_config(config):
         key = exp_key.split(".")[-1]
         assert key is not None
         experiment_name += "_{}_{}".format(key, item)
-    
+        
     experiments_folder = config["dump_dir"]
     results_path = experiments_folder + experiment_name + f"_seed{config['seed']}"
 

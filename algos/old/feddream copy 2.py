@@ -1,16 +1,70 @@
 import math
 import pdb
 import time
-from typing import List
+from typing import List, Tuple
 from collections import OrderedDict
 import torch
 import torch.nn as nn
 from algos.algos import synthesize_representations, synthesize_representations_collaborative
 from algos.base_class import BaseClient, BaseServer
-from utils.modules import DeepInversionHook, KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
+from utils.generator import Generator
+from utils.modules import DeepInversionFeatureHook, kl_loss_fn, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
+from torchvision import transforms
+from kornia import augmentation
+from torchvision.utils import make_grid, save_image
+from algos.fast_meta import FastMetaSynthesizer
+import torch.nn.functional as F
+from algos.hooks import DeepInversionHook, InstanceMeanHook
 from PIL import Image
+import torchvision.transforms as T
+
+def log_tensor_to_disk(tensor, key, iteration):
+    torch.save(tensor, f"./log_img_50k_bs256_aug/{iteration}_{key}.pt")
+
+def log_image( imgs: torch.Tensor, key, iteration):
+        # imgs = deprocess(imgs.detach().cpu())[:64]
+        grid_img = make_grid(imgs.detach().cpu(), normalize=True, scale_each=True)
+        # Save the grid image using torchvision api
+        save_image(grid_img, f"./log_img_50k_bs256_aug/{iteration}_{key}.png")
+        # Save the grid image using tensorboard api
+        # self.writer.add_image(key, grid_img.numpy(), iteration)
+
+def kldiv( logits, targets, T=1.0, reduction='batchmean'):
+    q = F.log_softmax(logits/T, dim=1)
+    p = F.softmax( targets/T, dim=1 )
+    return F.kl_div( q, p, reduction=reduction ) * (T*T)
+
+class KLDiv(nn.Module):
+    def __init__(self, T=1.0, reduction='batchmean'):
+        super().__init__()
+        self.T = T
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        return kldiv(logits, targets, T=self.T, reduction=self.reduction)
+
+def normalize(tensor, mean, std, reverse=False):
+    if reverse:
+        _mean = [ -m / s for m, s in zip(mean, std) ]
+        _std = [ 1/s for s in std ]
+    else:
+        _mean = mean
+        _std = std
+    
+    _mean = torch.as_tensor(_mean, dtype=tensor.dtype, device=tensor.device)
+    _std = torch.as_tensor(_std, dtype=tensor.dtype, device=tensor.device)
+    tensor = (tensor - _mean[None, :, None, None]) / (_std[None, :, None, None])
+    return tensor
+
+class Normalizer(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, x, reverse=False):
+        return normalize(x, self.mean, self.std, reverse=reverse)
     
 class CommProtocol(object):
     """
@@ -34,10 +88,10 @@ class FedDreamClient(BaseClient):
         self.tag = CommProtocol()
         self.config = config
         self.set_algo_params()
+        self.position = config["position"]
 
     def set_algo_params(self):
         self.epochs = self.config["epochs"]
-        self.position = self.config["position"]
         self.inversion_algo = self.config.get("inversion_algo", "send_reps")
         self.data_lr = self.config["data_lr"]
         self.global_steps = self.config["global_steps"]
@@ -50,17 +104,44 @@ class FedDreamClient(BaseClient):
         self.distill_epochs = self.config["distill_epochs"]
         self.warmup = self.config["warmup"]
         self.local_train_freq = self.config["local_train_freq"]
+        self.fast_meta = self.config["fast_meta"]
+        self.loss_r_feature_layers = []
         self.EPS = 1e-8
         self.log_tb_freq = self.config["log_tb_freq"]
         self.log_console =  self.config["log_console"]
-        self.dset_size = self.config["dset_size"]
-        self.synth_dset = CustomDataset(self.config, transform = None, buffer_size=self.dset_size)
-        self.kl_loss_fn = KLDiv(T=20)
-        self.hooks = []
-        self.bn_mmt = None
-        for module in self.model.modules():
-            if isinstance(module, nn.BatchNorm2d):
-                self.hooks.append(DeepInversionHook(module, self.bn_mmt))         
+        self.transform = self.dset_obj.train_transform
+        self.synth_dset = CustomDataset(self.config, transform = None)
+        # for module in self.model.modules():
+        #     if isinstance(module, nn.BatchNorm2d):
+        #         self.loss_r_feature_layers.append(DeepInversionFeatureHook(module))
+        if self.fast_meta:
+            self.lr_z = self.config["lr_z"]
+            self.lr_g = self.config["lr_g"]
+            self.g_steps = self.config["g_steps"]
+            self.ep_start = self.config["fast_gen_warmup"]
+            self.adv = self.config["adv"]
+            self.bn = self.config["bn"]
+            self.oh = self.config["oh"]
+            self.ep = 0
+            self.generator = Generator(nz=256, ngf=64, img_size=32, nc=3).to(self.device)
+            normalizer = Normalizer(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010 ))
+            self.aug = transforms.Compose([ 
+                    augmentation.RandomCrop(size=[32, 32], padding=4),
+                    augmentation.RandomHorizontalFlip(),
+                    normalizer,
+                ])
+            self.ep=0
+            self.optim = torch.optim.SGD(self.model.parameters(), 0.2, weight_decay=1e-4,
+                                momentum=0.9)
+            self.kl_loss_fn = KLDiv(T=20)
+            # self.meta_generator = Generator(nz=256, ngf=64, img_size=32, nc=3).to(self.device)
+            # self.meta_optimizer = torch.optim.Adam(self.meta_generator.parameters(), self.lr_g*self.g_steps, betas=[0.5, 0.999])
+            # self.FS = FastMetaSynthesizer(self.model, self.meta_generator, normalizer, self.device)
+            self.bn_mmt = 0.9
+            self.hooks = []
+            for m in self.model.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    self.hooks.append( DeepInversionHook(m, self.bn_mmt) )
 
     def local_warmup(self):
         warmup = self.config["warmup"]
@@ -86,8 +167,114 @@ class FedDreamClient(BaseClient):
         # save the model if the test loss is lower than the best loss
         if test_loss < self.best_loss:
             self.best_loss = test_loss
-            # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+            self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
     
+    def generate_rep(self, reps: torch.Tensor):
+        for l_step in range(self.config["local_steps"]):
+            inputs = reps.clone().detach().requires_grad_(True)
+            self.model.zero_grad()
+            acts = self.model(inputs, position=self.position)
+            probs = torch.softmax(acts, dim=1)
+            entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
+            loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(self.loss_r_feature_layers) if hasattr(model, "r_feature")])
+            loss = self.alpha_preds * entropy + self.alpha_tv * total_variation_loss(inputs).to(entropy.device) +\
+                    self.alpha_l2 * torch.linalg.norm(inputs).to(entropy.device) + self.alpha_f * loss_r_feature
+            loss.backward()
+        return inputs.grad
+
+    def synthesize(self):
+        self.ep+=1
+        best_inputs = self.FS.synthesize()
+        # start = time.time()
+        # self.ep+=1
+        # self.model.eval()
+        # best_cost = 1e6
+        # self.reset_l0=1
+        # self.nz = 256
+        # self.ismaml = 1
+        # self.iterations = 2
+        # self.bn_mmt = 0.9
+
+        # if (self.ep == 120+self.ep_start) and self.reset_l0:
+        #     reset_l0(self.generator)
+        
+        # best_inputs = None
+        # z = torch.randn(size=(256, self.nz), device=self.device).requires_grad_() 
+        # fast_generator = self.meta_generator.clone()
+        # fast_generator = fast_generator.to(self.device)
+
+        # optimizer = torch.optim.Adam([
+        #     {'params': fast_generator.parameters()},
+        #     {'params': [z], 'lr': self.lr_z}
+        # ], lr=self.lr_g, betas=[0.5, 0.999])
+
+        # for it in range(2):
+        #     inputs = fast_generator(z)
+        #     inputs_aug = self.aug(inputs) # crop and normalize
+        #     if it == 0:
+        #         originalMeta = inputs
+            
+        #     #############################################
+        #     # Inversion Loss
+        #     #############################################
+        #     t_out = self.model(inputs_aug)
+        #     # loss_oh = F.cross_entropy( t_out, targets )
+        #     probs = torch.softmax(t_out, dim=1)
+        #     entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
+        #     # loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.loss_r_feature_layers) if hasattr(model, "r_feature")])
+        #     loss_bn = sum([h.r_feature for h in self.hooks])
+        #     loss = self.oh * entropy + self.bn * loss_bn
+
+        #     with torch.no_grad():
+        #         if best_cost > loss.item() or best_inputs is None:
+        #             best_cost = loss.item()
+        #             best_inputs = inputs.data
+
+        #     optimizer.zero_grad()
+        #     loss.backward()
+
+        #     if self.ismaml:
+        #         if it==0: self.meta_optimizer.zero_grad()
+        #         fomaml_grad(self.meta_generator, fast_generator, self.device)
+        #         if it == (self.iterations-1): self.meta_optimizer.step()
+
+        #     optimizer.step()
+
+        # if self.bn_mmt != 0:
+        #     for h in self.hooks:
+        #         h.update_mmt()
+
+        # # REPTILE meta gradient
+        # if not self.ismaml:
+        #     self.meta_optimizer.zero_grad()
+        #     reptile_grad(self.meta_generator, fast_generator, self.device)
+        #     self.meta_optimizer.step()
+        log_image(best_inputs, f"reps", self.ep)
+        out = self.model(best_inputs)
+        log_tensor_to_disk((best_inputs, out), f"node", self.ep)
+        
+    def fast_synthesize(self, reps):
+        best_cost = 1e6
+        best_inputs = None
+        # self.model.eval()
+        z = reps.clone().detach().requires_grad_(True)
+        self.model.zero_grad()
+        # for it in range(self.g_steps):
+        inputs = self.generator(z)
+        inputs = self.aug(inputs) # crop and normalize
+        t_out = self.model(inputs)
+        # loss_oh = F.cross_entropy( t_out, targets )
+        probs = torch.softmax(t_out, dim=1)
+        entropy = -torch.sum(probs * torch.log(probs  + self.EPS), dim=1).mean()
+        # loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.loss_r_feature_layers) if hasattr(model, "r_feature")])
+        loss_bn = sum([h.r_feature for h in self.hooks])
+        loss = self.oh * entropy + self.bn * loss_bn
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return z.grad
+        # return z - reps.clone().detach()
+
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
         for _ in range(5):
@@ -109,7 +296,7 @@ class FedDreamClient(BaseClient):
                                                                     apply_softmax=True,
                                                                     position=self.position,
                                                                     extra_batch=True)
-            # self.synth_dset.reset()
+            self.synth_dset.reset()
             print("student_loss: {}, student_acc: {} at client {}".format(student_loss, student_acc, self.node_id))
         if self.round % self.log_tb_freq == 0:
             test_loss, test_acc = self.model_utils.test(self.model,
@@ -136,21 +323,9 @@ class FedDreamClient(BaseClient):
                                                 tag=self.tag.FINAL_GLOBAL_REPS)
         # self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
         # self.log_utils.log_console("Round {} done".format(round))
+
         self.synth_dset.append((x, y))
 
-    def generate_rep(self, reps: torch.Tensor):
-        for l_step in range(self.config["local_steps"]):
-            inputs = reps.clone().detach().requires_grad_(True)
-            self.model.zero_grad()
-            acts = self.model(inputs, position=self.position)
-            probs = torch.softmax(acts, dim=1)
-            entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
-            loss_r_feature = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")])
-            loss = self.alpha_preds * entropy + self.alpha_tv * total_variation_loss(inputs).to(entropy.device) +\
-                    self.alpha_l2 * torch.linalg.norm(inputs).to(entropy.device) + self.alpha_f * loss_r_feature
-            loss.backward()
-        return inputs.grad
-    
     def single_round(self):
         for g_step in range(self.global_steps):
             # Wait for the server to send the latest representations
@@ -165,7 +340,56 @@ class FedDreamClient(BaseClient):
             if g_step == self.global_steps/2 -1:
                 self.add_dreams()
         self.add_dreams()
-        
+        self.update_local_model()
+        if self.round % self.log_tb_freq == 0:
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=self.current_stats,
+                                        tag=self.tag.CLIENT_STATS)
+            # save the model if the test loss is lower than the best loss
+            # if self.current_stats[5] < self.best_loss:
+            #     self.best_loss = self.current_stats[5]
+            #     self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+            # self.log_utils.log_console("Round {} done for node_{}".format(round, self.node_id))
+            # print("Round {} done for node_{}".format(round, self.node_id))
+
+    def single_round_fast(self):
+        self.model.eval()
+        self.optimizer = torch.optim.Adam([
+            {'params': self.generator.parameters()},
+            # {'params': [z], 'lr': self.lr_z}
+        ], lr=self.lr_g, betas=[0.5, 0.999])
+        for g_step in range(self.g_steps):
+            # Wait for the server to send the latest representations
+            gen_state = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                        tag=self.tag.GENERATOR_UPDATES)
+            self.generator.load_state_dict(gen_state)
+            reps = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                    tag=self.tag.START_GEN_REPS)
+            reps = reps.to(self.device)
+            grads = self.fast_synthesize(reps)
+            # Send the grads to the server
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=grads.to("cpu"),
+                                        tag=self.tag.REPS_DONE)
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=put_on_cpu(self.generator.state_dict()),
+                                        tag=self.tag.GENERATOR_DONE)      
+        if self.bn_mmt != 0:
+            for h in self.hooks:
+                h.update_mmt()  
+        self.add_dreams()
+        self.update_local_model()
+        if self.round % self.log_tb_freq == 0:
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=self.current_stats,
+                                        tag=self.tag.CLIENT_STATS)
+            # save the model if the test loss is lower than the best loss
+            if self.current_stats[5] < self.best_loss:
+                self.best_loss = self.current_stats[5]
+                self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+           # self.log_utils.log_console("Round {} done for node_{}".format(round, self.node_id))
+            print("Round {} done for node_{}".format(round, self.node_id))
+
     def run_protocol(self):
         # Wait for the server to signal to start local warmup rounds
         self.comm_utils.wait_for_signal(src=0, tag=self.tag.START_WARMUP)
@@ -181,6 +405,9 @@ class FedDreamClient(BaseClient):
                                                     self.device)
             print("test_acc {}".format(test_acc))
             # self.log_utils.log_console("Local warmup rounds done")
+        # for i in range(200):
+        #     self.synthesize()
+        #     print(f"round {i} done")
         # # Signal to the server that the local warmup rounds are done
         self.comm_utils.send_signal(dest=self.server_node,
                                     data=None,
@@ -188,18 +415,10 @@ class FedDreamClient(BaseClient):
         start_epochs = self.config.get("start_epochs", 0)
         for round in range(start_epochs, self.epochs):
             self.round = round
-            self.single_round()
-            self.update_local_model()
-            if self.round % self.log_tb_freq == 0:
-                self.comm_utils.send_signal(dest=self.server_node,
-                                            data=self.current_stats,
-                                            tag=self.tag.CLIENT_STATS)
-                # save the model if the test loss is lower than the best loss
-                if self.current_stats[5] < self.best_loss:
-                    self.best_loss = self.current_stats[5]
-                    # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
-            # self.log_utils.log_console("Round {} done for node_{}".format(round, self.node_id))
-                print("Round {} done for node_{}".format(round, self.node_id))
+            if self.fast_meta:
+                self.single_round_fast()
+            else:
+                self.single_round()
 
 
 class FedDreamServer(BaseServer):
@@ -216,6 +435,7 @@ class FedDreamServer(BaseServer):
         self.log_tb_freq = self.config["log_tb_freq"]
         self.log_console =  self.config["log_console"]
         self.adaptive_distill = self.config.get("adaptive_server", False)
+        self.fast_meta = self.config["fast_meta"]
         if self.adaptive_distill:
             self.distill_epochs = self.config["distill_epochs"]
             self.adaptive_distill_start_round = self.config["adaptive_distill_start_round"]
@@ -223,14 +443,32 @@ class FedDreamServer(BaseServer):
             self.lambda_server = self.config["lambda_server"]
             # set up the server model
             self.set_model_parameters(config)
-            self.kl_loss_fn = KLDiv(T=20)
+            self.loss_fn = nn.KLDivLoss(reduction="batchmean", log_target=True)
             self.transform = self.dset_obj.train_transform
-            self.dset_size = self.config["dset_size"]
-            self.dset = CustomDataset(self.config, transform = None, buffer_size=self.dset_size)
+            self.dset = CustomDataset(self.config, transform = None)
             test_dset = self.dset_obj.test_dset
             self._test_loader = DataLoader(test_dset, batch_size=self.config["batch_size"], shuffle=False)
             self.eval_loss_fn = nn.CrossEntropyLoss()
             self.local_train_freq = self.config["local_train_freq"]
+        if self.fast_meta:
+            self.ep = 0
+            self.ep_start = self.config["fast_gen_warmup"]
+            self.g_steps = self.config["g_steps"]
+            self.lr_g = self.config["lr_g"]
+            self.ismaml = self.config["ismaml"]
+            self.reset_l0 = reset_l0
+            self.nz = 256
+            self.meta_generator = Generator(nz=self.nz, ngf=64, img_size=32, nc=3).to(self.device)
+            self.meta_optimizer = torch.optim.Adam(self.meta_generator.parameters(), self.lr_g*self.g_steps, betas=[0.5, 0.999])
+            self.optim = torch.optim.SGD(self.model.parameters(), 0.2, weight_decay=1e-4,
+                                momentum=0.9)
+            self.kl_loss_fn = KLDiv(T=20)
+            self.train_transform = T.Compose([
+                T.RandomCrop(32, padding=4),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+                T.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)),
+        ])
     
     def aggregate(self, model_wts):
         """
@@ -275,7 +513,7 @@ class FedDreamServer(BaseServer):
         self.reps.data.addcdiv_(exp_avg, denom, value=-step_size)
         self.data_optimizer.state[self.reps]['step'] += 1
 
-        # # ---- FedAdam ----
+        # ---- FedAdam ----
         # lr = self.config["lr_z"]
         # betas = self.data_optimizer.param_groups[0]['betas']
         # beta_1 = 0.9
@@ -318,7 +556,8 @@ class FedDreamServer(BaseServer):
         for _ in range(distill_epochs):
             tr_loss, tr_acc = self.model_utils.train(self.model, self.optim, self.dloader, self.kl_loss_fn, 
                                                      self.device, apply_softmax=True, extra_batch=True)
-        # self.dset.reset()
+        # if self.round%10==0:
+            # self.dset.reset()
         if self.round % self.log_tb_freq == 0:
             te_loss, te_acc = self.model_utils.test(self.model, self._test_loader, self.eval_loss_fn, self.device)
             # self.log_utils.log_tb("train_loss", tr_loss, self.round)
@@ -331,9 +570,15 @@ class FedDreamServer(BaseServer):
                 if te_acc > self.best_acc:
                     self.best_acc = te_acc
                     # save the model
-                    # self.model_utils.save_model(self.model, self.config["saved_models"] + "server_model.pt")
+                    self.model_utils.save_model(self.model, self.config["saved_models"] + "server_model.pt")
             
     def add_dreams(self):
+        reps = self.reps
+        imgs = (reps.detach().clamp(0, 1).cpu().numpy()*255).astype('uint8')
+        for i in range(len(imgs)):
+            img = Image.fromarray(imgs[i].transpose(1, 2, 0))
+            inp = self.train_transform(img)
+            self.reps[i] = inp
         self.reps = self.reps.detach()   
         for client in self.clients:
             self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_DISTILL)
@@ -351,7 +596,7 @@ class FedDreamServer(BaseServer):
         if self.log_console:
                 self.log_utils.log_tensor_to_disk((self.reps, acts), f"node", self.round)
                 # Only store first three channel and 64 images for a 8x8 grid
-                imgs = self.reps[:64, :3]
+                imgs = reps[:64, :3]
                 self.log_utils.log_image(imgs, f"reps", self.round)
 
     def single_round(self):
@@ -390,6 +635,56 @@ class FedDreamServer(BaseServer):
         if self.log_console:
             self.log_utils.log_console(f"Time taken: {end - start} seconds")
         return
+    
+    def single_round_fast(self):
+        start = time.time()
+        self.reps = torch.randn(size=(self.distill_batch_size, self.nz), device=self.device).requires_grad_()
+        self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
+        self.generator = self.meta_generator.clone()
+        self.ep += 1
+        if (self.ep == 120+self.ep_start) and self.reset_l0:
+            reset_l0(self.generator)
+        for it in range(self.g_steps):
+            for client in self.clients:
+                self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.generator.state_dict()), 
+                                            tag=self.tag.GENERATOR_UPDATES)
+                self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)
+            grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
+            grads = torch.stack(grads).to(self.device)
+            grads = grads.mean(dim=0)     
+            if self.adaptive_distill and self.round > self.adaptive_distill_start_round:
+                # pass reps on the local model and get the gradients
+                self.generator = self.generator.to(self.device)
+                z_server = self.reps.clone().detach().requires_grad_(True)
+                inputs = self.generator(z_server)
+                acts = self.model(inputs)
+                probs = torch.softmax(acts, dim=1)
+                entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
+                loss = entropy
+                loss.backward()
+                server_grads = z_server.grad
+                # negative gradient update to maximize entropy of the server model
+                grads = grads - self.lambda_server * server_grads
+            self.adam_update(grads)
+            gen_state_dict = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.GENERATOR_DONE)
+            avg_gen_state_dict = self.aggregate(gen_state_dict)
+            self.generator.load_state_dict(avg_gen_state_dict)
+            self.generator = self.generator.to(self.device)
+            if self.ismaml:
+                if it==0: self.meta_optimizer.zero_grad()
+                fomaml_grad(self.meta_generator, self.generator, self.device)
+                if it == (self.g_steps-1): self.meta_optimizer.step()
+        # REPTILE meta gradient
+        if not self.ismaml:
+            self.meta_optimizer.zero_grad()
+            reptile_grad(self.meta_generator, self.generator, self.device)
+            self.meta_optimizer.step()
+        self.reps = self.generator(self.reps)
+        self.add_dreams()
+        end = time.time()
+        if self.log_console:
+            self.log_utils.log_console(f"Time taken: {end - start} seconds")
+        return
 
     def run_protocol(self):
         if self.log_console:
@@ -405,8 +700,11 @@ class FedDreamServer(BaseServer):
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             self.round = round
-            self.single_round()
-            if self.adaptive_distill and round>=10 and round % self.local_train_freq == 0:
+            if self.fast_meta:
+                self.single_round_fast()
+            else:
+                self.single_round()
+            if self.adaptive_distill and round >= 10 and round % self.local_train_freq == 0:
                 self.update_server_model()
             if round % self.log_tb_freq == 0:
                 stats = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.CLIENT_STATS)
