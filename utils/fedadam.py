@@ -1,4 +1,5 @@
 import torch
+import itertools
 
 class FedadamOptimizer(torch.optim.Optimizer):
     def __init__(self, params, **kwargs):
@@ -56,3 +57,26 @@ class FedadamOptimizer(torch.optim.Optimizer):
                     server_param.grad = local_delta
                 else:
                     server_param.grad.data.add_(local_delta)
+
+    def _aggregate(self, model_wts):
+        # All models are sampled currently at every round
+        # Each model is assumed to have equal amount of data and hence
+        # coeff is same for everyone
+        num_clients = len(model_wts)
+        coeff = 1 / num_clients
+        check_if=lambda name: 'num_batches_tracked' in name
+        # accumulate weights
+        for client_num in range(num_clients):
+            local_wts = model_wts[client_num]
+            itr = itertools.chain.from_iterable([self.generator.named_parameters(), self.generator.named_buffers()])
+            for name, server_param in itr:
+                if check_if(name):
+                    server_param.data.zero_()
+                    server_param.data.grad = torch.zeros_like(server_param)
+                    continue
+                local_delta = (server_param - local_wts[name].to(self.device)).mul(coeff).data.type(server_param.dtype)
+                if server_param.grad is None: # NOTE: grad buffer is used to accumulate local updates!
+                    server_param.grad = local_delta
+                else:
+                    server_param.grad.data.add_(local_delta)
+        return

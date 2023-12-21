@@ -14,8 +14,7 @@ from torchvision import transforms
 from kornia import augmentation
 from PIL import Image
 import torchvision.transforms as T
-from algos.fedadam import FedadamOptimizer
-import itertools
+
 
 ## change g_step-setup for 10, after aug input same to each model, ismaml, 
 # reset, adv=10/1.22-apative distill, 
@@ -145,7 +144,7 @@ class FedDreamFastClient(BaseClient):
                                                 tag = self.tag.START_DISTILL)
         reps = reps.to(self.device)
         # send the output of the last layer to the server
-        out = self.model(reps).to("cpu")
+        out = self.model(reps).detach().to("cpu")
         # loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")]).to("cpu")
         self.comm_utils.send_signal(dest=self.server_node,
                                     data=out,
@@ -328,29 +327,6 @@ class FedDreamFastServer(BaseServer):
                     avgd_wts[key] += coeff * local_wts[key]
         return avgd_wts
     
-    def _aggregate(self, model_wts):
-        # All models are sampled currently at every round
-        # Each model is assumed to have equal amount of data and hence
-        # coeff is same for everyone
-        num_clients = len(model_wts)
-        coeff = 1 / num_clients
-        check_if=lambda name: 'num_batches_tracked' in name
-        # accumulate weights
-        for client_num in range(num_clients):
-            local_wts = model_wts[client_num]
-            itr = itertools.chain.from_iterable([self.generator.named_parameters(), self.generator.named_buffers()])
-            for name, server_param in itr:
-                if check_if(name):
-                    server_param.data.zero_()
-                    server_param.data.grad = torch.zeros_like(server_param)
-                    continue
-                local_delta = (server_param - local_wts[name].to(self.device)).mul(coeff).data.type(server_param.dtype)
-                if server_param.grad is None: # NOTE: grad buffer is used to accumulate local updates!
-                    server_param.grad = local_delta
-                else:
-                    server_param.grad.data.add_(local_delta)
-        return 
-    
     def adam_update(self, grad):
         betas = self.data_optimizer.param_groups[0]['betas']
         # access the optimizer's state
@@ -455,11 +431,11 @@ class FedDreamFastServer(BaseServer):
                                         tag=self.tag.FINAL_GLOBAL_REPS)                   
         if self.adaptive_distill:
             self.dset.append((self.reps, acts))
-        if self.log_console:
-                self.log_utils.log_tensor_to_disk((self.reps, acts), f"node", self.round)
-                # Only store first three channel and 64 images for a 8x8 grid
-                imgs = reps[:64, :3]
-                self.log_utils.log_image(imgs, f"reps", self.round)
+        # if self.log_console:
+        #         self.log_utils.log_tensor_to_disk((self.reps, acts), f"node", self.round)
+        #         # Only store first three channel and 64 images for a 8x8 grid
+        #         imgs = reps[:64, :3]
+        #         self.log_utils.log_image(imgs, f"reps", self.round)
     
     def single_round_fast(self):
         start = time.time()

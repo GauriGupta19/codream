@@ -5,6 +5,8 @@ from algos.dare import DAREClient, DAREServer
 from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.feddream import FedDreamClient, FedDreamServer
 from algos.feddream_fast import FedDreamFastClient, FedDreamFastServer
+from algos.feddream_fast_independent import FedDreamFastClientIndp, FedDreamFastServerIndp
+from algos.feddream_fast_noniid import FedDreamFastNoniidClient, FedDreamFastNoniidServer
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedClient, IsolatedServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
@@ -27,6 +29,8 @@ algo_map = {
     "scaffold": [SCAFFOLDServer, SCAFFOLDClient],
     "feddream": [FedDreamServer, FedDreamClient],
     "feddream_fast": [FedDreamFastServer, FedDreamFastClient],
+    "feddream_fast_indp": [FedDreamFastServerIndp, FedDreamFastClientIndp],
+    "feddream_fast_noniid": [FedDreamFastNoniidServer, FedDreamFastNoniidClient],
 }
 
 def get_node(config: dict, rank) -> BaseNode:

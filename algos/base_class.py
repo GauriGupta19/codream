@@ -105,6 +105,10 @@ class BaseClient(BaseNode):
         else:
             indices = np.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
+        self.class_counts = [0]*self.dset_obj.NUM_CLS
+        for (x, y) in dset:
+            self.class_counts[y] += 1
+        self.samples_per_client = [c/samples_per_client for c in self.class_counts]
         if len(self.device_ids) > 0:
             self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
         else:
