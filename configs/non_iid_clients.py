@@ -2,52 +2,14 @@ feddream_fast = {
     "seed": 4,
     "algo": "feddream_fast",
     "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast",
+    "exp_type": "non_iid_balanced_labels_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
     "dpath": "./imgs/cifar10",
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [4], "node_4": [5]},
-    "epochs": 400, "model": "resnet18",
-    "model_lr": 0.2, "batch_size": 256,
-    # optional for het models
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "resnet34", "2": "vgg11", "3": "wrn16_1", "4": "wrn40_1"},
-
-    # params for model
-    "position": 0, "inp_shape": [0, 3, 32, 32],
-    # Params for gradient descent on data
-    "global_steps": 1, "local_steps": 2, "nx_samples": 2, 
-    # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 10*256, 
-    "warmup": 20, "local_train_freq": 5,
-
-    # adaptive distillation parameters
-    "adaptive_server": True,  "adaptive_distill_start_round": 10, 
-
-    #fast-meta deepinversion parameters
-    "lr_z": 0.0015, "lr_g": 5e-3,
-    "adv": 1.33, "bn": 10, "oh": 0.5, "bn_mmt": 0.9,
-    "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
-
-    "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["alpha", "local_steps", "nx_samples", "optimizer_type", "dset_size", "heterogeneous_models"]
-}
-
-feddream_fast_noniid = {
-    "seed": 4,
-    "algo": "feddream_fast_noniid",
-    "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast_noniid_weighted_sum",
-    "load_existing": False,
-    "checkpoint_paths": {},
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
-    "dpath": "./imgs/cifar10",
-    # Learning setup
-    "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
     "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [4], "node_4": [5]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
@@ -57,9 +19,53 @@ feddream_fast_noniid = {
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
-    "global_steps": 1, "local_steps": 2, "nx_samples": 2, 
+    "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 10*256, 
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
+    "warmup": 150, "local_train_freq": 5,
+
+    # adaptive distillation parameters
+    "adaptive_server": True,  "adaptive_distill_start_round": 10, 
+
+    #fast-meta deepinversion parameters
+    "lr_z": 0.0015, "lr_g": 5e-3,
+    "adv": 1.33, "bn": 10, "oh": 0.5, "bn_mmt": 0.9,
+    "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
+
+    "log_console": True, "log_tb_freq": 1, 
+    "exp_keys": ["alpha", "local_steps", "warmup", "nx_samples", "dset_size"]
+}
+
+feddream_fast_noniid = {
+    "seed": 4,
+    "algo": "feddream_fast_noniid",
+    "exp_id": "distadam",
+    "exp_type": "non_iid_balanced_labels_fast_noniid",
+    "load_existing": False,
+    "checkpoint_paths": {
+        "1": "expt_dump/cifar10/alpha_0.1/non_iid_balanced_clients_feddream_fast_noniid_pretrained_cifar10_4clients_1000samples_distadam_alpha_0.1_local_steps_1_nx_samples_2_optimizer_type_avg_dset_size_2560_seed4/saved_models/user1.pt",
+        "2": "expt_dump/cifar10/alpha_0.1/non_iid_balanced_clients_feddream_fast_noniid_pretrained_cifar10_4clients_1000samples_distadam_alpha_0.1_local_steps_1_nx_samples_2_optimizer_type_avg_dset_size_2560_seed4/saved_models/user2.pt",
+        "3": "expt_dump/cifar10/alpha_0.1/non_iid_balanced_clients_feddream_fast_noniid_pretrained_cifar10_4clients_1000samples_distadam_alpha_0.1_local_steps_1_nx_samples_2_optimizer_type_avg_dset_size_2560_seed4/saved_models/user3.pt",
+        "4": "expt_dump/cifar10/alpha_0.1/non_iid_balanced_clients_feddream_fast_noniid_pretrained_cifar10_4clients_1000samples_distadam_alpha_0.1_local_steps_1_nx_samples_2_optimizer_type_avg_dset_size_2560_seed4/saved_models/user4.pt",
+
+    },
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
+    "dpath": "./imgs/cifar10",
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
+    "device_ids": {"node_0": [3], "node_1": [7], "node_2": [6], "node_3": [4], "node_4": [5]},
+    "epochs": 400, "model": "resnet18",
+    "model_lr": 0.2, "batch_size": 256,
+    # optional for het models
+    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "resnet34", "2": "vgg11", "3": "wrn16_1", "4": "wrn40_1"},
+
+    # params for model
+    "position": 0, "inp_shape": [0, 3, 32, 32],
+    # Params for gradient descent on data
+    "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
+    # for local training
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 5*256, 
     "warmup": 20, "local_train_freq": 5,
 
     # adaptive distillation parameters
@@ -71,7 +77,7 @@ feddream_fast_noniid = {
     "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
 
     "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["alpha", "local_steps", "nx_samples", "optimizer_type", "dset_size", "heterogeneous_models"]
+    "exp_keys": ["alpha", "local_steps", "nx_samples", "optimizer_type", "dset_size", "samples_per_label"]
 }
 
 non_iid_labels_clients_independent_dreams = {
@@ -239,7 +245,7 @@ non_iid_balanced_clients_collab = {
 fl = {
     "algo": "fedavg",
     "exp_id": 10,
-    "exp_type": "non_iid_balanced_clients_fl",
+    "exp_type": "non_iid_balanced_labels_fl",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
     "dpath": "./imgs/cifar10",
@@ -249,7 +255,7 @@ fl = {
     "device_ids": {"node_0": [3], "node_1": [3], "node_2": [6], "node_3": [6], "node_4": [7]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "alpha"]
@@ -300,8 +306,8 @@ centralized = {
 # current_config = non_iid_balanced_clients_independent
 # current_config = non_iid_balanced_clients_collab
 # current_config = feddream
-# current_config = feddream_fast
-current_config = feddream_fast_noniid
+current_config =  feddream_fast
+# current_config = feddream_fast_noniid
 # current_config = fl
 # current_config = isolated
 # current_config = centralized

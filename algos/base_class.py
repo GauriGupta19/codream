@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 import torch
 import numpy as np
 from utils.comm_utils import CommUtils
-from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced, non_iid_unbalanced_dataidx_map, plot_training_distribution
+from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced_clients, \
+                            non_iid_balanced_labels, non_iid_unbalanced_dataidx_map, plot_training_distribution
 from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
@@ -89,14 +90,22 @@ class BaseClient(BaseNode):
         batch_size = config["batch_size"]
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id - 1
-        if config["exp_type"].startswith("non_iid_balanced"):
+        if config["exp_type"].startswith("non_iid_balanced_clients"):
             #all nodes will eventually generate the same data
             print("starting creating data")
-            split_data = non_iid_balanced(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
+            split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             dset = Subset(train_dset, indices[client_idx]) 
-            print("using non_iid_balanced", config["alpha"])      
+            print("using non_iid_balanced", config["alpha"])   
+        elif config["exp_type"].startswith("non_iid_balanced_labels"):
+            #all nodes will eventually generate the same data
+            print("starting creating data")
+            split_data = non_iid_balanced_labels(self.dset_obj, config["num_clients"], config["samples_per_label"], config["alpha"])
+            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            indices, train_y = split_data
+            dset = Subset(train_dset, indices[client_idx]) 
+            print("using non_iid_balanced", config["alpha"])   
         elif config["exp_type"].startswith("non_iid_labels"):
             num_classes = config["class_per_client"]
             sp = np.arange(client_idx*num_classes, (client_idx+1)*num_classes)
@@ -109,10 +118,7 @@ class BaseClient(BaseNode):
         for (x, y) in dset:
             self.class_counts[y] += 1
         self.samples_per_client = [c/samples_per_client for c in self.class_counts]
-        if len(self.device_ids) > 0:
-            self.dloader = DataLoader(dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-        else:
-            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
+        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):

@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
-from utils.modules import DeepInversionHook, KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
+from utils.di_hook import DeepInversionHook
+from utils.modules import KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
 from torchvision import transforms
@@ -60,7 +61,6 @@ class FedDreamFastClient(BaseClient):
         self.synth_dset = CustomDataset(self.config, transform = None, buffer_size=self.dset_size)
         self.kl_loss_fn = KLDiv(T=20)
         self.hooks = []
-        self.bn_mmt = None
         self.bn_mmt = 0.9
         self.lr_z = self.config["lr_z"]
         self.lr_g = self.config["lr_g"]
@@ -112,6 +112,20 @@ class FedDreamFastClient(BaseClient):
                                                     self.dloader,
                                                     self.loss_fn,
                                                     self.device)
+        # if ((self.node_id==1 or self.node_id==4) and self.round<=60):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
+        # if (self.node_id==2 or self.node_id==3):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
         print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
         if self.round % self.local_train_freq == 0:
             synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
@@ -443,7 +457,7 @@ class FedDreamFastServer(BaseServer):
         self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
         self.generator.load_state_dict(self.meta_generator.state_dict())
         self.ep += 1
-        if (self.ep == 140) and self.reset_l0:
+        if (self.ep % 50 == 0) and self.reset_l0:
             reset_l0(self.generator)
         for it in range(self.global_steps):
             for client in self.clients:

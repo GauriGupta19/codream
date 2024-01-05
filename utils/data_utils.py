@@ -213,7 +213,7 @@ def get_dataset(dname, dpath):
                                                                         rate_unbalance)
     return obj"""
 
-def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
+def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, alpha=0.4):
     train_dset = dset_obj.train_dset
     n_classes = dset_obj.NUM_CLS
     
@@ -226,21 +226,49 @@ def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
         for k in range(n_classes):
             idx_k = np.where(labels == k)[0]
             np.random.shuffle(idx_k)
-            proportions = np.random.dirichlet(np.repeat(beta, n_parties))
+            proportions = np.random.dirichlet(np.repeat(alpha, n_parties))
             ## Balance
-            proportions = np.array([p * (len(idx_j) < N / n_parties) for p, idx_j in zip(proportions, idx_batch)])
+            # proportions = np.array([p * (len(idx_j) < N/n_parties) for p, idx_j in zip(proportions, idx_batch)])
             proportions = proportions / proportions.sum()
             proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
             idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
-            min_size = min([len(idx_j) for idx_j in idx_batch])
-
+        min_size = min([len(idx_j) for idx_j in idx_batch])
     net_dataidx_map = {}        
     for j in range(n_parties):
         np.random.shuffle(idx_batch[j])
         net_dataidx_map[j] = idx_batch[j]
     return net_dataidx_map
+
+def non_iid_balanced_labels(dset_obj, n_client, n_data_per_label, alpha=0.4):
+    train_dset = dset_obj.train_dset
+    n_classes = dset_obj.NUM_CLS
+    
+    N = len(train_dset)
+    labels = np.array(train_dset.targets)
+    min_size = 0
+    min_require_size = 10
+    while min_size < min_require_size:
+        idx_batch = [[] for _ in range(n_client)]
+        for k in range(n_classes):
+            idx_k = np.where(labels == k)[0][:n_data_per_label]
+            np.random.shuffle(idx_k)
+            proportions = np.random.dirichlet(np.repeat(alpha, n_client))
+            ## Balance
+            # proportions = np.array([p * (len(idx_j) < N / n_parties) for p, idx_j in zip(proportions, idx_batch)])
+            proportions = proportions / proportions.sum()
+            proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
+            idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
+        min_size = min([len(idx_j) for idx_j in idx_batch])
         
-def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4):    
+    indices = {} 
+    labels = {}       
+    for j in range(n_client):
+        np.random.shuffle(idx_batch[j])
+        indices[j] = idx_batch[j]
+        labels[j] = np.asarray([train_dset.targets[i] for i in idx_batch[j]])
+    return indices, labels
+        
+def non_iid_balanced_clients(dset_obj, n_client, n_data_per_clnt, alpha=0.4):    
     trn_y = np.array(dset_obj.train_dset.targets)
     trn_x = np.array(dset_obj.train_dset.data)
     n_cls = dset_obj.NUM_CLS

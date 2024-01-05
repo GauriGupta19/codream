@@ -12,8 +12,8 @@ from algos.algos import (synthesize_representations,
                          synthesize_representations_collaborative,
                          synthesize_representations_collaborative_parallel)
 from algos.base_class import BaseClient, BaseServer
-from utils.modules import (DeepInversionHook, kl_loss_fn,
-                           total_variation_loss)
+from utils.di_hook import DeepInversionHook
+from utils.modules import total_variation_loss
 
 #collaborative dreamns are generated and saved on the disk
 #adaptive distill: server model is also trained

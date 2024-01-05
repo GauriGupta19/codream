@@ -4,7 +4,8 @@ import time
 import torch.nn as nn
 import random, torch
 from torch.autograd import Variable
-from utils.modules import DeepInversionHook, total_variation_loss
+from utils.di_hook import DeepInversionHook
+from utils.modules import total_variation_loss
 from utils.model_utils import ModelUtils
 from torchvision import utils
 from utils.generator import Generator

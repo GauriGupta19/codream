@@ -1,6 +1,6 @@
 import numpy as np
 from torch.utils.data import DataLoader, Subset
-from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced, non_iid_unbalanced_dataidx_map, plot_training_distribution
+from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced_clients, non_iid_balanced_labels, non_iid_unbalanced_dataidx_map, plot_training_distribution
 from algos.base_class import BaseServer
 
 
@@ -21,15 +21,22 @@ class CentralizedServer(BaseServer):
         batch_size = config["batch_size"]
         # Subtracting 1 because rank 0 is the server
         client_idx = self.node_id
-        if config["exp_type"].startswith("non_iid_balanced"):
+        if config["exp_type"].startswith("non_iid_balanced_clients"):
             print("starting creating data")
-            split_data = non_iid_balanced(self.dset_obj, config["client_data_units"], config["samples_per_client"], config["alpha"])
+            split_data = non_iid_balanced_clients(self.dset_obj, config["client_data_units"], config["samples_per_client"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["client_data_units"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             indices = [item for sublist in indices for item in sublist]
             dset = Subset(train_dset, indices)  
-            
             print("using non_iid_balanced", config["alpha"])  
+        if config["exp_type"].startswith("non_iid_balanced_labels"):
+            print("starting creating data")
+            split_data = non_iid_balanced_labels(self.dset_obj, config["client_data_units"], config["samples_per_label"], config["alpha"])
+            plot_training_distribution(split_data[0], split_data[1], config["client_data_units"], self.dset_obj.NUM_CLS, config["saved_models"])
+            indices, train_y = split_data
+            indices = [item for sublist in indices for item in sublist]
+            dset = Subset(train_dset, indices)  
+            print("using non_iid_balanced", config["alpha"])
         elif config["exp_type"].startswith("non_iid_labels"):
             num_classes = config["class_per_client"]
             sp = np.arange(client_idx*num_classes, (client_idx+1)*num_classes)

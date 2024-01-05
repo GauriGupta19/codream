@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
-from utils.modules import DeepInversionHook, KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
+from utils.di_hook import DeepInversionHook
+from utils.modules import KLDiv, kldiv, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
 from torchvision import transforms
