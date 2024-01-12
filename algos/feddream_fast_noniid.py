@@ -1,21 +1,17 @@
-import math
-import pdb
 import time
-from typing import List, Tuple
-from collections import OrderedDict
+from typing import List
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
-from utils.modules import DeepInversionHook, KLDiv, kldiv, total_variation_loss, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu
-from torch.utils.data import TensorDataset, DataLoader
+from utils.di_hook import DeepInversionHook, get_weighted_bn_loss
+from utils.modules import KLDiv, kldiv, reptile_grad, fomaml_grad, reset_l0, reset_bn, put_on_cpu, \
+                            get_model_grads, aggregate_model_grads, adam_update,  adam_step, aggregate_models
+from torch.utils.data import DataLoader
 from utils.data_utils import CustomDataset
-from torchvision import transforms
-from kornia import augmentation
 from PIL import Image
-import torchvision.transforms as T
 
 
 ## change g_step-setup for 10, after aug input same to each model, ismaml, 
@@ -62,7 +58,6 @@ class FedDreamFastNoniidClient(BaseClient):
         self.synth_dset = CustomDataset(self.config, transform = None, buffer_size=self.dset_size)
         self.kl_loss_fn = KLDiv(T=20)
         self.hooks = []
-        self.bn_mmt = None
         self.bn_mmt = 0.9
         self.lr_z = self.config["lr_z"]
         self.lr_g = self.config["lr_g"]
@@ -78,7 +73,7 @@ class FedDreamFastNoniidClient(BaseClient):
         self.aug = self.dset_obj.gen_transform
         for module in self.model.modules():
             if isinstance(module, nn.BatchNorm2d):
-                self.hooks.append(DeepInversionHook(module))           
+                self.hooks.append(DeepInversionHook(module, self.bn_mmt))           
 
     def local_warmup(self):
         warmup = self.config["warmup"]
@@ -104,31 +99,102 @@ class FedDreamFastNoniidClient(BaseClient):
         # save the model if the test loss is lower than the best loss
         if test_loss < self.best_loss:
             self.best_loss = test_loss
-            # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+            self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
         
+    def train(self, model:nn.Module, optim, batch1, batch2, loss_fn, device: torch.device, **kwargs):
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        total_samples = 0
+        # for batch_idx, (data, target) in enumerate(dloader):
+        data1, target1 = batch1
+        data1, target1 = data1.to(device), target1.to(device)
+        
+        data2, target2 = batch2
+        data2, target2 = data2.to(device), target2.to(device)
+        data2 = data2.view(data2.size(0) * data2.size(1), *data2.size()[2:])
+        target2 = target2.view(target2.size(0) * target2.size(1), *target2.size()[2:])
+        
+        total_samples += data1.size(0)
+        total_samples += data2.size(0)
+        optim.zero_grad()
+        
+        output1 = model(data1)
+        output2 = model(data2)
+
+        if kwargs.get("apply_softmax", False):
+            output = nn.functional.log_softmax(output, dim=1) # type: ignore
+        if len(target1.size()) > 1 and target1.size(1) == 1:
+            target1 = target1.squeeze(dim=1)
+        if len(target2.size()) > 1 and target2.size(1) == 1:
+            target2 = target2.squeeze(dim=1)
+
+        loss1 = self.loss_fn(output1, target1)
+        loss2 = self.kl_loss_fn(output2, target2)
+        loss = loss1+loss2
+
+        loss.backward()
+        optim.step()
+        train_loss += loss.item()
+        pred1 = output1.argmax(dim=1, keepdim=True)
+        # view_as() is used to make sure the shape of pred and target are the same
+        if len(target1.size()) > 1:
+            target1 = target1.argmax(dim=1, keepdim=True)
+        correct += pred1.eq(target1.view_as(pred1)).sum().item()
+        pred2 = output2.argmax(dim=1, keepdim=True)
+        # view_as() is used to make sure the shape of pred and target are the same
+        if len(target2.size()) > 1:
+            target2 = target2.argmax(dim=1, keepdim=True)
+        correct += pred2.eq(target2.view_as(pred2)).sum().item()
+        acc = correct / total_samples
+        return train_loss, acc
+    
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
-        for _ in range(5):
-            tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                    self.optim,
-                                                    self.dloader,
-                                                    self.loss_fn,
-                                                    self.device)
-        print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
+        synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
         if self.round % self.local_train_freq == 0:
-            synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
-            for epoch in range(self.config["distill_epochs"]):
-                # Train the model using the selected representations
-                student_loss, student_acc = self.model_utils.train(self.model,
-                                                                    self.optim,
-                                                                    synth_dloader,
-                                                                    self.kl_loss_fn,
-                                                                    self.device,
-                                                                    apply_softmax=True,
-                                                                    position=self.position,
-                                                                    extra_batch=True)
-            # self.synth_dset.reset()
-            print("student_loss: {}, student_acc: {} at client {}".format(student_loss, student_acc, self.node_id))
+            for i in range(len(synth_dloader)):
+                batch1 = next(iter(self.dloader))
+                batch2 = next(iter(synth_dloader))
+                for epoch in range(self.config["distill_epochs"]):
+                    tr_loss, tr_acc = self.train(self.model,
+                                                self.optim,
+                                                batch1,
+                                                batch2,
+                                                self.loss_fn,
+                                                self.device)
+        # if ((self.node_id==1 or self.node_id==4) and self.round<=60):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
+        # if ((self.node_id==2 or self.node_id==3)):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
+        # print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
+        # if self.round % self.local_train_freq == 0:
+        #     synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
+        #     for epoch in range(self.config["distill_epochs"]):
+        #     # for epoch in range(20):
+        #         # Train the model using the selected representations
+        #         student_loss, student_acc = self.model_utils.train(self.model,
+        #                                                             self.optim,
+        #                                                             synth_dloader,
+        #                                                             self.kl_loss_fn,
+        #                                                             self.device,
+        #                                                             apply_softmax=True,
+        #                                                             position=self.position,
+        #                                                             extra_batch=True)
+        #     # self.synth_dset.reset()
+        #     print("student_loss: {}, student_acc: {} at client {}".format(student_loss, student_acc, self.node_id))
         if self.round % self.log_tb_freq == 0:
             test_loss, test_acc = self.model_utils.test(self.model,
                                                         self._test_loader,
@@ -140,7 +206,7 @@ class FedDreamFastNoniidClient(BaseClient):
                                 test_loss, test_acc]
         return
 
-    def add_dreams(self):
+    def add_dreams(self, targets):
         # Wait for the server to send the latest representations
         reps = self.comm_utils.wait_for_signal(src = self.server_node,
                                                 tag = self.tag.START_DISTILL)
@@ -159,76 +225,75 @@ class FedDreamFastNoniidClient(BaseClient):
         # self.utils.logger.log_image(rep, f"client{self.node_id-1}", epoch)
         # self.log_utils.log_console("Round {} done".format(round))
         self.synth_dset.append((x, y))
-
-    def get_weighted_bn_loss(self, weights):
-        #TODO: with momentum, cuurently for bn_mmt=1/None
-        loss_bn = 0
-        for (idx, model) in enumerate(self.hooks):
-                if hasattr(model, "r_feature"):
-                    r_feature = torch.norm((model.module.running_var.data - model.tmp_val[1])*weights ,2) + \
-                        torch.norm((model.module.running_mean.data - model.tmp_val[0])*weights, 2)
-                    loss_bn += r_feature
-        return loss_bn
+        # self.synth_dset.append((x, targets))
 
     def fast_synthesize(self, reps, targets, weights):
         self.model.eval()
         self.z.data = reps.clone().detach().requires_grad_(True)
+        generator_grads = None
         for _ in range(self.local_steps):
             self.model.zero_grad()
             inputs = self.generator(self.z)
             inputs = self.aug(inputs) # crop and normalize
             t_out = self.model(inputs)
-            loss_oh = F.cross_entropy(t_out, targets, 
-                                      weight = torch.tensor(self.label_weights, dtype=torch.float32).to(self.device), 
-                                      reduction='sum')
+            label_weights = torch.tensor(self.label_weights, dtype=torch.float32).to(self.device)
+            loss_oh = F.cross_entropy(t_out, targets, weight = label_weights)
+            # loss_oh = F.cross_entropy(t_out, targets)
             # probs = torch.softmax(t_out, dim=1)
             # entropy = -torch.sum(probs * torch.log(probs  + self.EPS), dim=1).mean()
-            # loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")])
-            loss_bn = self.get_weighted_bn_loss(weights)
+            loss_bn = sum([model.r_feature for (idx, model) in enumerate(self.hooks) if hasattr(model, "r_feature")])
             loss_adv = loss_oh.new_zeros(1)
             if self.adv>0 and (self.round >= 15):
                 s_out = self.s_model(inputs)
                 mask = (s_out.max(1)[1]==t_out.max(1)[1]).float()
-                # loss_adv = -(kldiv(s_out, t_out, reduction='none').sum(1) * mask).mean() # decision adversarial distillation
-                loss_adv = -((kldiv(s_out, t_out, reduction='none').sum(1) * mask) * weights).sum() # decision adversarial distillation
+                mask = mask * weights.view(-1,)
+                loss_adv = -(kldiv(s_out, t_out, reduction='none').sum(1) * mask).mean() # decision adversarial distillation
             loss = self.oh * loss_oh + self.bn * loss_bn + self.adv * loss_adv
             self.optimizer.zero_grad()
             loss.backward()
+            generator_grads = get_model_grads(self.generator)
+            # aggregate_model_grads([generator_grads], self.generator, self.device)
+            # adam_step(self.optimizer)
             self.optimizer.step()
-        if self.optimizer_type=="avg":
-            return self.z
-        elif self.optimizer_type=="adam":
-            return self.z.grad
-        elif self.optimizer_type=="fedadam":
-            return self.z - reps.clone().detach()
-        return self.z
-        
+        # if self.optimizer_type=="avg":
+        #     return self.z
+        # elif self.optimizer_type=="adam":
+        #     return self.z.grad
+        # elif self.optimizer_type=="fedadam":
+        #     return self.z - reps.clone().detach()
+        return self.z, None
+        # return self.z.grad, generator_grads
     
     def single_round_fast(self):
         self.model.eval()
+        targets, weights = None, None
         for g_step in range(self.global_steps):
+            if g_step==0:
+                targets = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                    tag=self.tag.START_GEN_REPS)
+                weights = self.label_weights[targets.numpy()].reshape(-1, 1)
+                weights = torch.tensor(weights, dtype=torch.float32).to(self.device)
+                targets = targets.to(self.device)
             # Wait for the server to send the latest representations
             gen_state = self.comm_utils.wait_for_signal(src=self.server_node,
                                                         tag=self.tag.GENERATOR_UPDATES)
             self.generator.load_state_dict(gen_state)
             reps = self.comm_utils.wait_for_signal(src=self.server_node,
                                                     tag=self.tag.START_GEN_REPS)
-            targets = self.comm_utils.wait_for_signal(src=self.server_node,
-                                                    tag=self.tag.START_GEN_REPS)
-            weights = self.label_weights[targets.numpy()].reshape(-1, 1)
-            weights = torch.tensor(weights, dtype=torch.float32).to(self.device)
             reps = reps.to(self.device)
-            targets = targets.to(self.device)
             if g_step==0:
                 self.z = reps.clone().detach().requires_grad_(True)
                 self.optimizer = torch.optim.Adam([
                     {'params': self.generator.parameters()},
                     {'params': [self.z], 'lr': self.lr_z}
                 ], lr=self.lr_g, betas=[0.5, 0.999])
-            grads = self.fast_synthesize(reps, targets, weights)
+            z_grads, generator_grads = self.fast_synthesize(reps, targets, weights)
             # Send the grads to the server
             self.comm_utils.send_signal(dest=self.server_node,
-                                        data=grads.to("cpu"),
+                                        data=z_grads.to("cpu"),
+                                        tag=self.tag.REPS_DONE)
+            self.comm_utils.send_signal(dest=self.server_node,
+                                        data=generator_grads,
                                         tag=self.tag.REPS_DONE)
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=put_on_cpu(self.generator.state_dict()),
@@ -236,7 +301,7 @@ class FedDreamFastNoniidClient(BaseClient):
         if self.bn_mmt != 0:
             for h in self.hooks:
                 h.update_mmt()  
-        self.add_dreams()
+        self.add_dreams(targets)
     
     def run_protocol(self):
         # Wait for the server to signal to start local warmup rounds
@@ -253,7 +318,7 @@ class FedDreamFastNoniidClient(BaseClient):
                                                     self.device)
             print("test_acc {}".format(test_acc))
             # self.log_utils.log_console("Local warmup rounds done")
-        # # Signal to the server that the local warmup rounds are done
+        # # Signal to the server that the local warmup rounds are done                                         
         self.comm_utils.send_signal(dest=self.server_node,
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
@@ -262,6 +327,7 @@ class FedDreamFastNoniidClient(BaseClient):
                                     tag=self.tag.DONE_WARMUP)
         self.label_weights = self.comm_utils.wait_for_signal(src=self.server_node,
                                                   tag=self.tag.DONE_WARMUP)
+        # self.label_weights = np.array(self.class_counts) / (np.sum(self.class_counts))   
         start_epochs = self.config.get("start_epochs", 0)
         self.s_model = self.model_utils.get_model("resnet18", self.config["dset"], 
                                    self.device, self.device_ids, num_classes=10)
@@ -329,7 +395,7 @@ class FedDreamFastNoniidServer(BaseServer):
         self.meta_generator = Generator(nz=self.nz, ngf=64, img_size=self.config["inp_shape"][-1], nc=self.config["inp_shape"][1]).to(self.device)
         self.generator = Generator(nz=self.nz, ngf=64, img_size=self.config["inp_shape"][-1], nc=self.config["inp_shape"][1]).to(self.device)
         self.meta_optimizer = torch.optim.Adam(self.meta_generator.parameters(), 
-                                               self.lr_g*self.local_steps, betas=[0.5, 0.999])
+                                               self.lr_g*self.local_steps*self.global_steps, betas=[0.5, 0.999])
     
     def get_label_weights(self):
         self.clients_class_counts = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.DONE_WARMUP)
@@ -346,73 +412,7 @@ class FedDreamFastNoniidServer(BaseServer):
             label_weights.append( np.array(weights) / (np.sum(weights) + self.EPS))
         label_weights = np.array(label_weights).reshape((self.unique_labels, -1))
         return label_weights, qualified_labels
-
-    def aggregate(self, model_wts, weights=None, reduction='avg'):
-        """
-        Aggregaste the model weights
-        """
-        # avg_wts = self.fed_avg(model_wts)
-        # All models are sampled currently at every round
-        # Each model is assumed to have equal amount of data and hence
-        # coeff is same for everyone
-        num_clients = len(model_wts)
-        # coeff = 1 / num_clients
-        avgd_wts = OrderedDict()
-        first_model = model_wts[0]
-
-        for client_num in range(num_clients):
-            local_wts = model_wts[client_num]
-            for key in first_model.keys():
-                if weights is not None:
-                    coeff = weights[client_num]  
-                elif reduction=='sum':
-                    coeff = 1
-                else:
-                    coeff = 1 / num_clients
-                if client_num == 0:
-                    avgd_wts[key] = coeff * local_wts[key]
-                else:
-                    avgd_wts[key] += coeff * local_wts[key]
-        return avgd_wts 
     
-    def adam_update(self, grad):
-        betas = self.data_optimizer.param_groups[0]['betas']
-        # access the optimizer's state
-        state = self.data_optimizer.state[self.reps]
-        if 'exp_avg' not in state:
-            state['exp_avg'] = torch.zeros_like(self.reps.data)
-        if 'exp_avg_sq' not in state:
-            state['exp_avg_sq'] = torch.zeros_like(self.reps.data)
-        if 'step' not in state:
-            state['step'] = 1
-        exp_avg = state['exp_avg']
-        exp_avg_sq = state['exp_avg_sq']
-        bias_correction1 = 1 - betas[0] ** state['step']
-        bias_correction2 = 1 - betas[1] ** state['step']
-        exp_avg.mul_(betas[0]).add_(grad, alpha=1 - betas[0])
-        exp_avg_sq.mul_(betas[1]).addcmul_(grad, grad, value=1 - betas[1])
-        denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(self.data_optimizer.param_groups[0]['eps'])
-        step_size = self.data_optimizer.param_groups[0]['lr'] / bias_correction1
-        self.reps.data.addcdiv_(exp_avg, denom, value=-step_size)
-        self.data_optimizer.state[self.reps]['step'] += 1
-
-        # # ---- FedAdam ----
-        # lr = self.config["lr_z"]
-        # betas = self.data_optimizer.param_groups[0]['betas']
-        # beta_1 = 0.9
-        # beta_2 = 0.99
-        # tau = 1e-9
-        # state = self.data_optimizer.state[self.reps]
-        # if "m" not in state:
-        #     state["m"] = torch.zeros_like(self.reps.data)
-        # if "v" not in state:
-        #     state["v"] = torch.zeros_like(self.reps.data)
-        # state["m"] = beta_1 * state["m"] + (1 - beta_1) * grad
-        # state["v"] = beta_2 * state["v"] + (1 - beta_2) * grad**2
-        # update = self.reps.data + lr * state["m"] / (state["v"] ** 0.5 + tau)
-        # update = update.detach()
-        # self.reps.data = update
-
     def update_stats(self, stats: List[List[float]]):
         """
         Updates the statistics from all the clients
@@ -476,6 +476,7 @@ class FedDreamFastNoniidServer(BaseServer):
         acts = acts.detach()
         # acts = torch.stack(acts)
         # acts = acts.mean(dim=0)
+        # acts = acts.detach()
         # acts = torch.log_softmax(acts, dim=1)
         for client in self.clients:
             self.comm_utils.send_signal(dest=client,
@@ -491,59 +492,55 @@ class FedDreamFastNoniidServer(BaseServer):
     
     def single_round_fast(self):
         start = time.time()
+        self.ep += 1
         self.reps = torch.randn(size=(self.distill_batch_size, self.nz), device=self.device).requires_grad_()
         # self.targets = torch.randint(low=0, high=self.dset_obj.NUM_CLS, size=(self.distill_batch_size,))
-        # self.label = torch.randint(low=0, high=self.dset_obj.NUM_CLS, size=(1,)).item()
-        # self.targets = torch.full(size=(self.distill_batch_size,), fill_value=self.label)
         self.targets = np.random.choice(self.qualified_labels, self.distill_batch_size)
         self.targets = torch.LongTensor(self.targets)
-        self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
         self.generator.load_state_dict(self.meta_generator.state_dict())
-        self.ep += 1
         if (self.ep == 140) and self.reset_l0:
             reset_l0(self.generator)
+        self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
+        self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr_g, betas=[0.5, 0.999])
         for it in range(self.global_steps):
             for client in self.clients:
+                if it==0:
+                    self.comm_utils.send_signal(dest=client, data=self.targets.to("cpu"), tag=self.tag.START_GEN_REPS)
                 self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.generator.state_dict()), 
                                             tag=self.tag.GENERATOR_UPDATES)
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)
-                self.comm_utils.send_signal(dest=client, data=self.targets.to("cpu"), tag=self.tag.START_GEN_REPS)
-            grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
-            # grads = sum([grad*(self.clients_class_probs[i][self.targets]) for i, grad in enumerate(grads)]).to(self.device)
-            grads = torch.stack(grads).to(self.device)
-            grads = grads.sum(dim=0) 
-            # if self.adaptive_distill and self.round > self.adaptive_distill_start_round:
-            #     # pass reps on the local model and get the gradients
-            #     z_server = self.reps.clone().detach().requires_grad_(True)
-            #     inputs = self.generator(z_server)
-            #     inputs = self.aug(inputs) # crop and normalize
-            #     acts = self.model(inputs)
-            #     probs = torch.softmax(acts, dim=1)
-            #     entropy = -torch.sum(probs * torch.log(probs + self.EPS), dim=1).mean()
-            #     loss = entropy
-            #     loss.backward()
-            #     server_grads = z_server.grad
-            #     # negative gradient update to maximize entropy of the server model
-            #     grads = grads - self.adv * server_grads
-            if self.optimizer_type=="avg":
-                self.reps = grads
-            if self.optimizer_type=="adam":
-                self.adam_update(grads)
+            z_grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
+            generator_grads = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.REPS_DONE)
+            z_grads = torch.stack(z_grads).to(self.device)
+            z_grads = z_grads.mean(dim=0)
+            
+            self.reps = z_grads
+            # self.data_optimizer.zero_grad()
+            # self.generator_optimizer.zero_grad()
+            # self.reps.grad = z_grads
+            # aggregate_model_grads(generator_grads, self.generator, self.device)
+            # self.data_optimizer.step()
+            # self.generator_optimizer.step()
+            # adam_step(self.data_optimizer)
+            # adam_step(self.generator_optimizer)
+            # if self.optimizer_type=="avg":
+            #     self.reps = grads
+            # if self.optimizer_type=="adam":
+            #     self.adam_update(grads)
             gen_state_dict = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.GENERATOR_DONE)
-            # avg_gen_state_dict = self.aggregate(gen_state_dict, self.probs_for_label[self.label])
-            avg_gen_state_dict = self.aggregate(gen_state_dict, reduction='sum')
+            avg_gen_state_dict = aggregate_models(gen_state_dict)
             self.generator.load_state_dict(avg_gen_state_dict)
             if self.ismaml:
                 if it==0: self.meta_optimizer.zero_grad()
                 fomaml_grad(self.meta_generator, self.generator, self.device)
                 if it == (self.global_steps-1): self.meta_optimizer.step()
+        self.reps = self.generator(self.reps)
+        self.add_dreams()
         # REPTILE meta gradient
         if not self.ismaml:
             self.meta_optimizer.zero_grad()
             reptile_grad(self.meta_generator, self.generator, self.device)
             self.meta_optimizer.step()
-        self.reps = self.generator(self.reps)
-        self.add_dreams()
         end = time.time()
         if self.log_console:
             self.log_utils.log_console(f"Time taken: {end - start} seconds")
