@@ -29,7 +29,7 @@ class CentralizedServer(BaseServer):
             indices = [item for sublist in indices for item in sublist]
             dset = Subset(train_dset, indices)  
             print("using non_iid_balanced", config["alpha"])  
-        if config["exp_type"].startswith("non_iid_balanced_labels"):
+        elif config["exp_type"].startswith("non_iid_balanced_labels"):
             print("starting creating data")
             split_data = non_iid_balanced_labels(self.dset_obj, config["client_data_units"], config["samples_per_label"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["client_data_units"], self.dset_obj.NUM_CLS, config["saved_models"])
@@ -86,15 +86,15 @@ class CentralizedServer(BaseServer):
             self.log_utils.log_console("Starting round {}".format(round))
             
             loss, tr_acc = self.train()
-            self.log_utils.log_tb(f"train_loss/clients", loss, round)
+            self.log_utils.log_tb(f"train_loss", loss, round)
             self.log_utils.log_console("round: {} train_loss:{:.4f}".format(
                 round, loss
             ))
             
-            acc = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            test_acc = self.test()
+            self.log_utils.log_tb(f"test_acc", test_acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
-                round, acc
+                round, test_acc
             ))
             self.log_utils.log_console("Round {} done".format(round))
         self.log_utils.log_console("Isolated client training over")

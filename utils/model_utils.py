@@ -144,6 +144,7 @@ class ModelUtils():
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             optim.zero_grad()
@@ -156,7 +157,7 @@ class ModelUtils():
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1) # type: ignore
             loss = loss_fn(output, target)
-            
+            total_samples += data.size(0)
             _, feat_g = gloabl_model(data, position=position, out_feature=True)
             posi = cos(feat, feat_g)
             logits = posi.reshape(-1,1)

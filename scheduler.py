@@ -20,7 +20,7 @@ from utils.config_utils import load_config
 # If rank is 0, then it returns the server class otherwise the client class
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
-    "isolated": [IsolatedClient, IsolatedServer],
+    "isolated": [IsolatedServer, IsolatedClient],
     "fedprox": [FedProxServer, FedProxClient],
     "moon": [MoonServer, MoonClient],
     "centralized": [CentralizedServer],

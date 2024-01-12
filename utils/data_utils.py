@@ -10,6 +10,7 @@ from torch.utils.data import Subset, Dataset
 from PIL import Image
 from glob import glob
 import matplotlib.pyplot as plt
+import os
 
 class CustomDataset(Dataset):
     def __init__(self, config, transform = None, buffer_size=1*256):
@@ -46,7 +47,7 @@ class CustomDataset(Dataset):
     def reset(self):
        self.samples = [] 
         
-class PathMNIST_DSET():
+class PathMNIST_DSET(Dataset):
     def __init__(self, dpath) -> None:
         dpath = "./imgs/"
         self.IMAGE_SIZE = 28
@@ -57,9 +58,13 @@ class PathMNIST_DSET():
         info = medmnist.INFO[data_flag]
         self.num_channels = info['n_channels']
         self.data_class = getattr(medmnist, info['python_class'])
-        transform = T.Compose([T.ToTensor(), T.Normalize(mean=[.5], std=[.5])])
-        self.train_dset = self.data_class(root=dpath, split='train', transform=transform, download=True)
-        self.test_dset = self.data_class(root=dpath, split='test', transform=transform, download=True)
+        self.train_transform = T.Compose([T.ToTensor(), T.Normalize(mean=[.5], std=[.5])])
+        self.gen_transform = T.Compose([T.Normalize(mean=[.5], std=[.5])])
+        self.train_dset = self.data_class(root=dpath, split='train', transform=self.train_transform, download=True)
+        self.test_dset = self.data_class(root=dpath, split='test', transform=self.train_transform, download=True)
+        npz_file = np.load(os.path.join(dpath, "{}.npz".format(data_flag)))
+        self.train_dset.targets = npz_file['train_labels']
+        self.train_dset.data = npz_file['train_images']
 
 class CIFAR100_DSET():
     def __init__(self, dset) -> None:
@@ -195,8 +200,7 @@ class MNIST_DSET():
         self.test_dset = MNIST(
             root=dpath, train=False, download=True, transform=test_transform
         )
-
-        
+       
 def get_dataset(dname, dpath):
     dset_mapping = {"cifar10": CIFAR10_DSET,
                     "mnist": MNIST_DSET,
@@ -270,10 +274,10 @@ def non_iid_balanced_labels(dset_obj, n_client, n_data_per_label, alpha=0.4):
         
 def non_iid_balanced_clients(dset_obj, n_client, n_data_per_clnt, alpha=0.4):    
     trn_y = np.array(dset_obj.train_dset.targets)
-    trn_x = np.array(dset_obj.train_dset.data)
+    # trn_x = np.array(dset_obj.train_dset.data)
     n_cls = dset_obj.NUM_CLS
-    height = width = dset_obj.IMAGE_SIZE
-    channels = dset_obj.num_channels
+    # height = width = dset_obj.IMAGE_SIZE
+    # channels = dset_obj.num_channels
     clnt_data_list = (np.ones(n_client) * n_data_per_clnt).astype(int)
     cls_priors   = np.random.dirichlet(alpha=[alpha]*n_cls,size=n_client)
     prior_cumsum = np.cumsum(cls_priors, axis=1)

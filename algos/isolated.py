@@ -56,7 +56,6 @@ class IsolatedClient(BaseClient):
             self.comm_utils.send_signal(dest=self.server_node, data=test_acc, tag=self.tag.CLIENT_STATS)
             # self.log_utils.logging.info("Round {} done".format(round))
 
-
 class IsolatedServer(BaseServer):
     def __init__(self, config) -> None:
         super().__init__(config)

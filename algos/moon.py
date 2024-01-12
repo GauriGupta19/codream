@@ -200,10 +200,10 @@ class MoonServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
-            acc = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            test_acc = self.test()
+            self.log_utils.log_tb(f"test_acc", test_acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
-                round, acc
+                round, test_acc
             ))
             self.log_utils.log_console("round: {} Best test_acc:{:.4f}".format(
                 round, self.best_acc

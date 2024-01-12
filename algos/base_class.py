@@ -116,6 +116,8 @@ class BaseClient(BaseNode):
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
         self.class_counts = [0]*self.dset_obj.NUM_CLS
         for (x, y) in dset:
+            if not isinstance(y, int):
+                y = y.item()
             self.class_counts[y] += 1
         self.samples_per_client = [c/samples_per_client for c in self.class_counts]
         self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)

@@ -3,29 +3,29 @@ feddream_fast = {
     # adaptive_distill_start_round: 30 also works fine
     # need not wait for gen warmup, can start client training immediately
     "seed": 4,
-    "algo": "feddream_fast_noniid",
+    "algo": "feddream_fast",
     "exp_id": "fast",
-    "exp_type": "iid_clients_feddream_fast_noniid_test_fedadam_step",
+    "exp_type": "iid_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "pathmnist",
+    "dump_dir": "./expt_dump/pathmnist/iid/",
+    "dpath": "./imgs/pathmnist",
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [4], "node_4": [5]},
+    "device_ids": {"node_0": [1], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
-    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "resnet34", "2": "vgg11", "3": "wrn16_1", "4": "wrn40_1"},
+    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
     
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
-    "global_steps": 2, "local_steps": 1, "nx_samples": 2, 
+    "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 10*256, 
-    "warmup": 150, "local_train_freq": 5,
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
+    "warmup": 20, "local_train_freq": 5,
 
     # adaptive distillation parameters
     "adaptive_server": True,  "adaptive_distill_start_round": 10, 
@@ -90,10 +90,44 @@ fl = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 12, "samples_per_client": 2000,
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [4], "node_4": [5],
-                   "node_5": [0], "node_6": [1], "node_7": [2], "node_8": [4], "node_9": [5],
-                   "node_10": [3], "node_11": [3], "node_12": [6], "node_13": [6]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "seed"]
+}
+
+fedprox = {
+    "algo": "fedprox",
+    "exp_id": 10,
+    "exp_type": "iid_clients_fedprox",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
+    "seed": 4,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "seed"]
+}
+
+moon = {
+    "algo": "moon",
+    "exp_id": 10,
+    "exp_type": "iid_clients_moon",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
+    "seed": 4,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -252,18 +286,21 @@ feddream = {
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
-    "exp_type": "iid_clients_isolated",
+    "exp_type": "iid_clients_isolated_heterogeneous",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [1], "node_1": [1], "node_2": [2], "node_3": [2], "node_4": [3]},
+    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [0], "node_3": [3], "node_4": [3]},
 
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
     "epochs": 400, "local_runs": 5,
+    # optional for het models
+    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
@@ -277,7 +314,7 @@ centralized = {
     "dpath": "./imgs/cifar10",
     "seed": 4,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [1]},
+    "device_ids": {"node_0": [7]},
 
     # Learning setup
     "num_clients": 1, "samples_per_client": 4000,
@@ -293,5 +330,7 @@ centralized = {
 current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
+# current_config = fedprox
+# current_config = moon
 # current_config = isolated
 # current_config = centralized
