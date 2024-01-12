@@ -112,14 +112,14 @@ class FedDreamFastClient(BaseClient):
                                                     self.dloader,
                                                     self.loss_fn,
                                                     self.device)
-        # if ((self.node_id==1 or self.node_id==4) and self.round<=60):
+        # if ((self.node_id==3) and self.round<=60):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
         #                                                 self.optim,
         #                                                 self.dloader,
         #                                                 self.loss_fn,
         #                                                 self.device)
-        # if (self.node_id==2 or self.node_id==3):
+        # if ((self.node_id==1 or self.node_id==2) or self.node_id==4):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
         #                                                 self.optim,
@@ -251,8 +251,9 @@ class FedDreamFastClient(BaseClient):
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
         start_epochs = self.config.get("start_epochs", 0)
-        self.s_model = self.model_utils.get_model("resnet18", self.config["dset"], 
-                                   self.device, self.device_ids, num_classes=10)
+        s_model = self.config["models"]["0"] if "models" in self.config  else self.config["model"]
+        self.s_model = self.model_utils.get_model(s_model, self.config["dset"], 
+                                   self.device, self.device_ids, num_classes=self.dset_obj.NUM_CLS)
         for round in range(start_epochs, self.epochs):
             s_state = self.comm_utils.wait_for_signal(src=self.server_node,
                                                         tag=self.tag.STUDENT_UPDATES)
