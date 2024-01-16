@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10, CIFAR100
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, SVHN, EMNIST
 import medmnist
 from torch.utils.data import Subset, Dataset
 from PIL import Image
@@ -201,11 +201,56 @@ class MNIST_DSET():
             root=dpath, train=False, download=True, transform=test_transform
         )
        
+class SVHN_DSET():
+    def __init__(self, dpath) -> None:
+        self.IMAGE_SIZE = 32
+        self.NUM_CLS = 10
+        self.num_channels = 3
+        self.gen_transform = T.Compose(
+            [T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),]
+        )
+        self.train_transform = T.Compose(
+            [
+                T.ToTensor(),
+                T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+        self.train_dset = SVHN(
+            root=dpath, split='train', download=True, transform=self.train_transform
+        )
+        self.test_dset = SVHN(
+            root=dpath, split='test', download=True, transform=self.train_transform
+        )
+        self.train_dset.targets = self.train_dset.labels
+
+class EMNIST_DSET():
+    def __init__(self, dpath) -> None:
+        self.IMAGE_SIZE = 28
+        self.NUM_CLS = 10
+        self.num_channels = 1
+        self.gen_transform = T.Compose(
+            [T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),]
+        )
+        self.train_transform = T.Compose(
+            [
+                T.ToTensor(),
+                T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+        self.train_dset = EMNIST(
+            root=dpath, train=True, split='balanced', download=True, transform=self.train_transform
+        )
+        self.test_dset = EMNIST(
+            root=dpath, train=False, split='balanced', download=True, transform=self.train_transform
+        )
+            
 def get_dataset(dname, dpath):
     dset_mapping = {"cifar10": CIFAR10_DSET,
                     "mnist": MNIST_DSET,
                     "cifar100": CIFAR100_DSET,
-                    "pathmnist": PathMNIST_DSET}
+                    "pathmnist": PathMNIST_DSET,
+                    "emnist": EMNIST_DSET,
+                    "svhn": SVHN_DSET}
     return dset_mapping[dname](dpath)
 
 """def get_noniid_dataset(dname, dpath, num_users, n_class, nsamples, rate_unbalance):
