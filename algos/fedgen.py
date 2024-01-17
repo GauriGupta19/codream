@@ -2,10 +2,13 @@ import torch
 import numpy as np
 import copy
 
+from typing import Any, Dict, List, Tuple
+from torch import Tensor
+import torch.nn as nn
+
 from algos.base_class import BaseClient, BaseServer
 
-# Based on https://github.com/TsingZ0/PFLlib/tree/master
-
+# Based on https://github.com/TsingZ0/PFLlib
 
 class CommProtocol(object):
     """
