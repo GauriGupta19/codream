@@ -4,9 +4,7 @@ import time
 from typing import List, Tuple
 from collections import OrderedDict
 import torch
-import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
 from utils.di_hook import DeepInversionHook
@@ -105,37 +103,86 @@ class FedDreamFastClient(BaseClient):
         if test_loss < self.best_loss:
             self.best_loss = test_loss
             # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+
+    def train(self, model:nn.Module, optim, batch1, batch2, loss_fn, device: torch.device, **kwargs):
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        total_samples = 0
+        # for batch_idx, (data, target) in enumerate(dloader):
+        data1, target1 = batch1
+        data1, target1 = data1.to(device), target1.to(device)
+        
+        data2, target2 = batch2
+        data2, target2 = data2.to(device), target2.to(device)
+        data2 = data2.view(data2.size(0) * data2.size(1), *data2.size()[2:])
+        target2 = target2.view(target2.size(0) * target2.size(1), *target2.size()[2:])
+        
+        total_samples += data1.size(0)
+        total_samples += data2.size(0)
+        optim.zero_grad()
+        
+        output1 = model(data1)
+        output2 = model(data2)
+
+        if kwargs.get("apply_softmax", False):
+            output = nn.functional.log_softmax(output, dim=1) # type: ignore
+        if len(target1.size()) > 1 and target1.size(1) == 1:
+            target1 = target1.squeeze(dim=1)
+        if len(target2.size()) > 1 and target2.size(1) == 1:
+            target2 = target2.squeeze(dim=1)
+
+        loss1 = self.loss_fn(output1, target1)
+        loss2 = self.kl_loss_fn(output2, target2)
+        loss = loss1+loss2
+
+        loss.backward()
+        optim.step()
+        train_loss += loss.item()
+        pred1 = output1.argmax(dim=1, keepdim=True)
+        # view_as() is used to make sure the shape of pred and target are the same
+        if len(target1.size()) > 1:
+            target1 = target1.argmax(dim=1, keepdim=True)
+        correct += pred1.eq(target1.view_as(pred1)).sum().item()
+        pred2 = output2.argmax(dim=1, keepdim=True)
+        # view_as() is used to make sure the shape of pred and target are the same
+        if len(target2.size()) > 1:
+            target2 = target2.argmax(dim=1, keepdim=True)
+        correct += pred2.eq(target2.view_as(pred2)).sum().item()
+        acc = correct / total_samples
+        return train_loss, acc
         
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
-        # for _ in range(5):
-        #     tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                             self.optim,
-        #                                             self.dloader,
-        #                                             self.loss_fn,
-        #                                             self.device)
-        if (self.node_id==2 and self.round<=120):
+        # synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
+        # for i in range(len(synth_dloader)):
+        #     batch1 = next(iter(self.dloader))
+        #     batch2 = next(iter(synth_dloader))
+        #     for epoch in range(self.config["distill_epochs"]):
+        #         tr_loss, tr_acc = self.train(self.model,
+        #                                     self.optim,
+        #                                     batch1,
+        #                                     batch2,
+        #                                     self.loss_fn,
+        #                                     self.device)
+        # if ((self.node_id==1 or self.node_id==4) and self.round<=60):
+        if (self.round<=100):
             for _ in range(5):
                 tr_loss, tr_acc = self.model_utils.train(self.model,
                                                         self.optim,
                                                         self.dloader,
                                                         self.loss_fn,
                                                         self.device)
-        # if ((self.node_id==4) and self.round<=60):
+        # if ((self.node_id==2 or self.node_id==3) and self.round<=200):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
         #                                                 self.optim,
         #                                                 self.dloader,
         #                                                 self.loss_fn,
         #                                                 self.device)
-        if ((self.node_id==1 or self.node_id==3) or self.node_id==4):
-            for _ in range(5):
-                tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                        self.optim,
-                                                        self.dloader,
-                                                        self.loss_fn,
-                                                        self.device)
-        print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
+        # print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
         if self.round % self.local_train_freq == 0:
             synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
             for epoch in range(self.config["distill_epochs"]):
@@ -181,7 +228,7 @@ class FedDreamFastClient(BaseClient):
         # self.log_utils.log_console("Round {} done".format(round))
         self.synth_dset.append((x, y))
 
-    def fast_synthesize(self, reps, targets):
+    def fast_synthesize(self, reps):
         self.model.eval()
         self.z.data = reps.clone().detach().requires_grad_(True)
         for _ in range(self.local_steps):
@@ -209,15 +256,11 @@ class FedDreamFastClient(BaseClient):
         elif self.optimizer_type=="fedadam":
             return self.z - reps.clone().detach()
         return self.z
-        
-    
+            
     def single_round_fast(self):
         self.model.eval()
         for g_step in range(self.global_steps):
             # Wait for the server to send the latest representations
-            targets = self.comm_utils.wait_for_signal(src=self.server_node,
-                                                    tag=self.tag.START_GEN_REPS)
-            targets = targets.to(self.device)
             gen_state = self.comm_utils.wait_for_signal(src=self.server_node,
                                                         tag=self.tag.GENERATOR_UPDATES)
             self.generator.load_state_dict(gen_state)
@@ -230,7 +273,7 @@ class FedDreamFastClient(BaseClient):
                     {'params': self.generator.parameters()},
                     {'params': [self.z], 'lr': self.lr_z}
                 ], lr=self.lr_g, betas=[0.5, 0.999])
-            grads = self.fast_synthesize(reps, targets)
+            grads = self.fast_synthesize(reps)
             # Send the grads to the server
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=grads.to("cpu"),
@@ -263,9 +306,8 @@ class FedDreamFastClient(BaseClient):
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
         start_epochs = self.config.get("start_epochs", 0)
-        s_model = self.config["models"]["0"] if "models" in self.config  else self.config["model"]
-        self.s_model = self.model_utils.get_model(s_model, self.config["dset"], 
-                                   self.device, self.device_ids, num_classes=self.dset_obj.NUM_CLS)
+        self.s_model = self.model_utils.get_model("resnet18", self.config["dset"], 
+                                   self.device, self.device_ids, num_classes=10)
         for round in range(start_epochs, self.epochs):
             s_state = self.comm_utils.wait_for_signal(src=self.server_node,
                                                         tag=self.tag.STUDENT_UPDATES)
@@ -285,6 +327,8 @@ class FedDreamFastClient(BaseClient):
                     # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
             # self.log_utils.log_console("Round {} done for node_{}".format(round, self.node_id))
                 print("Round {} done for node_{}".format(round, self.node_id))
+        synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
+        torch.save(synth_dloader, f"synth_dloader_{self.node_id}.pt")
 
 
 class FedDreamFastServer(BaseServer):
@@ -403,8 +447,8 @@ class FedDreamFastServer(BaseServer):
         labels = ["student_loss", "student_acc", "train_loss", "train_acc", "test_loss", "test_acc"]
         for client, stat in enumerate(stats):
             if stat is not None:
-                # for i in range(len(stat)):
-                for i in [1,3,5]:
+                for i in range(len(stat)):
+                # for i in [1,3,5]:
                     if stat[i] is not None:
                         self.log_utils.log_tb(f"{labels[i]}/client{client}", stat[i], self.round)
                 if self.log_console:
@@ -437,10 +481,7 @@ class FedDreamFastServer(BaseServer):
         imgs = (reps.detach().clamp(0, 1).cpu().numpy()*255).astype('uint8')
         # performance depends on model output of the transformed input
         for i in range(len(imgs)):
-            if imgs[i].shape[0]==1:
-                img = Image.fromarray(np.squeeze(imgs[i], axis=0))
-            else:
-                img = Image.fromarray(imgs[i].transpose(1, 2, 0))
+            img = Image.fromarray(imgs[i].transpose(1, 2, 0))
             inp = self.transform(img)
             self.reps[i] = inp
         self.reps = self.reps.detach()   
@@ -470,7 +511,6 @@ class FedDreamFastServer(BaseServer):
     def single_round_fast(self):
         start = time.time()
         self.reps = torch.randn(size=(self.distill_batch_size, self.nz), device=self.device).requires_grad_()
-        self.targets = torch.randint(low=0, high=self.dset_obj.NUM_CLS, size=(self.distill_batch_size,))
         self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
         self.generator.load_state_dict(self.meta_generator.state_dict())
         self.ep += 1
@@ -478,7 +518,6 @@ class FedDreamFastServer(BaseServer):
             reset_l0(self.generator)
         for it in range(self.global_steps):
             for client in self.clients:
-                self.comm_utils.send_signal(dest=client, data=self.targets.to("cpu"), tag=self.tag.START_GEN_REPS)
                 self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.generator.state_dict()), 
                                             tag=self.tag.GENERATOR_UPDATES)
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)

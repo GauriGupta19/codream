@@ -8,6 +8,7 @@ from algos.feddream_fast import FedDreamFastClient, FedDreamFastServer
 from algos.feddream_fast_independent import FedDreamFastClientIndp, FedDreamFastServerIndp
 from algos.feddream_fast_noniid import FedDreamFastNoniidClient, FedDreamFastNoniidServer
 from algos.fl import FedAvgClient, FedAvgServer
+from algos.avgkd import AvgKDClient, AvgKDServer
 from algos.isolated import IsolatedClient, IsolatedServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
@@ -20,6 +21,7 @@ from utils.config_utils import load_config
 # If rank is 0, then it returns the server class otherwise the client class
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
+    "avgkd": [AvgKDServer, AvgKDClient],
     "isolated": [IsolatedServer, IsolatedClient],
     "fedprox": [FedProxServer, FedProxClient],
     "moon": [MoonServer, MoonClient],

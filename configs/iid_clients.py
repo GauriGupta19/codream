@@ -5,15 +5,15 @@ feddream_fast = {
     "seed": 4,
     "algo": "feddream_fast",
     "exp_id": "fast",
-    "exp_type": "iid_clients_feddream_fast",
+    "exp_type": "iid_clients_feddream_fast_entropy",
     "load_existing": False,
     "checkpoint_paths": {},
-    "dset": "pathmnist",
-    "dump_dir": "./expt_dump/pathmnist/iid/",
-    "dpath": "./imgs/pathmnist",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [1], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
+    "device_ids": {"node_0": [4], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
@@ -36,7 +36,7 @@ feddream_fast = {
     "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
 
     "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["local_steps", "nx_samples", "optimizer_type"]
+    "exp_keys": ["warmup", "local_steps", "nx_samples"]
 }
 
 feddream_fast_indp = {
@@ -83,15 +83,33 @@ fl = {
     "algo": "fedavg",
     "exp_id": 10,
     "exp_type": "iid_clients_fl",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "seed"]
+}
+
+avgkd = {
+    "algo": "avgkd",
+    "exp_id": 10,
+    "exp_type": "iid_clients_avgkd",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
+    "seed": 4,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -101,15 +119,15 @@ fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
     "exp_type": "iid_clients_fedprox",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
+    "device_ids": {"node_0": [3], "node_1": [3], "node_2": [3], "node_3": [2], "node_4": [2]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -119,15 +137,15 @@ moon = {
     "algo": "moon",
     "exp_id": 10,
     "exp_type": "iid_clients_moon",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [0]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -286,20 +304,20 @@ feddream = {
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
-    "exp_type": "iid_clients_isolated_heterogeneous",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "exp_type": "iid_clients_isolated",
+    "dset": "pathmnist",
+    "dump_dir": "./expt_dump/pathmnist/iid/",
+    "dpath": "./imgs/pathmnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [0], "node_3": [3], "node_4": [3]},
+    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [1], "node_3": [2], "node_4": [3]},
 
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
     "epochs": 400, "local_runs": 5,
     # optional for het models
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
 
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -309,12 +327,12 @@ centralized = {
     "algo": "centralized",
     "exp_id": 6,
     "exp_type": "iid_clients_centralized",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
     "seed": 4,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [7]},
+    "device_ids": {"node_0": [1]},
 
     # Learning setup
     "num_clients": 1, "samples_per_client": 4000,
@@ -327,9 +345,10 @@ centralized = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-current_config = feddream_fast
+# current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
+current_config = avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
