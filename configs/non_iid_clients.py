@@ -265,16 +265,16 @@ fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
     "exp_type": "non_iid_balanced_clients_fedprox",
-    "dset": "mnist",
-    "dump_dir": "./expt_dump/mnist/alpha_1/",
-    "dpath": "./imgs/mnist",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/alpha_0.1/",
+    "dpath": "./imgs/svhn",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     "device_ids": {"node_0": [1], "node_1": [1], "node_2": [0], "node_3": [0], "node_4": [0]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 50, "samples_per_label":400, "alpha":1,
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "alpha"]
@@ -348,10 +348,10 @@ centralized = {
 # current_config = non_iid_balanced_clients_independent
 # current_config = non_iid_balanced_clients_collab
 # current_config = feddream
-current_config =  feddream_fast
+# current_config =  feddream_fast
 # current_config = feddream_fast_noniid
 # current_config =  fl
-# current_config = fedprox
+current_config = fedprox
 # current_config = moon
 # current_config = isolated
 # current_config = centralized
