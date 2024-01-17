@@ -46,6 +46,11 @@ class BaseNode(ABC):
             self.model = self.model_utils.get_model(config["models"][str(self.node_id)], config["dset"], self.device, self.device_ids, num_classes=num_classes)
         else:
             self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids, num_classes=num_classes)
+
+        # for fedGen
+        if config["algo"] == "fedgen":
+            self.generator = self.model_utils.get_generator(config["dset"], self.device)
+            
         # load a checkpoint if load_existing is set to True
         if config["load_existing"]:
             node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
