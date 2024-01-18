@@ -48,7 +48,7 @@ class FedGenClient(BaseClient):
             param.requires_grad = False
         self.mu = 1
         self.qualified_labels = list()  # TODO figure out when this field is filled
-
+        self.batch_size = self.config["batch_size"]
         assert self.generator is not None
 
     def local_train(self, **kwargs):
@@ -60,7 +60,6 @@ class FedGenClient(BaseClient):
         """
         assert self.generator is not None
         assert len(self.qualified_labels) > 0
-        assert self.num_classes > 0
 
         avg_loss = self.model_utils.train_fedgen(
             self.model,
