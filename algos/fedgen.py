@@ -10,6 +10,7 @@ from algos.base_class import BaseClient, BaseServer
 
 # Based on https://github.com/TsingZ0/PFLlib
 
+
 class CommProtocol(object):
     """
     Communication protocol tags for the server and clients
@@ -18,7 +19,7 @@ class CommProtocol(object):
     DONE = 0  # Used to signal that the client is done with the current round
     START = 1  # Used to signal by the server to start the current round
     UPDATES = 2  # Used to send the updates from the server to the clients, include classifier + generator param updates
-    SEND_CLS_CNT = 3 # Used to send self.class_counts from clients to server
+    SEND_CLS_CNT = 3  # Used to send self.class_counts from clients to server
     SEND_QUAL_LAB = 4  # Used after server receives all class_counts and has computed qualified labels, for distributing qualified labels back to clients
     ACK_QUAL_LAB = 5  # Used after clients receive and sets qualified labels from server, signals that training is ready to commence
 
@@ -48,7 +49,7 @@ class FedGenClient(BaseClient):
         self.mu = 1
         self.generator = None  # TODO figure out when this field is filled
         self.qualified_labels = list()  # TODO figure out when this field is filled
-        
+
     def local_train(self, **kwargs):
         """
         trains for one round
@@ -107,9 +108,9 @@ class FedGenClient(BaseClient):
     #     if self.num_classes == None:
     #         print(f"node {self.node_id} does not have any num_classes assigned!")
     #         print(f"self.class_counts is {self.class_counts}")
-        
+
     #     assert self.num_classes > 0
-        
+
     #     sample_per_class = torch.zeros(self.num_classes)
 
     #     # iterate through trainloader
@@ -124,24 +125,24 @@ class FedGenClient(BaseClient):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
 
-        # First wait for server to send generator architecture
-        qualified_labels = self.comm_utils.wait_for_signal(
-            src=self.server_node, tag=self.tag.SEND_GEN
-        )
-        # set qualified_labels and notify server with tensor of samples per class
-        # TODO read generator from config
-        self.qualified_labels = qualified_labels
-
-        print(f"client {self.node_id} received qualified labels {qualified_labels} from server!") 
-        
-        samples_per_class = self.class_counts
+        # First send self.class_counts to server
         self.comm_utils.send_signal(
-            dest=self.server_node, data=samples_per_class, tag=self.tag.RECEIVED_GEN
+            dest=self.server_node, data=self.class_counts, tag=self.tag.SEND_CLS_CNT
         )
 
         # then wait for qualified labels
-        self.qualified_labels = self.comm_utils.wait_for_signal(
+        qualified_labels = self.comm_utils.wait_for_signal(
             src=self.server_node, tag=self.tag.SEND_QUAL_LAB
+        )
+        # set qualified labels
+        self.qualified_labels = qualified_labels
+        print(
+            f"client {self.node_id} received qualified labels {qualified_labels} from server!"
+        )
+
+        # then send ack to server to signal that training is ready to start
+        self.comm_utils.send_signal(
+            dest=self.server_node, data=None, tag=self.tag.ACK_QUAL_LAB
         )
 
         # then start regular training
@@ -325,38 +326,28 @@ class FedGenServer(BaseServer):
     def run_protocol(self):
         assert self.generator is not None
 
-        self.log_utils.log_console("Starting iid clients federated averaging")
+        self.log_utils.log_console("Starting iid clients fedgen")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
 
-        # first compute qualified labels
-        gen_weights = put_on_cpu(self.generator.state_dict())
-        for client_node in self.clients:
-            self.log_utils.log_console(
-                "Server sending generator from {} to {}".format(
-                    self.node_id, client_node
-                )
-            )
-            self.comm_utils.send_signal(
-                dest=client_node, data=gen_weights, tag=self.tag.SEND_GEN
-            )
-
-        self.log_utils.log_console(
-            "Server waiting for all clients to respond to initializing step \n"
+        # first wait for clients to send class_counts
+        self.log_utils.log_console("Server waiting for clients to send class counts\n")
+        class_counts_all_clients = self.comm_utils.wait_for_all_clients(
+            self.clients, self.tag.SEND_CLS_CNT
         )
-        samples_per_class_all_clients = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.RECEIVED_GEN
+        # using class_counts to compute qualified labels
+        assert len(class_counts_all_clients) == len(self.clients)
+        assert len(self.qualified_labels) == 0
+
+        print(
+            "received class count distribution from all clients: ",
+            class_counts_all_clients,
         )
 
-        # after receiving list of all sampels per class of all clients
-        # server creates qualified labels and distributes qualified labels back to clients
-        assert len(samples_per_class_all_clients) == len(self.clients)
-        # set self.num_classes because this only exists in clinets
-        print("samples_per_class_all_clients: ", samples_per_class_all_clients)
-        self.num_classes = len(samples_per_class_all_clients[0])
+        self.num_classes = len(class_counts_all_clients[0])
 
-        for client_idx in range(len(samples_per_class_all_clients)):
-            client_sample_per_class = samples_per_class_all_clients[client_idx]
+        for client_idx in range(len(class_counts_all_clients)):
+            client_sample_per_class = class_counts_all_clients[client_idx]
             for yy in range(self.num_classes):
                 self.qualified_labels.extend(
                     [yy for _ in range(int(client_sample_per_class[yy].item()))]
@@ -370,14 +361,26 @@ class FedGenServer(BaseServer):
                 )
             )
             self.comm_utils.send_signal(
-                dest=client_node, data=self.qualified_labels, tag=self.tag.SEND_GEN
+                dest=client_node, data=self.qualified_labels, tag=self.tag.SEND_QUAL_LAB
             )
+        """
+        gen_weights = put_on_cpu(self.generator.state_dict())
 
+        for client_node in self.clients:
+            self.log_utils.log_console(
+                "Server sending generator from {} to {}".format(
+                    self.node_id, client_node
+                )
+            )
+            self.comm_utils.send_signal(
+                dest=client_node, data=gen_weights, tag=self.tag.SEND_GEN
+            )
+        """
+        # block until all clients ack back
         self.log_utils.log_console(
             "Server waiting for all clients to respond to qualified labels \n"
         )
-        # TODO this blocking statement may not be needed? Check w abhi or gauri
-        # self.comm_utils.wait_for_all_clients(self.clients, self.tag.ACK_QUAL_LAB)
+        self.comm_utils.wait_for_all_clients(self.clients, self.tag.ACK_QUAL_LAB)
 
         # Now regular training can commence
         for round in range(start_epochs, total_epochs):
