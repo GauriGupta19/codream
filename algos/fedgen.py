@@ -47,8 +47,9 @@ class FedGenClient(BaseClient):
         for param in self.global_model.parameters():
             param.requires_grad = False
         self.mu = 1
-        self.generator = None  # TODO figure out when this field is filled
         self.qualified_labels = list()  # TODO figure out when this field is filled
+
+        assert self.generator is not None
 
     def local_train(self, **kwargs):
         """
@@ -187,7 +188,7 @@ class FedGenServer(BaseServer):
         self.qualified_labels = list()
         self.batch_size = config["batch_size"]
 
-        # TODO set loss, optimizer, and generative model in base_class from config
+        # Hard coded values taken from official implementation
         self.generative_optimizer = torch.optim.Adam(
             params=self.generator.parameters(),
             lr=3e-4,
@@ -199,6 +200,8 @@ class FedGenServer(BaseServer):
         self.generative_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer=self.generative_optimizer, gamma=0.98
         )
+
+        assert self.generator is not None
 
     def test(self) -> float:
         """
