@@ -159,7 +159,7 @@ class FedGenClient(BaseClient):
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(
                 dest=self.server_node,
-                data=(classifier_param, self.samples_per_client),
+                data=(classifier_param, self.config["samples_per_client"]),
                 tag=self.tag.DONE,
             )
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
