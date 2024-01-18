@@ -111,7 +111,7 @@ avgkd = {
     "num_clients": 4, "samples_per_client": 1000,
     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
     "epochs": 400, "local_runs": 5,
-    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "model": "wrn40_1", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
 
@@ -157,9 +157,9 @@ independent_dreams = {
     "exp_type": "iid_clients_independent_dreams",
     "load_existing": False,
     "checkpoint_paths": {"1": "expt_dump/iid_clients_distill_reps_cifar10_1clients_25000samples_distadam_num_clients_1_samples_per_client_25000_distill_epochs_10_global_steps_2000_local_steps_0_warmup_250_seed2/saved_models/user1.pt"},
-    "dset": "pathmnist",
+    "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs",
+    "dpath": "./imgs/cifar10",
     "seed": 3,
     # Learning setup
     "num_clients": 1, "top_k": 1, "samples_per_client": 1000,
@@ -346,7 +346,7 @@ centralized = {
 # current_config = collab_dreams
 # current_config = feddream
 # current_config = feddream_fast
-# current_config = feddream_fast_indp
+current_config = feddream_fast_indp
 # current_config = fl
 current_config = avgkd
 # current_config = fedprox

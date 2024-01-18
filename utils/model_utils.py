@@ -55,13 +55,53 @@ class ModelUtils():
             model = MODEL_DICT[model_name](**kwargs)
         else:
             raise ValueError(f"Model name {model_name} not supported")
-        print(f"Model {model_name} loading on device {device}")
+        print(f"Model {model_name} loading on device {device} with memory {torch.cuda.memory_allocated(0)}")
         model = model.to(device)
-        print(f"Model {model_name} loaded on device {device}")
+        print(f"Model {model_name} loaded on device {device} with memory {torch.cuda.memory_allocated(0)}")
         #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
     def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        total_samples = 0
+        for batch_idx, (data, target) in enumerate(dloader):
+            data, target = data.to(device), target.to(device)
+            if "extra_batch" in kwargs:
+                data = data.view(data.size(0) * data.size(1), *data.size()[2:])
+                target = target.view(target.size(0) * target.size(1), *target.size()[2:])
+            total_samples += data.size(0)
+            optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
+            position = kwargs.get("position", 0)
+            if position==0:
+                output = model(data)
+            else:
+                output = model(data, position=position)
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1) # type: ignore
+            if len(target.size()) > 1 and target.size(1) == 1:
+                target = target.squeeze(dim=1)
+            loss = loss_fn(output, target)
+            loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+        acc = correct / total_samples
+        return train_loss, acc
+    
+    def train_avgkd(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
         model.train()

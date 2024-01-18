@@ -37,6 +37,7 @@ class AvgKDClient(BaseClient):
         """
         Train the model locally
         """
+        self.model.to(self.device)
         avg_loss = self.model_utils.train(self.model, self.optim,
                                           self.dloader, self.loss_fn,
                                           self.device)
@@ -256,7 +257,7 @@ class AvgKDServer(BaseServer):
         for client_node in self.clients:
             # MODIFY sent signal to labels
             self.comm_utils.send_signal(client_node,
-                                        avg_wts,
+                                        client_output_all,
                                         self.tag.UPDATES)
         local_test_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.CLIENT_STATS)
         self.update_stats(local_test_acc, self.round)
