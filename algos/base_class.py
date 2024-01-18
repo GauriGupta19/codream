@@ -193,6 +193,7 @@ class BaseClient(BaseNode):
                 self.num_classes += 1
 
         self.samples_per_client = [c / samples_per_client for c in self.class_counts]
+        print(f"samples per client:{self.samples_per_client}")
         self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 

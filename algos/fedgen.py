@@ -153,8 +153,8 @@ class FedGenClient(BaseClient):
 
             # then during normal trianing wait for repr from server, then send updats back to server
             # NOTE client does not send generator information to server
-            param_tuple = self.get_representation()
-            classifier_param = put_on_cpu(param_tuple[0])
+            param = self.get_representation()
+            classifier_param = put_on_cpu(param)
 
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(
