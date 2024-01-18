@@ -5,6 +5,8 @@ from torch.nn.parallel import DataParallel
 import models
 from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
+from configs.generator import GENERATORCONFIGS
+
 MODEL_DICT = {
     # https://github.com/polo5/ZeroShotKnowledgeTransfer
     'wrn16_1': models.wresnet.wrn_16_1,
@@ -63,6 +65,13 @@ class ModelUtils():
         model = model.to(device)
         print(f"Model {model_name} loaded on device {device}")
         #model = DataParallel(model.to(device), device_ids=device_ids)
+        return model
+        
+    @staticmethod
+    def get_generator(dset: str, device: torch.device, **kwargs) -> nn.Module:
+        """helper function used in FedGen to create generators for server and clients"""
+        model = Generator(dset)
+        model = model.to(device)
         return model
 
     def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:

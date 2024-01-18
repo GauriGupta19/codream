@@ -80,6 +80,7 @@ class BaseClient(BaseNode):
         super().__init__(config)
         self.server_node = 0
         self.set_parameters(config)
+        self.num_classes = None
 
     def set_parameters(self, config):
         """
@@ -99,8 +100,10 @@ class BaseClient(BaseNode):
             #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
+            # TODO commented out for debug, figure out later
             plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
+            
             dset = Subset(train_dset, indices[client_idx]) 
             print("using non_iid_balanced", config["alpha"])   
         elif config["exp_type"].startswith("non_iid_balanced_labels"):
@@ -120,13 +123,22 @@ class BaseClient(BaseNode):
             indices = np.random.permutation(len(train_dset))
             dset = Subset(train_dset, indices[client_idx*samples_per_client:(client_idx+1)*samples_per_client])
         self.class_counts = [0]*self.dset_obj.NUM_CLS
+        
         for (x, y) in dset:
             if not isinstance(y, int):
                 y = y.item()
             self.class_counts[y] += 1
+        self.num_classes = 0 
+        for class_count in self.class_counts:
+            if class_count != 0:
+                self.num_classes += 1
+                
         self.samples_per_client = [c/samples_per_client for c in self.class_counts]
         self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+        
+        assert self.num_classes != 0
+        print(f"node {self.node_id} num classes is {self.num_classes}")
 
     def local_train(self, dataset, **kwargs):
         """

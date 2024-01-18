@@ -13,6 +13,7 @@ from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
 from algos.moon import MoonClient, MoonServer
 from algos.centralized import CentralizedServer
+from algos.fedgen import FedGenClient, FedGenServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
 
@@ -31,6 +32,7 @@ algo_map = {
     "feddream_fast": [FedDreamFastServer, FedDreamFastClient],
     "feddream_fast_indp": [FedDreamFastServerIndp, FedDreamFastClientIndp],
     "feddream_fast_noniid": [FedDreamFastNoniidServer, FedDreamFastNoniidClient],
+    "fedgen": [FedGenServer, FedGenClient],
 }
 
 def get_node(config: dict, rank) -> BaseNode:

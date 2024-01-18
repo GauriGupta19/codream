@@ -17,15 +17,10 @@ class CommProtocol(object):
 
     DONE = 0  # Used to signal that the client is done with the current round
     START = 1  # Used to signal by the server to start the current round
-    UPDATES = 2  # Used to send the updates from the server to the clients
-    SEND_GEN = 3  # Used to send the generator params from the server to the clients
-    RECEIVED_GEN = (
-        4  # Used to signal that the generator has been received by clients to server
-        # data payload includes samples_per_class
-    )
-    SEND_QUAL_LAB = 5
-    ACK_QUAL_LAB = 6
-    # TODO figure out how qualified labels are exchanged
+    UPDATES = 2  # Used to send the updates from the server to the clients, include classifier + generator param updates
+    SEND_CLS_CNT = 3 # Used to send self.class_counts from clients to server
+    SEND_QUAL_LAB = 4  # Used after server receives all class_counts and has computed qualified labels, for distributing qualified labels back to clients
+    ACK_QUAL_LAB = 5  # Used after clients receive and sets qualified labels from server, signals that training is ready to commence
 
 
 def put_on_cpu(wts):
@@ -53,8 +48,7 @@ class FedGenClient(BaseClient):
         self.mu = 1
         self.generator = None  # TODO figure out when this field is filled
         self.qualified_labels = list()  # TODO figure out when this field is filled
-        self.num_classes = list()
-
+        
     def local_train(self, **kwargs):
         """
         trains for one round
@@ -64,7 +58,7 @@ class FedGenClient(BaseClient):
         """
         assert self.generator is not None
         assert len(self.qualified_labels) > 0
-        assert len(self.num_classes) > 0
+        assert self.num_classes > 0
 
         avg_loss = self.model_utils.train_fedgen(
             self.model,
@@ -108,15 +102,23 @@ class FedGenClient(BaseClient):
         """first step in run_protocol, sets generator from server input"""
         self.generator = generator_init
 
-    def get_num_classes(self) -> Tensor:
-        """helper funcion that counts how many entries per class"""
-        sample_per_class = torch.zeros(self.num_classes)
-        # iterate through trainloader
-        for x, y in self.dloader:
-            for yy in y:
-                sample_per_class[yy.item()] += 1
+    # def get_num_classes(self) -> Tensor:
+    #     """helper funcion that counts how many entries per class"""
+    #     if self.num_classes == None:
+    #         print(f"node {self.node_id} does not have any num_classes assigned!")
+    #         print(f"self.class_counts is {self.class_counts}")
+        
+    #     assert self.num_classes > 0
+        
+    #     sample_per_class = torch.zeros(self.num_classes)
 
-        return sample_per_class
+    #     # iterate through trainloader
+    #     for x, y in self.dloader:
+    #         for yy in y:
+    #             print(yy)
+    #             sample_per_class[yy.item()] += 1
+
+    #     return sample_per_class
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -130,7 +132,9 @@ class FedGenClient(BaseClient):
         # TODO read generator from config
         self.qualified_labels = qualified_labels
 
-        samples_per_class = self.get_num_classes()
+        print(f"client {self.node_id} received qualified labels {qualified_labels} from server!") 
+        
+        samples_per_class = self.class_counts
         self.comm_utils.send_signal(
             dest=self.server_node, data=samples_per_class, tag=self.tag.RECEIVED_GEN
         )
@@ -347,6 +351,9 @@ class FedGenServer(BaseServer):
         # after receiving list of all sampels per class of all clients
         # server creates qualified labels and distributes qualified labels back to clients
         assert len(samples_per_class_all_clients) == len(self.clients)
+        # set self.num_classes because this only exists in clinets
+        print("samples_per_class_all_clients: ", samples_per_class_all_clients)
+        self.num_classes = len(samples_per_class_all_clients[0])
 
         for client_idx in range(len(samples_per_class_all_clients)):
             client_sample_per_class = samples_per_class_all_clients[client_idx]
