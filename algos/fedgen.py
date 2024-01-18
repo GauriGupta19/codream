@@ -346,11 +346,13 @@ class FedGenServer(BaseServer):
 
         self.num_classes = len(class_counts_all_clients[0])
 
+        # qualified labels is just the sum of client labels that meet the minimum label amount
+        # in our case for simplification the min label count is 0
         for client_idx in range(len(class_counts_all_clients)):
-            client_sample_per_class = class_counts_all_clients[client_idx]
-            for yy in range(self.num_classes):
+            client_label_count = class_counts_all_clients[client_idx]
+            for class_id in range(self.num_classes):
                 self.qualified_labels.extend(
-                    [yy for _ in range(int(client_sample_per_class[yy].item()))]
+                    [class_id for _ in range(int(client_label_count[class_id]))]
                 )
 
         # send qualified labels back to clients
