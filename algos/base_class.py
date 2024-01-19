@@ -70,7 +70,8 @@ class BaseNode(ABC):
         if config["algo"] == "fedgen":
             # first need to get the feature dimension from model
             # make a toy prediction
-            data_loader = DataLoader(self.dset_obj, batch_size=10)
+            data_loader = self.dset_obj.train_dset
+            print(f"data_loader:{data_loader}, type: {type(data_loader)}")
 
             feature_dim = None
 
