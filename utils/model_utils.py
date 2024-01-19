@@ -398,6 +398,9 @@ class Generative(nn.Module):
             y_input = torch.FloatTensor(batch_size, self.n_class)
             y_input.zero_()
             # labels = labels.view
+            # get device that the labels are located on
+            print(f"device for y_input: {y_input.get_device()}")
+            print(f"device for labels: {labels.get_device()}")
             y_input.scatter_(1, labels.view(-1, 1), 1)
         z = torch.cat((eps, y_input), dim=1)
         ### FC layers
