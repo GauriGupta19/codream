@@ -37,17 +37,6 @@ class FedGenClient(BaseClient):
         self.tag = CommProtocol
         for param in self.model.parameters():
             param.requires_grad = False
-
-        for x, y in self.dloader():
-            if type(x) == type([]):
-                x[0] = x[0].to(self.device)
-            else:
-                x = x.to(self.device)
-            y = y.to(self.device)
-            with torch.no_grad():
-                rep = self.model.base(x).detach()
-            break
-        self.feature_dim = rep.shape[1]
         self.mu = 1
         self.qualified_labels = list()  # TODO figure out when this field is filled
         self.batch_size = self.config["batch_size"]
