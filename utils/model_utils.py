@@ -340,9 +340,9 @@ class Generative(nn.Module):
         num_classes,
         dataset,
         device,
+        feature_dim,
         latent_layer_idx=-1,
         embedding=False,
-        feature_dim
     ) -> None:
         super().__init__()
 
