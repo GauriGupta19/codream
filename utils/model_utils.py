@@ -143,11 +143,6 @@ class ModelUtils:
         total_samples = 0
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
-            if "extra_batch" in kwargs:
-                data = data.view(data.size(0) * data.size(1), *data.size()[2:])
-                target = target.view(
-                    target.size(0) * target.size(1), *target.size()[2:]
-                )
             total_samples += data.size(0)
             optim.zero_grad()
             # check if epoch is passed as a keyword argument
@@ -157,6 +152,7 @@ class ModelUtils:
 
             position = kwargs.get("position", 0)
             output = model(data, position=position)
+
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             loss = loss_fn(output, target)
@@ -165,10 +161,8 @@ class ModelUtils:
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
-            loss += loss_fn(generative_model.head(z), labels)
 
-            # TODO maybe implement zero grad optimization
-            # TODO double check the loss addition occurs at the right place
+            loss += loss_fn(model.head(z), labels)
 
             loss.backward()
             optim.step()
