@@ -397,10 +397,7 @@ class Generative(nn.Module):
             y_input = torch.FloatTensor(batch_size, self.n_class)
             y_input.zero_()
             # labels = labels.view
-            # get device that the labels are located on
-            print(f"device for y_input: {y_input.device, y_input.get_device()}")
-            print(f"device for labels: {labels.device, labels.get_device()}")
-            print(f"self device is {self.device}")
+
             # problem: y_input is on the cpu but tensors is on the gpu
             y_input.to(self.device)
             print(f"device for y_input: {y_input.device, y_input.get_device()}")
