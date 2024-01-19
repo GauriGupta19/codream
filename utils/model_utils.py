@@ -169,7 +169,7 @@ class ModelUtils:
             # fedGen modification of additive loss
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
-            z = generative_model(labels)["output"]
+            z = generative_model(labels)
 
             print("------- \n generative output: ", z, "\n ----------")
             print(f"generator dimension: {z.size()}")
@@ -368,6 +368,7 @@ class Generative(nn.Module):
 
         z = self.fc1(z)
         z = self.fc(z)
+        z = z.view(z.shape[0], -1, 32, 32)
 
         return z
 
