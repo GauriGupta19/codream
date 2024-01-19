@@ -161,6 +161,12 @@ class ModelUtils:
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
+            print("------- \n generative output: ", z, "\n ----------")
+            model_pred_z = model(z)
+            print(
+                "------- \n model pred of generative z: ", model_pred_z, "\n ----------"
+            )
+            assert z.shape == data.shape
 
             loss += loss_fn(model(z), labels)
 
