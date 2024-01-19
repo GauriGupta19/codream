@@ -160,13 +160,15 @@ class ModelUtils:
             # fedGen modification of additive loss
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
-            z = generative_model(labels)
+            z = generative_model(labels)["output"]
+
             print("------- \n generative output: ", z, "\n ----------")
+            print(f"correct output dimension: {output.size()}")
+            assert z.size() == data.size()
             model_pred_z = model(z)
             print(
                 "------- \n model pred of generative z: ", model_pred_z, "\n ----------"
             )
-            assert z.shape == data.shape
 
             loss += loss_fn(model(z), labels)
 
