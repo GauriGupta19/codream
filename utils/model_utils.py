@@ -403,6 +403,8 @@ class Generative(nn.Module):
             print(f"self device is {self.device}")
             # problem: y_input is on the cpu but tensors is on the gpu
             y_input.to(self.device)
+            print(f"device for y_input: {y_input.device, y_input.get_device()}")
+            assert y_input.device == labels.device
             y_input.scatter_(1, labels.view(-1, 1), 1)
         z = torch.cat((eps, y_input), dim=1)
         ### FC layers
