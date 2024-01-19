@@ -70,10 +70,23 @@ class BaseNode(ABC):
         if config["algo"] == "fedgen":
             # first need to get the feature dimension from model
             # make a toy prediction
-            train_dset = self.dset_obj.train_dset
-            print(f"train_dset type: {type(train_dset)}, train_dest: {train_dset}")
+            data_loader = DataLoader(self.dset_obj, batch_size=10)
+
+            # Get a batch of data (assuming you want just one sample)
+            for batch in data_loader:
+                (
+                    X,
+                    _,
+                ) = batch
+                break
+            sample_X = X[0]
+            feature_dim = sample_X.size()
+
             self.generator = self.model_utils.get_generator(
-                num_classes=num_classes, dataset=config["dset"], device=self.device
+                num_classes=num_classes,
+                dataset=config["dset"],
+                device=self.device,
+                feature_dim=feature_dim,
             )
             print("generator created!")
 
