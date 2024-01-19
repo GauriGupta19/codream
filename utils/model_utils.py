@@ -162,7 +162,7 @@ class ModelUtils:
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
 
-            loss += loss_fn(model.head(z), labels)
+            loss += loss_fn(model(z), labels)
 
             loss.backward()
             optim.step()
