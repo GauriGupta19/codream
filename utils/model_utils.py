@@ -402,7 +402,7 @@ class Generative(nn.Module):
             print(f"device for labels: {labels.device, labels.get_device()}")
             print(f"self device is {self.device}")
             # problem: y_input is on the cpu but tensors is on the gpu
-            y_input.to(f"cuda:{self.device}")
+            y_input.to(self.device)
             y_input.scatter_(1, labels.view(-1, 1), 1)
         z = torch.cat((eps, y_input), dim=1)
         ### FC layers
