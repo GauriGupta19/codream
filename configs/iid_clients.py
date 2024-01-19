@@ -324,13 +324,32 @@ centralized = {
     "exp_keys": []
 }
 
+scaffold = {
+    "algo": "scaffold",
+    "exp_id": 1,
+    "exp_type": "iid_clients_scaffold",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./imgs/cifar10",
+    "seed": 1,
+    "device_ids": {"node_0": [1], "node_1": [1], "node_2": [2],},
+    # Learning setup
+    "num_clients": 2, "samples_per_client": 500,
+    "epochs": 1000, "model": "resnet34",
+    "lr_client": 0.1, "batch_size": 128,
+    "lr_server": 1.,
+    "model_lr": 0.1, # decoy parameter not used in scaffold
+    "exp_keys": []
+}
+
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-current_config = feddream_fast
+# current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
 # current_config = centralized
+current_config = scaffold
