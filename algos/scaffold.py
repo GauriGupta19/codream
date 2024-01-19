@@ -178,7 +178,7 @@ class SCAFFOLDServer(BaseServer):
         """
         Get the model weights
         """
-        return self.model.to("cpu").state_dict()
+        return {k: v.cpu() for k, v in self.model.state_dict().items()}
 
     def single_round(self):
         """
