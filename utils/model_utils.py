@@ -131,8 +131,6 @@ class ModelUtils:
         **kwargs,
     ) -> Tuple[float, float]:
         """TODO: generate docstring"""
-        model = model.to_device(device)
-        generative_model = generative_model.to(device)
 
         model.train()
         train_loss = 0

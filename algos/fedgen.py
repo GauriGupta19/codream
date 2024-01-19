@@ -149,12 +149,13 @@ class FedGenClient(BaseClient):
         for round in range(start_epochs, total_epochs):
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
             for i in range(self.config["local_runs"]):
+                print("training locally")
                 self.local_train()
 
             # then during normal trianing wait for repr from server, then send updats back to server
             # NOTE client does not send generator information to server
-            param = self.get_representation()
-            classifier_param = put_on_cpu(param)
+            classifier_param = self.get_representation()
+            # classifier_param = put_on_cpu(param)
 
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(
@@ -282,6 +283,13 @@ class FedGenServer(BaseServer):
             ):
                 server_param.data += w * client_param.data.clone()
 
+    def get_representation(self, model: nn.Module) -> Dict[str, Tensor]:
+        """
+        Share the model weights
+        """
+
+        return model.state_dict()
+
     def set_representation(self):
         """
         Helper function called by single round
@@ -289,8 +297,11 @@ class FedGenServer(BaseServer):
         Sets updated model and distribute it to client
         where client receives (classifier, generator)
         """
-        classifier = put_on_cpu(self.model)
-        generator = put_on_cpu(self.generator)
+        # classifier = put_on_cpu(self.model)
+        # generator = put_on_cpu(self.generator)
+        classifier, generator = self.get_representation(
+            self.model
+        ), self.get_representation(self.generator)
         repr_to_client = (classifier, generator)
 
         for client_node in self.clients:
