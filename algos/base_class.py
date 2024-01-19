@@ -72,11 +72,11 @@ class BaseNode(ABC):
             # make a toy prediction
             data_loader = self.dset_obj.train_dset
 
-            feature_dim = [config["batch_size"]]
+            feature_dim = None
 
             # Get a batch of data (assuming you want just one sample)
-            for batch, (X, y) in enumerate(data_loader):
-                feature_dim.extend(X.size())
+            for _, (X, y) in enumerate(data_loader):
+                feature_dim = X.size()
                 break
             print(f"THIS IS FEATURE DIM: {feature_dim}")
 
@@ -84,8 +84,8 @@ class BaseNode(ABC):
 
             self.generator = self.model_utils.get_generator(
                 num_classes=num_classes,
-                dataset=config["dset"],
                 device=self.device,
+                hidden_dim=32,
                 feature_dim=feature_dim,
             )
             print("generator created!")

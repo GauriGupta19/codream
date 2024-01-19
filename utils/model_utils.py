@@ -71,12 +71,20 @@ class ModelUtils:
 
     @staticmethod
     def get_generator(
-        num_classes: int, dataset, device: torch.device, feature_dim:list, **kwargs
+        num_classes: int,
+        device: torch.device,
+        hidden_dim: int,
+        feature_dim: int,
+        **kwargs,
     ) -> nn.Module:
         """helper function used in FedGen to create generators for server and clients"""
         # need to extract feature dim from model
         model = Generative(
-            noise_dim=256, num_classes=num_classes, dataset=dataset, device=device, feature_dim=feature_dim
+            noise_dim=256,
+            num_classes=num_classes,
+            hidden_dim=hidden_dim,
+            feature_dim=feature_dim,
+            device=device,
         )
         model = model.to(device)
         return model
@@ -334,91 +342,34 @@ class ModelUtils:
 
 
 class Generative(nn.Module):
-    def __init__(
-        self,
-        noise_dim,
-        num_classes,
-        dataset,
-        device,
-        feature_dim,
-        latent_layer_idx=-1,
-        embedding=False,
-    ) -> None:
+    def __init__(self, noise_dim, num_classes, hidden_dim, feature_dim, device) -> None:
         super().__init__()
 
         self.noise_dim = noise_dim
         self.num_classes = num_classes
         self.device = device
-        self.embedding = embedding
-        self.latent_layer_idx = latent_layer_idx
-        self.feature_dim = feature_dim
-        (
-            self.hidden_dim,
-            self.latent_dim,
-            self.input_channel,
-            self.n_class,
-            self.noise_dim,
-        ) = GENERATORCONFIGS[dataset]
-        input_dim = (
-            self.noise_dim * 2 if self.embedding else self.noise_dim + self.n_class
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(noise_dim + num_classes, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.ReLU(),
         )
-        self.fc_configs = [input_dim, self.hidden_dim]
-        self.build_network()
 
-    def build_network(self):
-        if self.embedding:
-            self.embedding_layer = nn.Embedding(self.n_class, self.noise_dim)
-        ### FC modules ####
-        self.fc_layers = nn.ModuleList()
-        for i in range(len(self.fc_configs) - 1):
-            input_dim, out_dim = self.fc_configs[i], self.fc_configs[i + 1]
-            print("Build layer {} X {}".format(input_dim, out_dim))
-            fc = nn.Linear(input_dim, out_dim)
-            bn = nn.BatchNorm1d(out_dim)
-            act = nn.ReLU()
-            self.fc_layers += [fc, bn, act]
-        ### Representation layer
-        self.representation_layer = nn.Linear(self.fc_configs[-1], self.feature_dim)
-        print("Build last layer {} X {}".format(self.fc_configs[-1], self.feature_dim))
+        self.fc = nn.Linear(hidden_dim, feature_dim)
 
-    def forward(self, labels, verbose=True):
-        """
-        G(Z|y) or G(X|y):
-        Generate either latent representation( latent_layer_idx < 0) or raw image (latent_layer_idx=0) conditional on labels.
-        :param labels:
-        :param latent_layer_idx:
-            if -1, generate latent representation of the last layer,
-            -2 for the 2nd to last layer, 0 for raw images.
-        :param verbose: also return the sampled Gaussian noise if verbose = True
-        :return: a dictionary of output information.
-        """
-        result = {}
+    def forward(self, labels):
         batch_size = labels.shape[0]
-        eps = torch.rand((batch_size, self.noise_dim))  # sampling from Gaussian
-        eps = eps.to(self.device)
-        if verbose:
-            result["eps"] = eps
-        if self.embedding:  # embedded dense vector
-            y_input = self.embedding_layer(labels)
-        else:  # one-hot (sparse) vector
-            y_input = torch.FloatTensor(batch_size, self.n_class)
-            y_input.zero_()
+        eps = torch.rand(
+            (batch_size, self.noise_dim), device=self.device
+        )  # sampling from Gaussian
 
-            # problem: y_input is on the cpu but tensors is on the gpu
-            y_input = y_input.to(self.device)
-            # labels = labels.view
-            print(f"device for y_input: {y_input.device, y_input.get_device()}")
-            assert y_input.device == labels.device
-
-            y_input.scatter_(1, labels.view(-1, 1), 1)
-
+        y_input = F.one_hot(labels, self.num_classes)
         z = torch.cat((eps, y_input), dim=1)
-        ### FC layers
-        for layer in self.fc_layers:
-            z = layer(z)
-        z = self.representation_layer(z)
-        result["output"] = z
-        return result
+
+        z = self.fc1(z)
+        z = self.fc(z)
+
+        return z
 
 
 # # FedGEN, from official github
