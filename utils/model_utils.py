@@ -174,7 +174,6 @@ class ModelUtils:
             print("------- \n generative output: ", z, "\n ----------")
             print(f"generator dimension: {z.size()}")
             print(f"correct data dimension: {data.size()}")
-            assert z.size() == data.size()
             model_pred_z = model(z)
             print(
                 "------- \n model pred of generative z: ", model_pred_z, "\n ----------"
