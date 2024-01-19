@@ -396,13 +396,15 @@ class Generative(nn.Module):
         else:  # one-hot (sparse) vector
             y_input = torch.FloatTensor(batch_size, self.n_class)
             y_input.zero_()
-            # labels = labels.view
 
             # problem: y_input is on the cpu but tensors is on the gpu
-            y_input.to(self.device)
+            y_input = y_input.to(self.device)
+            # labels = labels.view
             print(f"device for y_input: {y_input.device, y_input.get_device()}")
             assert y_input.device == labels.device
+
             y_input.scatter_(1, labels.view(-1, 1), 1)
+
         z = torch.cat((eps, y_input), dim=1)
         ### FC layers
         for layer in self.fc_layers:
