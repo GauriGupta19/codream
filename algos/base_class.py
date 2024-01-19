@@ -68,7 +68,10 @@ class BaseNode(ABC):
 
         # for fedGen
         if config["algo"] == "fedgen":
-            # self.generator = self.model_utils.get_generator(config["dset"], self.device)
+            # first need to get the feature dimension from model
+            # make a toy prediction
+            train_dset = self.dset_obj.train_dset
+            print(f"train_dset type: {type(train_dset)}, train_dest: {train_dset}")
             self.generator = self.model_utils.get_generator(
                 num_classes=num_classes, dataset=config["dset"], device=self.device
             )

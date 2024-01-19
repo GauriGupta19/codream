@@ -71,11 +71,12 @@ class ModelUtils:
 
     @staticmethod
     def get_generator(
-        num_classes: int, dataset, device: torch.device, **kwargs
+        num_classes: int, dataset, device: torch.device, feature_dim:list, **kwargs
     ) -> nn.Module:
         """helper function used in FedGen to create generators for server and clients"""
+        # need to extract feature dim from model
         model = Generative(
-            noise_dim=256, num_classes=num_classes, dataset=dataset, device=device
+            noise_dim=256, num_classes=num_classes, dataset=dataset, device=device, feature_dim=feature_dim
         )
         model = model.to(device)
         return model
@@ -341,6 +342,7 @@ class Generative(nn.Module):
         device,
         latent_layer_idx=-1,
         embedding=False,
+        feature_dim
     ) -> None:
         super().__init__()
 
@@ -349,6 +351,7 @@ class Generative(nn.Module):
         self.device = device
         self.embedding = embedding
         self.latent_layer_idx = latent_layer_idx
+        self.feature_dim = feature_dim
         (
             self.hidden_dim,
             self.latent_dim,
@@ -375,8 +378,8 @@ class Generative(nn.Module):
             act = nn.ReLU()
             self.fc_layers += [fc, bn, act]
         ### Representation layer
-        self.representation_layer = nn.Linear(self.fc_configs[-1], self.latent_dim)
-        print("Build last layer {} X {}".format(self.fc_configs[-1], self.latent_dim))
+        self.representation_layer = nn.Linear(self.fc_configs[-1], self.feature_dim)
+        print("Build last layer {} X {}".format(self.fc_configs[-1], self.feature_dim))
 
     def forward(self, labels, verbose=True):
         """
