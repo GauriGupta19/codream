@@ -389,6 +389,7 @@ class Generative(nn.Module):
         result = {}
         batch_size = labels.shape[0]
         eps = torch.rand((batch_size, self.noise_dim))  # sampling from Gaussian
+        eps = eps.to(self.device)
         if verbose:
             result["eps"] = eps
         if self.embedding:  # embedded dense vector
