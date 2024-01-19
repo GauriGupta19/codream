@@ -72,15 +72,19 @@ class BaseNode(ABC):
             # make a toy prediction
             data_loader = self.dset_obj.train_dset
 
-            feature_dim = None
+            feature_dim_list = None
 
             # Get a batch of data (assuming you want just one sample)
             for _, (X, y) in enumerate(data_loader):
-                feature_dim = X.size()
+                feature_dim_list = X.size()
                 break
-            print(f"THIS IS FEATURE DIM: {feature_dim}")
+            print(f"THIS IS FEATURE DIM: {feature_dim_list}")
 
-            assert feature_dim is not None
+            assert feature_dim_list is not None
+
+            feature_dim = 1
+            for val in feature_dim_list:
+                feature_dim *= val
 
             self.generator = self.model_utils.get_generator(
                 num_classes=num_classes,
