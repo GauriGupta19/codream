@@ -368,6 +368,7 @@ class Generative(nn.Module):
 
         z = self.fc1(z)
         z = self.fc(z)
+        z = z.view(z.shape[0], -1, 32, 32)
 
         return z
 
