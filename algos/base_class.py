@@ -71,13 +71,12 @@ class BaseNode(ABC):
             # first need to get the feature dimension from model
             # make a toy prediction
             data_loader = self.dset_obj.train_dset
-            print(f"data_loader:{data_loader}, type: {type(data_loader)}")
 
-            feature_dim = None
+            feature_dim = [config["batch_size"]]
 
             # Get a batch of data (assuming you want just one sample)
             for batch, (X, y) in enumerate(data_loader):
-                feature_dim = X.size()
+                feature_dim.extend(X.size())
                 break
             print(f"THIS IS FEATURE DIM: {feature_dim}")
 
