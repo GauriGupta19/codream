@@ -164,7 +164,6 @@ class ModelUtils:
             # fedGen modification of additive loss
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
-            labels = torch.LongTensor(labels)
             z = generative_model(labels)
             loss += loss_fn(generative_model.head(z), labels)
 
