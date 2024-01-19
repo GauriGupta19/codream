@@ -68,7 +68,10 @@ class BaseNode(ABC):
 
         # for fedGen
         if config["algo"] == "fedgen":
-            self.generator = self.model_utils.get_generator(config["dset"], self.device)
+            # self.generator = self.model_utils.get_generator(config["dset"], self.device)
+            self.generator = self.model_utils.get_generator(
+                num_classes=num_classes, dataset=config["dset"], device=self.device
+            )
             print("generator created!")
 
         # load a checkpoint if load_existing is set to True
