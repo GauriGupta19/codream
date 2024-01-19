@@ -111,7 +111,7 @@ avgkd = {
     "num_clients": 4, "samples_per_client": 1000,
     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
     "epochs": 400, "local_runs": 5,
-    "model": "wrn40_1", "model_lr": 0.1, "batch_size": 256,
+    "model": "wrn16_1", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
 
@@ -346,7 +346,7 @@ centralized = {
 # current_config = collab_dreams
 # current_config = feddream
 # current_config = feddream_fast
-current_config = feddream_fast_indp
+# current_config = feddream_fast_indp
 # current_config = fl
 current_config = avgkd
 # current_config = fedprox

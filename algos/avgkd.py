@@ -1,7 +1,9 @@
 from collections import OrderedDict, defaultdict
 from typing import Any, Dict, List
+import torch
 from torch import Tensor
 from torch import no_grad, cuda
+import torch.nn.functional as F
 import torch.nn as nn
 
 from algos.base_class import BaseClient, BaseServer
@@ -12,9 +14,6 @@ def put_on_cpu(wts):
         wts[k] = v.to("cpu")
     return wts
 
-def repr_on_cpu(dloader_model_tuple):
-    # print(len(dloader_model_tuple), dloader_model_tuple)
-    return (dloader_model_tuple[0], dloader_model_tuple[1].to('cpu'))
 
 
 class CommProtocol(object):
@@ -32,7 +31,15 @@ class AvgKDClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
+        self.data_transfer_flag = True
 
+    # def repr_on_cpu(self, dloader_model_tuple):
+    #     if self.data_transfer_flag:
+    #         self.data_transfer_flag = False
+    #         return (dloader_model_tuple[0].to('cpu'), dloader_model_tuple[1])
+    #     else:
+    #         return (dloader_model_tuple[0].to('cpu'),)
+    
     def local_train(self):
         """
         Train the model locally
@@ -46,7 +53,9 @@ class AvgKDClient(BaseClient):
         # 2. write a new train function for avgkd, and replace the target with new predicted labels that you get from 
         # 3. make dict while communicating
         # 4. add a flag for akd and avgkd
+        # 5. how to write loss
         # make sure that target and predicted labels average have same dimensions, 256X and 256X1 shouldn't be there
+
 
         print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
         # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
@@ -55,6 +64,7 @@ class AvgKDClient(BaseClient):
         """
         Test the model locally
         """
+        self.model.to(self.device)
         test_loss, acc = self.model_utils.test(self.model,
                                                self._test_loader,
                                                self.loss_fn,
@@ -67,7 +77,11 @@ class AvgKDClient(BaseClient):
         Share the dataloader and model
         """
         # print('devices', self.dloader.device, self.model.device)
-        return (self.dloader, self.model)
+        if self.data_transfer_flag:
+            self.data_transfer_flag = False
+            return (self.model.to('cpu'), self.dloader)
+        else:
+            return (self.model.to('cpu'),)
 
     # def set_labels(self, representation: Dict[str, Tensor]):
     #     """
@@ -87,7 +101,7 @@ class AvgKDClient(BaseClient):
                 # MODIFY local_train to change data
                 self.local_train()
             # MODIFY this to put on cpu if necessary
-            repr = {self.node_id: repr_on_cpu(self.get_representation())}
+            repr = {self.node_id: self.get_representation()}
             # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
             # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
@@ -110,6 +124,7 @@ class AvgKDServer(BaseServer):
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
+        self.client_dataloaders = {}
 
     def update_stats(self, stats: List[List[float]], round: int):
         """
@@ -182,53 +197,63 @@ class AvgKDServer(BaseServer):
         self.log_utils.log_console("Server received all clients done signal")
 
         # print('reprs from all clients: ', reprs)
-        client_dataloaders = {}
         client_models = {}
         client_new_labels = {}
+
         # MODIFY: send dataloaders once
         for client_repr in reprs:
             client_node_id = list(client_repr.keys())[0]
-            curr_dataloader = client_repr[client_node_id][0]
-            curr_model = client_repr[client_node_id][1]
-            
-            client_dataloaders[client_node_id] = curr_dataloader
+            curr_model = client_repr[client_node_id][0]
             client_models[client_node_id] = curr_model
-
+            
+            print(client_node_id, len(client_repr[client_node_id]))
+            # update self.client_dataloaders only once in the first round
+            if len(client_repr[client_node_id]) == 2:
+                curr_dataloader = client_repr[client_node_id][1]
+                self.client_dataloaders[client_node_id] = curr_dataloader
+            
+        client_output_all = defaultdict(lambda: defaultdict(list))
+        print('self.clients: ', self.clients)
         for client_node_1 in self.clients:
-            print('1', cuda.memory_allocated(0))
+            # print('1', cuda.memory_allocated(0))
             print('client_node_1', client_node_1)
-            client_output_all = defaultdict(list)
-            print('2', cuda.memory_allocated(0))
+            # print('2', cuda.memory_allocated(0))
             model1 = client_models[client_node_1]
             model1.to(self.device)
             model1.eval()
-            print('3', cuda.memory_allocated(0))
+            # print('3', cuda.memory_allocated(0))
             for client_node_2 in self.clients:
                 if client_node_1 != client_node_2:
                     print('client_node_2', client_node_2)
-                    dloader2 = client_dataloaders[client_node_2]
-                    print('4', cuda.memory_allocated(0))
+                    dloader2 = self.client_dataloaders[client_node_2]
+                    # print('4', cuda.memory_allocated(0))
                     for batch_idx, (data, target) in enumerate(dloader2):
-                        print('5', cuda.memory_allocated(0))
+                        # print('5', cuda.memory_allocated(0))
                         data = data.to(self.device)
-                        print('6', cuda.memory_allocated(0))
+                        # print('6', cuda.memory_allocated(0))
 
                         # add client 2's (whose dataloader we're working on) target labels one hot encoding only once to the outputs
-                        if len(client_output_all[client_node_2]) == 0:
+                        if len(client_output_all[client_node_2][batch_idx]) == 0:
                             target_labels_onehot = nn.functional.one_hot(target)
-                            client_output_all[client_node_2].append(target_labels_onehot)
+                            # print(target_labels_onehot)
+                            # print(F.softmax(target_labels_onehot.float(), dim=-1))
+                            target_labels_onehot_softmax = F.softmax(target_labels_onehot.float(), dim=-1)
+                            client_output_all[client_node_2][batch_idx].append(target_labels_onehot_softmax)
 
                         # print(batch_idx, 'target', target.shape, target)
                         # print(batch_idx, 'target_labels_onehot', target_labels_onehot.shape, target_labels_onehot)
-                        print('7', cuda.memory_allocated(0))
+                        # print('7', cuda.memory_allocated(0))
                         with no_grad():
                             output = model1(data)
-                        print('8', cuda.memory_allocated(0))
+                        # print('8', cuda.memory_allocated(0))
                         # pred = output.argmax(dim=1, keepdim=True)
                         output = output.to('cpu')
-                        print('9', cuda.memory_allocated(0))
+                        # print('9', cuda.memory_allocated(0))
                         # print(batch_idx, 'output', output.shape, output)
-                        client_output_all[client_node_2].append(output)
+                        # print(output)
+                        # print(F.softmax(output, dim=-1))
+                        output_softmax = F.softmax(output, dim=-1)
+                        client_output_all[client_node_2][batch_idx].append(output_softmax)
                         # del data
                         # del target
                         # print('is_cuda', client_output_all.is_cuda)
@@ -237,7 +262,26 @@ class AvgKDServer(BaseServer):
             #             target.to('cpu')
             # del model1
             # model1.to('cpu')
-        print(client_output_all)
+        print((client_output_all))
+        print(client_output_all.keys())
+        # print(client_output_all[1][0].shape)
+        # print(client_output_all[1][1].shape)
+        # print(client_output_all[1][2].shape)
+        # print(client_output_all[1][3].shape)
+        # print(client_output_all[1][4].shape)
+        print('client_new_labels', client_new_labels)
+
+        # print(client_output_all[1][0])
+        # print(client_output_all[1][1])
+        # print(client_output_all[1][2])
+        # print(client_output_all[1][3])
+        # print(client_output_all[1][4])
+
+        # take average of all 5 (4 clients models outputs and 1 ground label)
+        for client_node in self.clients:
+            print(client_node, torch.stack(client_output_all[client_node]))
+            print(client_node, torch.mean(torch.stack(client_output_all[client_node]), dim=0))
+
         print('client_new_labels', client_new_labels)
 
         # all_predicted = []
@@ -257,7 +301,7 @@ class AvgKDServer(BaseServer):
         for client_node in self.clients:
             # MODIFY sent signal to labels
             self.comm_utils.send_signal(client_node,
-                                        client_output_all,
+                                        avg,
                                         self.tag.UPDATES)
         local_test_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.CLIENT_STATS)
         self.update_stats(local_test_acc, self.round)
