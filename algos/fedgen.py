@@ -335,6 +335,20 @@ class FedGenServer(BaseServer):
 
         self.set_representation()  # distribute classifier and generator updates back to clients
 
+    def test(self):
+        """
+        helper test function called by run_protocol to evaluate model performance
+        after each round of training
+        """
+        test_loss, acc = self.model_utils.test(
+            self.model, self._test_loader, self.loss_fn, self.device
+        )
+        # TODO save the model if the accuracy is better than the best accuracy so far
+        if acc > self.best_acc:
+            self.best_acc = acc
+            self.model_utils.save_model(self.model, self.model_save_path)
+        return acc
+
     def run_protocol(self):
         assert self.generator is not None
 
@@ -400,6 +414,7 @@ class FedGenServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
+            acc = self.test()
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(round, acc))
             self.log_utils.log_console(
