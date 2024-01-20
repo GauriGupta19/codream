@@ -52,7 +52,7 @@ class FedGenClient(BaseClient):
         assert self.generator is not None
         assert len(self.qualified_labels) > 0
 
-        avg_loss = self.model_utils.train_fedgen(
+        avg_loss, acc = self.model_utils.train_fedgen(
             self.model,
             self.optim,
             self.dloader,
@@ -63,6 +63,8 @@ class FedGenClient(BaseClient):
             self.generator,
         )
         print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
+        print("Client {} finished training with accuracy {}".format(self.node_id, acc))
+
 
     def local_test(self, **kwargs):
         pass
@@ -296,8 +298,7 @@ class FedGenServer(BaseServer):
         Sets updated model and distribute it to client
         where client receives (classifier, generator)
         """
-        # classifier = put_on_cpu(self.model)
-        # generator = put_on_cpu(self.generator)
+
         classifier, generator = self.get_representation(
             self.model
         ), self.get_representation(self.generator)
@@ -331,8 +332,8 @@ class FedGenServer(BaseServer):
 
         all_weights, all_models = self.receive_models(reprs)
         self.train_generator(all_weights, all_models)
+        print(f"THIS IS ALL WEIGHTS: {all_weights}")
         self.aggregate_parameters(all_models, all_weights)
-
         self.set_representation()  # distribute classifier and generator updates back to clients
 
     def test(self):
@@ -380,7 +381,8 @@ class FedGenServer(BaseServer):
                 self.qualified_labels.extend(
                     [class_id for _ in range(int(client_label_count[class_id]))]
                 )
-
+        print(f"set of qualified labels: {set(self.qualified_labels)}")
+        print(f"set of test labels:{set(self._test_loader.dataset.targets)}")
         # send qualified labels back to clients
         for client_node in self.clients:
             self.log_utils.log_console(
