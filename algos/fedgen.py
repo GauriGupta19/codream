@@ -62,9 +62,11 @@ class FedGenClient(BaseClient):
             self.batch_size,
             self.generator,
         )
-        print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
-        print("Client {} finished training with accuracy {}".format(self.node_id, acc))
-
+        print(
+            "Client {} finished training with loss {}, accuracy {}".format(
+                self.node_id, avg_loss, acc
+            )
+        )
 
     def local_test(self, **kwargs):
         pass
@@ -76,43 +78,20 @@ class FedGenClient(BaseClient):
 
         return self.model.state_dict()
 
-    def set_representation(
-        self,
-        model_representation: Dict[str, Tensor],
-        gen_model_representation: Dict[str, Tensor],
-    ):
+    def set_representation(self, classifier_params, generator_params):
         """
         Helper function that is invoked when reciving updates from server
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
 
-        self.generator.load_state_dict(gen_model_representation)
-        self.model.load_state_dict(model_representation)
-        # for new_param, old_param in zip(model.parameters(), self.model.parameters()):
-        #     old_param.data = new_param.data.clone()
+        # self.generator.load_state_dict(gen_model_representation)
+        # self.model.load_state_dict(model_representation)
+        for new_p, old_p in zip(classifier_params, self.model.parameters()):
+            old_p.data = new_p.data.clone()
 
-    def set_generator(self, generator_init: nn.Module):
-        """first step in run_protocol, sets generator from server input"""
-        self.generator = generator_init
-
-    # def get_num_classes(self) -> Tensor:
-    #     """helper funcion that counts how many entries per class"""
-    #     if self.num_classes == None:
-    #         print(f"node {self.node_id} does not have any num_classes assigned!")
-    #         print(f"self.class_counts is {self.class_counts}")
-
-    #     assert self.num_classes > 0
-
-    #     sample_per_class = torch.zeros(self.num_classes)
-
-    #     # iterate through trainloader
-    #     for x, y in self.dloader:
-    #         for yy in y:
-    #             print(yy)
-    #             sample_per_class[yy.item()] += 1
-
-    #     return sample_per_class
+        for new_p, old_p in zip(generator_params, self.generator.parameters()):
+            old_p.data = new_p.data.clone()
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -150,27 +129,17 @@ class FedGenClient(BaseClient):
             # classifier_param = self.get_representation()
             classifier = self.model
 
-            # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
-            # self.comm_utils.send_signal(
-            #     dest=self.server_node,
-            #     data=(classifier_param, self.config["samples_per_client"]),
-            #     tag=self.tag.DONE,
-            # )
-
             self.comm_utils.send_signal(
                 dest=self.server_node,
                 data=(classifier, self.config["samples_per_client"]),
                 tag=self.tag.DONE,
             )
-            # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
             repr = self.comm_utils.wait_for_signal(
                 src=self.server_node, tag=self.tag.UPDATES
             )
-            # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
             # TODO repr is a nested list, where first element is classifier and second is generator
             # TODO confirm what server sends to client, and what client sends to server
             self.set_representation(repr[0], repr[1])
-            # self.log_utils.logging.info("Round {} done".format(round))
 
 
 class FedGenServer(BaseServer):
@@ -289,7 +258,8 @@ class FedGenServer(BaseServer):
         Share the model weights
         """
 
-        return model.state_dict()
+        # return model.state_dict()
+        return model.parameters()
 
     def set_representation(self):
         """
@@ -299,10 +269,10 @@ class FedGenServer(BaseServer):
         where client receives (classifier, generator)
         """
 
-        classifier, generator = self.get_representation(
+        classifier_p, generator_p = self.get_representation(
             self.model
         ), self.get_representation(self.generator)
-        repr_to_client = (classifier, generator)
+        repr_to_client = (classifier_p, generator_p)
 
         for client_node in self.clients:
             self.comm_utils.send_signal(
@@ -383,6 +353,7 @@ class FedGenServer(BaseServer):
                 )
         print(f"set of qualified labels: {set(self.qualified_labels)}")
         print(f"set of test labels:{set(self._test_loader.dataset.targets)}")
+
         # send qualified labels back to clients
         for client_node in self.clients:
             self.log_utils.log_console(
@@ -393,19 +364,7 @@ class FedGenServer(BaseServer):
             self.comm_utils.send_signal(
                 dest=client_node, data=self.qualified_labels, tag=self.tag.SEND_QUAL_LAB
             )
-        """
-        gen_weights = put_on_cpu(self.generator.state_dict())
 
-        for client_node in self.clients:
-            self.log_utils.log_console(
-                "Server sending generator from {} to {}".format(
-                    self.node_id, client_node
-                )
-            )
-            self.comm_utils.send_signal(
-                dest=client_node, data=gen_weights, tag=self.tag.SEND_GEN
-            )
-        """
         # block until all clients ack back
         self.log_utils.log_console(
             "Server waiting for all clients to respond to qualified labels \n"
