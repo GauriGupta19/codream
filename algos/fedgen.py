@@ -255,7 +255,7 @@ class FedGenServer(BaseServer):
 
             logits = 0
             for w, model in zip(weights, models):
-                assert model.device == z.device
+                assert model.get_device() == z.get_device()
                 model.eval()
                 logits += model(z) * w
 
