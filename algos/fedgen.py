@@ -251,10 +251,11 @@ class FedGenServer(BaseServer):
         for _ in range(10):
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
-            z = self.generator(labels)
+            z = self.generator(labels).to(self.device)
 
             logits = 0
             for w, model in zip(weights, models):
+                assert model.device == z.device
                 model.eval()
                 logits += model(z) * w
 
