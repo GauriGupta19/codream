@@ -78,7 +78,7 @@ class FedGenClient(BaseClient):
 
         return self.model.state_dict()
 
-    def set_representation(self, classifier_params, generator_params):
+    def set_representation(self, classifier, generator):
         """
         Helper function that is invoked when reciving updates from server
         Note: Not implementing local feature extractor at this moment
@@ -87,10 +87,10 @@ class FedGenClient(BaseClient):
 
         # self.generator.load_state_dict(gen_model_representation)
         # self.model.load_state_dict(model_representation)
-        for new_p, old_p in zip(classifier_params, self.model.parameters()):
+        for new_p, old_p in zip(classifier, self.model.parameters()):
             old_p.data = new_p.data.clone()
 
-        for new_p, old_p in zip(generator_params, self.generator.parameters()):
+        for new_p, old_p in zip(generator, self.generator.parameters()):
             old_p.data = new_p.data.clone()
 
     def run_protocol(self):
@@ -171,20 +171,6 @@ class FedGenServer(BaseServer):
 
         assert self.generator is not None
 
-    def test(self) -> float:
-        """
-        Test the classifier model on the server
-
-        """
-        test_loss, acc = self.model_utils.test(
-            self.model, self._test_loader, self.loss_fn, self.device
-        )
-        # TODO save the model if the accuracy is better than the best accuracy so far
-        if acc > self.best_acc:
-            self.best_acc = acc
-            self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
-
     def receive_models(self, reprs) -> Tuple[List[int], List[nn.Module]]:
         """
         step called by single_round, used to gather clients' models for
@@ -253,13 +239,13 @@ class FedGenServer(BaseServer):
             ):
                 server_param.data += w * client_param.data.clone()
 
-    def get_representation(self, model: nn.Module) -> Dict[str, Tensor]:
+    def get_representation(self, model: nn.Module):
         """
         Share the model weights
         """
 
         # return model.state_dict()
-        return model.parameters()
+        return [list(model.parameters())]
 
     def set_representation(self):
         """
@@ -269,14 +255,14 @@ class FedGenServer(BaseServer):
         where client receives (classifier, generator)
         """
 
-        classifier_p, generator_p = self.get_representation(
-            self.model
-        ), self.get_representation(self.generator)
-        print(
-            f"Type of param to send to client:{type(generator_p)}, param:{generator_p}"
-        )
-        repr_to_client = (classifier_p, generator_p)
-
+        # classifier_p, generator_p = self.get_representation(
+        #     self.model
+        # ), self.get_representation(self.generator)
+        # print(
+        #     f"Type of param to send to client:{type(generator_p)}, param:{generator_p}"
+        # )
+        # repr_to_client = (classifier_p, generator_p)
+        repr_to_client = (self.model, self.generator)
         for client_node in self.clients:
             self.comm_utils.send_signal(
                 dest=client_node, data=repr_to_client, tag=self.tag.UPDATES
