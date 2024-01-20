@@ -87,10 +87,10 @@ class FedGenClient(BaseClient):
 
         # self.generator.load_state_dict(gen_model_representation)
         # self.model.load_state_dict(model_representation)
-        for new_p, old_p in zip(classifier, self.model.parameters()):
+        for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
             old_p.data = new_p.data.clone()
 
-        for new_p, old_p in zip(generator, self.generator.parameters()):
+        for new_p, old_p in zip(generator.parameters(), self.generator.parameters()):
             old_p.data = new_p.data.clone()
 
     def run_protocol(self):
