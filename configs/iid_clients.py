@@ -110,8 +110,9 @@ avgkd = {
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
-    "epochs": 400, "local_runs": 5,
-    "model": "wrn16_1", "model_lr": 0.1, "batch_size": 256,
+    # local runs 20 as per paper on AvgKD
+    "epochs": 400, "local_runs": 20,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
 

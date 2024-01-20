@@ -55,20 +55,9 @@ class ModelUtils():
             model = MODEL_DICT[model_name](**kwargs)
         else:
             raise ValueError(f"Model name {model_name} not supported")
-        print(f"Model {model_name} loading on device {device}")
+        print(f"Model {model_name} loading on device {device} with memory {torch.cuda.memory_allocated(0)}")
         model = model.to(device)
-        print(f"Model {model_name} loaded on device {device}")
-
-        # model = models.resnet18()
-        param_size = 0
-        for param in model.parameters():
-            param_size += param.nelement() * param.element_size()
-        buffer_size = 0
-        for buffer in model.buffers():
-            buffer_size += buffer.nelement() * buffer.element_size()
-
-        size_all_mb = (param_size + buffer_size) / 1024**2
-        print('model size: {:.3f}MB'.format(size_all_mb))
+        print(f"Model {model_name} loaded on device {device} with memory {torch.cuda.memory_allocated(0)}")
         #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
@@ -111,8 +100,14 @@ class ModelUtils():
             correct += pred.eq(target.view_as(pred)).sum().item()
         acc = correct / total_samples
         return train_loss, acc
+
+    def soft_loss(self, preds, y):
+        'Function for the soft cross entrohpy objective'
+        logprobs = nn.functional.log_softmax(preds, dim = -1)
+        loss = -(y * logprobs).sum() / preds.shape[0]
+        return loss
     
-    def train_avgkd(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+    def train_avgkd(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, agents_prediction, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
         model.train()
@@ -140,7 +135,12 @@ class ModelUtils():
                 output = nn.functional.log_softmax(output, dim=1) # type: ignore
             if len(target.size()) > 1 and target.size(1) == 1:
                 target = target.squeeze(dim=1)
-            loss = loss_fn(output, target)
+            # loss = loss_fn(output, target)
+            agents_prediction_batch = agents_prediction[batch_idx]
+            agents_prediction_batch = agents_prediction_batch.to(device)
+            # print('agents_prediction_batch', batch_idx, agents_prediction_batch)
+            # print('output', batch_idx, output)
+            loss = self.soft_loss(output, agents_prediction_batch)
             loss.backward()
             optim.step()
             train_loss += loss.item()
