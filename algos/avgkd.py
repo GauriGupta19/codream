@@ -332,12 +332,12 @@ class AvgKDServer(BaseServer):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
-            acc = self.test()
-            self.log_utils.log_tb(f"test_acc", acc, round)
-            self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
-                round, acc
-            ))
-            self.log_utils.log_console("round: {} Best test_acc:{:.4f}".format(
-                round, self.best_acc
-            ))
+            # acc = self.test()
+            # self.log_utils.log_tb(f"test_acc", acc, round)
+            # self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
+                # round, acc
+            # ))
+            # self.log_utils.log_console("round: {} Best test_acc:{:.4f}".format(
+                # round, self.best_acc
+            # ))
             self.log_utils.log_console("Round {} done".format(round))
