@@ -256,7 +256,7 @@ class FedGenServer(BaseServer):
             logits = 0
             for w, model in zip(weights, models):
                 model.eval()
-                logits += model.head(z) * w
+                logits += model(z) * w
 
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
