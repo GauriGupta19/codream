@@ -278,7 +278,7 @@ class FedGenServer(BaseServer):
         # NOTE this procedure should modify the classifier
         for w, client_model in zip(all_weights, all_models):
             for server_param, client_param in zip(
-                self.model.parameters(), client_model.parameers()
+                self.model.parameters(), client_model.parameters()
             ):
                 server_param.data += w * client_param.data.clone()
 
