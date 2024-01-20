@@ -84,13 +84,17 @@ class FedGenClient(BaseClient):
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
+        # TODO this is for debugging to make sure models are being updated correctly
+        # need to change impl later because this will prob be way too big
 
         # self.generator.load_state_dict(gen_model_representation)
         # self.model.load_state_dict(model_representation)
         for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
+            new_p = new_p.to(self.device)
             old_p.data = new_p.data.clone()
 
         for new_p, old_p in zip(generator.parameters(), self.generator.parameters()):
+            new_p = new_p.to(self.device)
             old_p.data = new_p.data.clone()
 
     def run_protocol(self):
