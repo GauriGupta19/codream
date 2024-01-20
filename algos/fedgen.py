@@ -272,6 +272,9 @@ class FedGenServer(BaseServer):
         classifier_p, generator_p = self.get_representation(
             self.model
         ), self.get_representation(self.generator)
+        print(
+            f"Type of param to send to client:{type(generator_p)}, param:{generator_p}"
+        )
         repr_to_client = (classifier_p, generator_p)
 
         for client_node in self.clients:
