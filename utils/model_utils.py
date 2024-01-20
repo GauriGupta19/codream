@@ -171,14 +171,6 @@ class ModelUtils:
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
 
-            print("------- \n generative output: ", z, "\n ----------")
-            print(f"generator dimension: {z.size()}")
-            print(f"correct data dimension: {data.size()}")
-            model_pred_z = model(z)
-            print(
-                "------- \n model pred of generative z: ", model_pred_z, "\n ----------"
-            )
-
             loss += loss_fn(model(z), labels)
 
             loss.backward()
