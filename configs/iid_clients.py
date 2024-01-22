@@ -329,7 +329,7 @@ fedgen = {
     "exp_type": "fedgen",
     "exp_type": "iid_clients_fedgen",
     "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
+    "dump_dir": "./expt_dump/cifar10/iid",
     "dpath": "./imgs/cifar10",
     "seed": 1,
     "device_ids": {

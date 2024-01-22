@@ -35,8 +35,8 @@ class FedGenClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
         self.mu = 1
         self.qualified_labels = list()  # TODO figure out when this field is filled
         self.batch_size = self.config["batch_size"]
@@ -93,6 +93,8 @@ class FedGenClient(BaseClient):
 
         self.generator.load_state_dict(generator)
         self.model.load_state_dict(classifier)
+        self.generator = self.generator.to(self.device)
+        self.model = self.model.to(self.device)
         # for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
         #     new_p = new_p.to(self.device)
         #     old_p.data = new_p.data.clone()
@@ -116,9 +118,9 @@ class FedGenClient(BaseClient):
         )
         # set qualified labels
         self.qualified_labels = qualified_labels
-        print(
-            f"client {self.node_id} received qualified labels {qualified_labels} from server!"
-        )
+        # print(
+        #     f"client {self.node_id} received qualified labels {qualified_labels} from server!"
+        # )
 
         # then send ack to server to signal that training is ready to start
         self.comm_utils.send_signal(
@@ -128,6 +130,7 @@ class FedGenClient(BaseClient):
         # then start regular training
         for round in range(start_epochs, total_epochs):
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
+            print('round', round)
             for i in range(self.config["local_runs"]):
                 print("training locally")
                 self.local_train()
@@ -249,7 +252,7 @@ class FedGenServer(BaseServer):
         """
         Share the model weights
         """
-        return model.state_dict()
+        return put_on_cpu(model.state_dict())
         # return [list(model.parameters())]
 
     def set_representation(self):
@@ -328,10 +331,10 @@ class FedGenServer(BaseServer):
         assert len(class_counts_all_clients) == len(self.clients)
         assert len(self.qualified_labels) == 0
 
-        print(
-            "received class count distribution from all clients: ",
-            class_counts_all_clients,
-        )
+        # print(
+        #     "received class count distribution from all clients: ",
+        #     class_counts_all_clients,
+        # )
 
         self.num_classes = len(class_counts_all_clients[0])
 
@@ -343,8 +346,8 @@ class FedGenServer(BaseServer):
                 self.qualified_labels.extend(
                     [class_id for _ in range(int(client_label_count[class_id]))]
                 )
-        print(f"set of qualified labels: {set(self.qualified_labels)}")
-        print(f"set of test labels:{set(self._test_loader.dataset.targets)}")
+        # print(f"set of qualified labels: {set(self.qualified_labels)}")
+        # print(f"set of test labels:{set(self._test_loader.dataset.targets)}")
 
         # send qualified labels back to clients
         for client_node in self.clients:
@@ -368,8 +371,8 @@ class FedGenServer(BaseServer):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
             acc, loss = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
-            self.log_utils.log_tb(f"test_loss/clients", loss, round)
+            self.log_utils.log_tb(f"test_acc", acc, round)
+            self.log_utils.log_tb(f"test_loss", loss, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(round, acc))
             self.log_utils.log_console(
                 "round: {} Best test_acc:{:.4f}".format(round, self.best_acc)
