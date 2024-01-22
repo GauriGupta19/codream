@@ -346,7 +346,7 @@ fedgen = {
     "epochs": 500,
     "local_runs": 5,
     "model": "resnet18",
-    "model_lr": 0.1,
+    "model_lr": 0.005,
     "batch_size": 256,
     "exp_keys": [
         "algo",

@@ -154,6 +154,7 @@ class ModelUtils:
             data, target = data.to(device), target.to(device)
             total_samples += data.size(0)
             optim.zero_grad()
+
             # check if epoch is passed as a keyword argument
             # if so, call adjust_learning_rate
             if "epoch" in kwargs:
@@ -164,11 +165,13 @@ class ModelUtils:
 
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
+
             loss = loss_fn(output, target)
             print(f"normal classifier loss{loss}")
 
             # fedGen modification of additive loss
             labels = np.random.choice(qualified_labels, batch_size)
+            print(f"randomly chosen labels: {labels}")
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
 

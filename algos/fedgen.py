@@ -42,6 +42,10 @@ class FedGenClient(BaseClient):
         self.batch_size = self.config["batch_size"]
         assert self.generator is not None
 
+        self.optim = torch.optim.SGD(
+            self.model.parameters(), lr=self.config["model_lr"]
+        )
+
     def local_train(self, **kwargs):
         """
         trains for one round
@@ -87,15 +91,15 @@ class FedGenClient(BaseClient):
         # TODO this is for debugging to make sure models are being updated correctly
         # need to change impl later because this will prob be way too big
 
-        # self.generator.load_state_dict(gen_model_representation)
-        # self.model.load_state_dict(model_representation)
-        for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
-            new_p = new_p.to(self.device)
-            old_p.data = new_p.data.clone()
+        self.generator.load_state_dict(generator)
+        self.model.load_state_dict(classifier)
+        # for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
+        #     new_p = new_p.to(self.device)
+        #     old_p.data = new_p.data.clone()
 
-        for new_p, old_p in zip(generator.parameters(), self.generator.parameters()):
-            new_p = new_p.to(self.device)
-            old_p.data = new_p.data.clone()
+        # for new_p, old_p in zip(generator.parameters(), self.generator.parameters()):
+        #     new_p = new_p.to(self.device)
+        #     old_p.data = new_p.data.clone()
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -207,9 +211,7 @@ class FedGenServer(BaseServer):
 
         self.generator.train()
 
-        # NOTE taken from fedGen code where local generator is trained for
-        # ensemble_epoch / n_teacher_iters = 50/5 = 10
-        for _ in range(10):
+        for _ in range(self.config["local_runs"]):
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
@@ -247,9 +249,8 @@ class FedGenServer(BaseServer):
         """
         Share the model weights
         """
-
-        # return model.state_dict()
-        return [list(model.parameters())]
+        return model.state_dict()
+        # return [list(model.parameters())]
 
     def set_representation(self):
         """
@@ -259,14 +260,11 @@ class FedGenServer(BaseServer):
         where client receives (classifier, generator)
         """
 
-        # classifier_p, generator_p = self.get_representation(
-        #     self.model
-        # ), self.get_representation(self.generator)
-        # print(
-        #     f"Type of param to send to client:{type(generator_p)}, param:{generator_p}"
-        # )
-        # repr_to_client = (classifier_p, generator_p)
-        repr_to_client = (self.model, self.generator)
+        classifier_p, generator_p = self.get_representation(
+            self.model
+        ), self.get_representation(self.generator)
+        repr_to_client = (classifier_p, generator_p)
+        # repr_to_client = (self.model, self.generator)
         for client_node in self.clients:
             self.comm_utils.send_signal(
                 dest=client_node, data=repr_to_client, tag=self.tag.UPDATES
@@ -288,6 +286,7 @@ class FedGenServer(BaseServer):
                 )
             )
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
+
         self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.wait_for_all_clients(
             self.clients, self.tag.DONE
@@ -295,7 +294,7 @@ class FedGenServer(BaseServer):
 
         all_weights, all_models = self.receive_models(reprs)
         self.train_generator(all_weights, all_models)
-        print(f"THIS IS ALL WEIGHTS: {all_weights}")
+        # print(f"THIS IS ALL WEIGHTS: {all_weights}")
         self.aggregate_parameters(all_models, all_weights)
         self.set_representation()  # distribute classifier and generator updates back to clients
 
