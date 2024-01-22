@@ -120,7 +120,7 @@ class BaseClient(BaseNode):
                 y = y.item()
             self.class_counts[y] += 1
         self.samples_per_client = [c/samples_per_client for c in self.class_counts]
-        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
+        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=False)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):

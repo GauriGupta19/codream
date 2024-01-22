@@ -135,12 +135,17 @@ class ModelUtils():
                 output = nn.functional.log_softmax(output, dim=1) # type: ignore
             if len(target.size()) > 1 and target.size(1) == 1:
                 target = target.squeeze(dim=1)
-            # loss = loss_fn(output, target)
             agents_prediction_batch = agents_prediction[batch_idx]
             agents_prediction_batch = agents_prediction_batch.to(device)
             # print('agents_prediction_batch', batch_idx, agents_prediction_batch)
             # print('output', batch_idx, output)
+            # print(batch_idx, agents_prediction_batch)
             loss = self.soft_loss(output, agents_prediction_batch)
+            
+            # loss = loss_fn(output, torch.argmax(agents_prediction_batch, dim=1))
+            # print(batch_idx, 'agents prediction', torch.argmax(agents_prediction_batch, dim=1))
+            # print(batch_idx, 'target', target)
+            # loss = loss_fn(output, target)
             loss.backward()
             optim.step()
             train_loss += loss.item()

@@ -1,0 +1,23 @@
+configs.iid_clients
+configs.iid_clients
+configs.iid_clients
+configs.iid_clients
+configs.iid_clients
+exp path: ./expt_dump/mnist/iid/iid_clients_avgkd_final_mnist_4clients_50samples_10_algo_avgkd_seed_4_seed4
+Experiment in ./expt_dump/mnist/iid/iid_clients_avgkd_final_mnist_4clients_50samples_10_algo_avgkd_seed_4_seed4 already present
+Press e to exit, r to replace it: avgkd
+avgkd
+avgkd
+avgkd
+Model resnet18 loading on device cuda:3 with memory 0
+Model resnet18 loading on device cuda:2 with memory 0
+Model resnet18 loading on device cuda:2 with memory 0
+Model resnet18 loading on device cuda:3 with memory 0
+Model resnet18 loaded on device cuda:3 with memory 0
+round 0
+Model resnet18 loaded on device cuda:2 with memory 0
+round 0
+Model resnet18 loaded on device cuda:2 with memory 0
+round 0
+Model resnet18 loaded on device cuda:3 with memory 0
+round 0

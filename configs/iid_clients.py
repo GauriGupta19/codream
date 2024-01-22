@@ -5,14 +5,14 @@ feddream_fast = {
     "seed": 4,
     "algo": "feddream_fast",
     "exp_id": "fast",
-    "exp_type": "iid_clients_feddream_fast_entropy",
+    "exp_type": "iid_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
+    "num_clients": 4, "samples_per_client": 6000,
     "device_ids": {"node_0": [4], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
@@ -83,15 +83,15 @@ fl = {
     "algo": "fedavg",
     "exp_id": 10,
     "exp_type": "iid_clients_fl",
-    "dset": "svhn",
-    "dump_dir": "./expt_dump/svhn/iid/",
-    "dpath": "./imgs/svhn",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
+    "num_clients": 4, "samples_per_client": 6000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -100,18 +100,18 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd",
-    "dset": "svhn",
-    "dump_dir": "./expt_dump/svhn/iid/",
-    "dpath": "./imgs/svhn",
+    "exp_type": "iid_clients_avgkd_final",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [3]},
-    # local runs 20 as per paper on AvgKD
-    "epochs": 400, "local_runs": 100,
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [2], "node_3": [3], "node_4": [3]},
+    # communication epochs = 20 and local runs = 20 as per paper on AvgKD
+    "epochs": 400, "local_runs": 20,
     "model": "resnet18", "model_lr": 0.001, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
@@ -306,16 +306,16 @@ isolated = {
     "algo": "isolated",
     "exp_id": 10,
     "exp_type": "iid_clients_isolated",
-    "dset": "pathmnist",
-    "dump_dir": "./expt_dump/pathmnist/iid/",
-    "dpath": "./imgs/pathmnist",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [1], "node_3": [2], "node_4": [3]},
+    "device_ids": {"node_0": [4], "node_1": [4], "node_2": [5], "node_3": [5], "node_4": [4]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
+    "num_clients": 4, "samples_per_client": 6000,
     "epochs": 400, "local_runs": 5,
     # optional for het models
     "heterogeneous_models": False, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
