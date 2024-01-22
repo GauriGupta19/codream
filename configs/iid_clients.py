@@ -13,7 +13,7 @@ feddream_fast = {
     "dpath": "./imgs/cifar10",
     # Learning setup
     "num_clients": 4, "samples_per_client": 6000,
-    "device_ids": {"node_0": [4], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
+    "device_ids": {"node_0": [4], "node_1": [2], "node_2": [5], "node_3": [6], "node_4": [7]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
@@ -25,7 +25,7 @@ feddream_fast = {
     "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
     "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
-    "warmup": 20, "local_train_freq": 5,
+    "warmup": 150, "local_train_freq": 5,
 
     # adaptive distillation parameters
     "adaptive_server": True,  "adaptive_distill_start_round": 10, 
@@ -101,18 +101,18 @@ avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
     "exp_type": "iid_clients_avgkd_final",
-    "dset": "mnist",
-    "dump_dir": "./expt_dump/mnist/iid/",
-    "dpath": "./imgs/mnist",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 50,
-    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [2], "node_3": [3], "node_4": [3]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
     # communication epochs = 20 and local runs = 20 as per paper on AvgKD
     "epochs": 400, "local_runs": 20,
-    "model": "resnet18", "model_lr": 0.001, "batch_size": 256,
+    "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }
 
@@ -346,10 +346,10 @@ centralized = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-# current_config = feddream_fast
+current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
-current_config = avgkd
+# current_config = avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
