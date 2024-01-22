@@ -310,7 +310,7 @@ class FedGenServer(BaseServer):
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return acc, test_loss
 
     def run_protocol(self):
         assert self.generator is not None
@@ -367,8 +367,9 @@ class FedGenServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
-            acc = self.test()
+            acc, loss = self.test()
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            self.log_utils.log_tb(f"test_loss/clients", loss, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(round, acc))
             self.log_utils.log_console(
                 "round: {} Best test_acc:{:.4f}".format(round, self.best_acc)
