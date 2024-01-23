@@ -24,8 +24,8 @@ feddream_fast = {
     # Params for gradient descent on data
     "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
-    "warmup": 150, "local_train_freq": 5,
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 50*256, 
+    "warmup": 20, "local_train_freq": 5,
 
     # adaptive distillation parameters
     "adaptive_server": True,  "adaptive_distill_start_round": 10, 
@@ -36,7 +36,7 @@ feddream_fast = {
     "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
 
     "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["warmup", "local_steps", "nx_samples"]
+    "exp_keys": ["warmup", "local_steps", "nx_samples", "dset_size"]
 }
 
 feddream_fast_indp = {
@@ -100,7 +100,7 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd_final_mnist_1000samples",
+    "exp_type": "iid_clients_avgkd_final_mnist_50samples_localruns_50",
     "dset": "mnist",
     "dump_dir": "./expt_dump/mnist/iid/",
     "dpath": "./imgs/mnist",
@@ -108,10 +108,10 @@ avgkd = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [2], "node_3": [3], "node_4": [3]},
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [3], "node_1": [3], "node_2": [1], "node_3": [2], "node_4": [3]},
     # communication epochs = 20 and local runs = 20 as per paper on AvgKD
-    "epochs": 400, "local_runs": 20,
+    "epochs": 400, "local_runs": 100,
     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
 }

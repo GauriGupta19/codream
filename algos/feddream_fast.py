@@ -108,19 +108,19 @@ class FedDreamFastClient(BaseClient):
         
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
-        # for _ in range(5):
-        #     tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                             self.optim,
-        #                                             self.dloader,
-        #                                             self.loss_fn,
-        #                                             self.device)
-        if (self.node_id==2 and self.round<=120):
-            for _ in range(5):
-                tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                        self.optim,
-                                                        self.dloader,
-                                                        self.loss_fn,
-                                                        self.device)
+        for _ in range(5):
+            tr_loss, tr_acc = self.model_utils.train(self.model,
+                                                    self.optim,
+                                                    self.dloader,
+                                                    self.loss_fn,
+                                                    self.device)
+        # if (self.node_id==2 and self.round<=120):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
         # if ((self.node_id==4) and self.round<=60):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
@@ -128,13 +128,13 @@ class FedDreamFastClient(BaseClient):
         #                                                 self.dloader,
         #                                                 self.loss_fn,
         #                                                 self.device)
-        if ((self.node_id==1 or self.node_id==3) or self.node_id==4):
-            for _ in range(5):
-                tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                        self.optim,
-                                                        self.dloader,
-                                                        self.loss_fn,
-                                                        self.device)
+        # if ((self.node_id==1 or self.node_id==3) or self.node_id==4):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
         print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
         if self.round % self.local_train_freq == 0:
             synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
