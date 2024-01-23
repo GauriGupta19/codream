@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
 import models
-from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
 MODEL_DICT = {
     # https://github.com/polo5/ZeroShotKnowledgeTransfer
@@ -54,7 +53,7 @@ class ModelUtils():
         model_name = model_name.lower()
         num_cls = kwargs.get("num_classes", 10)
         if channels==1:
-            model = ResNet18(channels, **kwargs)
+            model = models.resnet.resnet18(channels, **kwargs)
         elif model_name in MODEL_DICT:
             model = MODEL_DICT[model_name](**kwargs)
         else:

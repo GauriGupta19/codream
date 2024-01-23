@@ -100,16 +100,16 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd_final",
-    "dset": "svhn",
-    "dump_dir": "./expt_dump/svhn/iid/",
-    "dpath": "./imgs/svhn",
+    "exp_type": "iid_clients_avgkd_final_mnist_1000samples",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
+    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [2], "node_3": [3], "node_4": [3]},
     # communication epochs = 20 and local runs = 20 as per paper on AvgKD
     "epochs": 400, "local_runs": 20,
     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
@@ -346,10 +346,10 @@ centralized = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-current_config = feddream_fast
+# current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
-# current_config = avgkd
+current_config = avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated

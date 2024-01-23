@@ -301,6 +301,25 @@ fl = {
     "exp_keys": ["algo", "alpha"]
 }
 
+avgkd = {
+    "algo": "avgkd",
+    "exp_id": 10,
+    "exp_type": "non_iid_balanced_clients_avgkd_final",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/alpha_1/",
+    "dpath": "./imgs/svhn",
+    "seed": 4,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [2], "node_3": [1], "node_4": [1]},
+
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
+    "epochs": 400, "local_runs": 20,
+    "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
+}
+
 fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
@@ -389,9 +408,10 @@ centralized = {
 # current_config = non_iid_balanced_clients_collab
 # current_config = feddream
 # current_config =  feddream_fast
-current_config = feddream_fast_indp
+# current_config = feddream_fast_indp
 # current_config = feddream_fast_noniid
 # current_config =  fl
+current_config =  avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated

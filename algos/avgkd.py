@@ -178,7 +178,7 @@ class AvgKDServer(BaseServer):
 
                         # add client 2's (whose dataloader we're working on) target labels one hot encoding only once to the outputs
                         if len(client_output_all[client_node_2][batch_idx]) == 0:
-                            target_labels_onehot = F.one_hot(target)
+                            target_labels_onehot = F.one_hot(target, num_classes = 10)
                             client_output_all[client_node_2][batch_idx].append(target_labels_onehot)
 
                         with no_grad():
