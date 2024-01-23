@@ -1316,3 +1316,15 @@ round 108
 round 108
 Client 1 finished training avgKD with loss (1.5972225666046143, 0.98) at local round 99
 Client 4 finished training avgKD with loss (1.5786247253417969, 0.88) at local round 99
+round 108
+round 108
+test_acc/client0 0.4318 107
+test_acc/client1 0.4212 107
+test_acc/client2 0.3897 107
+test_acc/client3 0.4426 107
+Client 2 finished training avgKD with loss (1.5351539850234985, 0.9) at local round 99
+Client 3 finished training avgKD with loss (1.478135347366333, 0.86) at local round 99
+Client 1 finished training avgKD with loss (1.597556710243225, 0.98) at local round 99
+round 109
+round 109
+Client 4 finished training avgKD with loss (1.579014539718628, 0.88) at local round 99
