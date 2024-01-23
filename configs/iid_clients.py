@@ -332,10 +332,10 @@ scaffold = {
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 1,
-    "device_ids": {"node_0": [1], "node_1": [1], "node_2": [2],},
+    "device_ids": {"node_0": [0], "node_1": [2], "node_2": [2],},
     # Learning setup
     "num_clients": 2, "samples_per_client": 500,
-    "epochs": 1000, "model": "resnet34",
+    "epochs": 30, "model": "toy",
     "lr_client": 0.1, "batch_size": 128,
     "lr_server": 1.,
     "model_lr": 0.1, # decoy parameter not used in scaffold

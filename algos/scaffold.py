@@ -29,6 +29,11 @@ class ScaffoldOptimizer(Optimizer):
         if closure is not None:
             loss = closure
 
+        # print(len(self.param_groups[0]['params']))
+        # print(len(server_controls.keys()))
+        # print(len(client_controls.keys()))
+        # raise Exception("stop here")
+
         for group in self.param_groups:
             # print(group['params'])
             # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -37,8 +42,11 @@ class ScaffoldOptimizer(Optimizer):
                 if p.grad is None:
                     print("what is going on?", p.shape, c.shape, ci.shape)
                     continue
-                dp = p.grad.data + c.data - ci.data
-                p.data = p.data - dp.   data * group['lr']
+                dp = p.grad.data - ci.data + c.data
+                p.data.sub_(group['lr'] * dp)
+
+            p = group['params'][0]
+            p.data.sub_(group['lr'] * (p.grad.data + server_controls[group['name']].data - client_controls[group['name']].data))
 
         return loss
 
@@ -52,20 +60,48 @@ class SCAFFOLDClient(BaseClient):
         self.c_i = OrderedDict()
         for n, p in self.model.named_parameters():
             self.c_i[n] = torch.zeros_like(p)
-        self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
+        # print(list(self.model.named_parameters()))
+        # raise Exception("stop here")
+        # print("data loader length", len(self.dloader))
+        # self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config["lr_client"], weight_decay=1e-4)
+        # self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
+
+        named_dicts = [
+            {
+                'params': [param],
+                'lr': self.config['lr_client'],
+                'name': name,
+            } for (name, param) in self.model.named_parameters()
+        ]
+        self.optim = ScaffoldOptimizer(named_dicts, lr=self.config["lr_client"], weight_decay=0.0001)
     
     def local_train(self, model, optim, dloader, loss_fn, device, c, c_i):
         """
         Train the model locally
         """
         model.train()
-        for x, y in dloader:
-            x, y = x.to(device), y.to(device)
+        for i, (x, y) in enumerate(dloader):
             optim.zero_grad()
+            x, y = x.to(device), y.to(device)
             y_hat = model(x)
+            # print("Shape of x,y, y_hat: ", x.shape, y.shape, y_hat.shape)
             loss = loss_fn(y_hat, y)
             loss.backward()
-            optim.step(c, c_i)
+            # for param, server_control, client_control in zip(self.model.parameters(), c.values(), c_i.values()):
+            #     param.grad += server_control - client_control
+            optim.step({k: torch.zeros_like(c1).to(device) for k, c1 in c.items()}, {k: torch.zeros_like(c_i1).to(device) for k, c_i1 in c_i.items()})
+            # optim.step(c, c_i)
+            # optim.step()
+            if i % (len(dloader) // 4) == 0:
+                # test_loss, acc = self.model_utils.test(self.model,
+                #                                self._test_loader,
+                #                                self.loss_fn,
+                #                                self.device)
+                # print(f"\tClient {self.node_id} round {i}", 
+                #   f"Loss: {test_loss}",
+                #   f"Acc: {acc}",
+                #   )
+                pass
 
     def get_weights(self) -> Dict[str, Tensor]:
         """
@@ -84,6 +120,11 @@ class SCAFFOLDClient(BaseClient):
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             x, c = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
+            print(f"\tClient {self.node_id}", 
+                  "\n\t\treceived x", '%.6f' % x['param1'].item(),
+                  "\n\t\treceived c", '%.6f' % c['param1'].item()
+            )
+
             # put x and c on the device
             for k, v in x.items():
                 x[k] = v.to(self.device)
@@ -100,10 +141,27 @@ class SCAFFOLDClient(BaseClient):
                 local_pseudo_grad[k] = v - x[k]
                 c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
                 c_i_delta[k] = c_i_plus[k] - self.c_i[k]
+            
+            # print (f"\tClient {self.node_id}", "\t\t After Training")
+            # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % c_i_plus['param1'].item(), "c_i_plus")
+            # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % self.model.state_dict()['param1'].item(), "y")
+
+            test_loss, acc = self.model_utils.test(self.model,
+                                               self._test_loader,
+                                               self.loss_fn,
+                                               self.device)
+            print(f"\tClient {self.node_id}", 
+                  "\n\t\tc_i_plus", '%.6f' % c_i_plus['param1'].item(), 
+                  "\n\t\tc_i_delta", '%.6f' % c_i_delta['param1'].item(), 
+                  "\n\t\ty_i", '%.6f' % self.model.state_dict()['param1'].item(),
+                  "\n\t\ttest loss", test_loss, 
+                  "\n\t\tacc", acc)
+                  
             self.comm_utils.send_signal(dest=self.server_node, data=local_pseudo_grad, tag=self.tag.WTS)
             self.comm_utils.send_signal(dest=self.server_node, data=c_i_delta, tag=self.tag.COV)
             self.c_i = c_i_plus
 
+# TODO: test smaller model, test degenerate to fedavg, test other implementations with resnet, look over implementations thoroughly
 
 class SCAFFOLDServer(BaseServer):
     def __init__(self, config) -> None:
@@ -115,6 +173,9 @@ class SCAFFOLDServer(BaseServer):
         for n, p in self.model.named_parameters():
             self.c[n] = torch.zeros_like(p)
 
+        # print(self.c.keys()) 'lin2.weight'
+        # raise Exception("stop here")
+        
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
                                                                    self.node_id)
@@ -137,7 +198,7 @@ class SCAFFOLDServer(BaseServer):
                     avgd_tensors[key] += coeff * local_tensors[key].detach().to(self.device)
         return avgd_tensors
 
-    def test(self) -> float:
+    def test(self) -> tuple[float, float]:
         """
         Test the model on the server
         """
@@ -149,21 +210,33 @@ class SCAFFOLDServer(BaseServer):
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return test_loss, acc
 
     def update_weights(self, delta_x: OrderedDict[str, Tensor]):
         """
         Update the model weights
         """
+        print('%.6f' % delta_x['param1'].item(), "\tSERVER WEIGHT UPDATE")
+        state_dict = self.model.state_dict()
         for k, v in self.model.named_parameters():
-            self.model.state_dict()[k] = v + self.config["lr_server"] * delta_x[k]
+            state_dict[k] = v + self.config["lr_server"] * delta_x[k]
+
+
+        # print("\tTEST WEIGHT", torch.linalg.norm(delta_x['lin2.weight']).item())
+        # print("\tMODEL UPDATED?", torch.linalg.norm(self.model.state_dict()['lin2.weight']).item())
+        self.model.load_state_dict(state_dict)
+        print('%.6f' % self.model.state_dict()['param1'].item(), "\tSERVER WEIGHT NEW")
 
     def update_covariates(self, delta_c: OrderedDict[str, Tensor]):
         """
         Update the covariates
         """
+        print('%.6f' % delta_c['param1'].item(), "\tSERVER CONTROL UPDATE")
+
         for k, v in self.c.items():
             self.c[k] = v + delta_c[k]
+        
+        print('%.6f' % self.c['param1'].item(), "\tSERVER CONTROL NEW")
 
     def get_covariates(self) -> Dict[str, Tensor]:
         """
@@ -203,7 +276,8 @@ class SCAFFOLDServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
-            acc = self.test()
+            test_loss, acc = self.test()
+            print(f"round {round} loss: {test_loss}")
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(
                 round, acc
