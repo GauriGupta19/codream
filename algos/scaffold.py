@@ -45,8 +45,8 @@ class ScaffoldOptimizer(Optimizer):
                 dp = p.grad.data - ci.data + c.data
                 p.data.sub_(group['lr'] * dp)
 
-            p = group['params'][0]
-            p.data.sub_(group['lr'] * (p.grad.data + server_controls[group['name']].data - client_controls[group['name']].data))
+            # p = group['params'][0]
+            # p.data.sub_(group['lr'] * (p.grad.data + server_controls[group['name']].data - client_controls[group['name']].data))
 
         return loss
 
@@ -64,16 +64,16 @@ class SCAFFOLDClient(BaseClient):
         # raise Exception("stop here")
         # print("data loader length", len(self.dloader))
         # self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config["lr_client"], weight_decay=1e-4)
-        # self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
+        self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
 
-        named_dicts = [
-            {
-                'params': [param],
-                'lr': self.config['lr_client'],
-                'name': name,
-            } for (name, param) in self.model.named_parameters()
-        ]
-        self.optim = ScaffoldOptimizer(named_dicts, lr=self.config["lr_client"], weight_decay=0.0001)
+        # named_dicts = [
+        #     {
+        #         'params': [param],
+        #         'lr': self.config['lr_client'],
+        #         'name': name,
+        #     } for (name, param) in self.model.named_parameters()
+        # ]
+        # self.optim = ScaffoldOptimizer(named_dicts, lr=self.config["lr_client"], weight_decay=0.0001)
     
     def local_train(self, model, optim, dloader, loss_fn, device, c, c_i):
         """
@@ -120,10 +120,10 @@ class SCAFFOLDClient(BaseClient):
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             x, c = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
-            print(f"\tClient {self.node_id}", 
-                  "\n\t\treceived x", '%.6f' % x['param1'].item(),
-                  "\n\t\treceived c", '%.6f' % c['param1'].item()
-            )
+            # print(f"\tClient {self.node_id}", 
+            #       "\n\t\treceived x", '%.6f' % x['param1'].item(),
+            #       "\n\t\treceived c", '%.6f' % c['param1'].item()
+            # )
 
             # put x and c on the device
             for k, v in x.items():
@@ -146,16 +146,16 @@ class SCAFFOLDClient(BaseClient):
             # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % c_i_plus['param1'].item(), "c_i_plus")
             # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % self.model.state_dict()['param1'].item(), "y")
 
-            test_loss, acc = self.model_utils.test(self.model,
-                                               self._test_loader,
-                                               self.loss_fn,
-                                               self.device)
-            print(f"\tClient {self.node_id}", 
-                  "\n\t\tc_i_plus", '%.6f' % c_i_plus['param1'].item(), 
-                  "\n\t\tc_i_delta", '%.6f' % c_i_delta['param1'].item(), 
-                  "\n\t\ty_i", '%.6f' % self.model.state_dict()['param1'].item(),
-                  "\n\t\ttest loss", test_loss, 
-                  "\n\t\tacc", acc)
+            # test_loss, acc = self.model_utils.test(self.model,
+            #                                    self._test_loader,
+            #                                    self.loss_fn,
+            #                                    self.device)
+            # print(f"\tClient {self.node_id}", 
+            #       "\n\t\tc_i_plus", '%.6f' % c_i_plus['param1'].item(), 
+            #       "\n\t\tc_i_delta", '%.6f' % c_i_delta['param1'].item(), 
+            #       "\n\t\ty_i", '%.6f' % self.model.state_dict()['param1'].item(),
+            #       "\n\t\ttest loss", test_loss, 
+            #       "\n\t\tacc", acc)
                   
             self.comm_utils.send_signal(dest=self.server_node, data=local_pseudo_grad, tag=self.tag.WTS)
             self.comm_utils.send_signal(dest=self.server_node, data=c_i_delta, tag=self.tag.COV)
@@ -216,7 +216,7 @@ class SCAFFOLDServer(BaseServer):
         """
         Update the model weights
         """
-        print('%.6f' % delta_x['param1'].item(), "\tSERVER WEIGHT UPDATE")
+        # print('%.6f' % delta_x['param1'].item(), "\tSERVER WEIGHT UPDATE")
         state_dict = self.model.state_dict()
         for k, v in self.model.named_parameters():
             state_dict[k] = v + self.config["lr_server"] * delta_x[k]
@@ -225,18 +225,18 @@ class SCAFFOLDServer(BaseServer):
         # print("\tTEST WEIGHT", torch.linalg.norm(delta_x['lin2.weight']).item())
         # print("\tMODEL UPDATED?", torch.linalg.norm(self.model.state_dict()['lin2.weight']).item())
         self.model.load_state_dict(state_dict)
-        print('%.6f' % self.model.state_dict()['param1'].item(), "\tSERVER WEIGHT NEW")
+        # print('%.6f' % self.model.state_dict()['param1'].item(), "\tSERVER WEIGHT NEW")
 
     def update_covariates(self, delta_c: OrderedDict[str, Tensor]):
         """
         Update the covariates
         """
-        print('%.6f' % delta_c['param1'].item(), "\tSERVER CONTROL UPDATE")
+        # print('%.6f' % delta_c['param1'].item(), "\tSERVER CONTROL UPDATE")
 
         for k, v in self.c.items():
             self.c[k] = v + delta_c[k]
         
-        print('%.6f' % self.c['param1'].item(), "\tSERVER CONTROL NEW")
+        # print('%.6f' % self.c['param1'].item(), "\tSERVER CONTROL NEW")
 
     def get_covariates(self) -> Dict[str, Tensor]:
         """
