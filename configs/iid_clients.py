@@ -90,8 +90,8 @@ fl = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
+    "num_clients": 2, "samples_per_client": 1000,
+    "device_ids": {"node_0": [3], "node_1": [0], "node_2": [3]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -332,11 +332,12 @@ scaffold = {
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 1,
-    "device_ids": {"node_0": [0], "node_1": [2], "node_2": [2],},
+    "device_ids": {"node_0": [3], "node_1": [1], "node_2": [3],},
     # Learning setup
-    "num_clients": 2, "samples_per_client": 500,
+    "num_clients": 2, "samples_per_client": 2000,
+    "local_runs": 5,
     "epochs": 1000, "model": "resnet18",
-    "lr_client": 0.1, "batch_size": 128,
+    "lr_client": 0.1, "batch_size": 256,
     "lr_server": 1.,
     "model_lr": 0.1, # decoy parameter not used in scaffold
     "exp_keys": []

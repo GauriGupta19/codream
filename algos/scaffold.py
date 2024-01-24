@@ -58,7 +58,7 @@ class SCAFFOLDClient(BaseClient):
         self.tag = CommProtocol
         # create a dictionary to store the client controls
         self.c_i = OrderedDict()
-        for n, p in self.model.named_parameters():
+        for n, p in self.model.state_dict().items():
             self.c_i[n] = torch.zeros_like(p)
         # print(list(self.model.named_parameters()))
         # raise Exception("stop here")
@@ -88,19 +88,18 @@ class SCAFFOLDClient(BaseClient):
             loss = loss_fn(y_hat, y)
             loss.backward()
             # for param, server_control, client_control in zip(self.model.parameters(), c.values(), c_i.values()):
-            #     param.grad += server_control - client_control
-            optim.step({k: torch.zeros_like(c1).to(device) for k, c1 in c.items()}, {k: torch.zeros_like(c_i1).to(device) for k, c_i1 in c_i.items()})
-            # optim.step(c, c_i)
-            # optim.step()
+            # param.grad += server_control - client_control
+            # optim.step({k: torch.zeros_like(c1).to(device) for k, c1 in c.items()}, {k: torch.zeros_like(c_i1).to(device) for k, c_i1 in c_i.items()})
+            optim.step(c, c_i)
             if i % (len(dloader) // 4) == 0:
-                # test_loss, acc = self.model_utils.test(self.model,
-                #                                self._test_loader,
-                #                                self.loss_fn,
-                #                                self.device)
-                # print(f"\tClient {self.node_id} round {i}", 
-                #   f"Loss: {test_loss}",
-                #   f"Acc: {acc}",
-                #   )
+                test_loss, acc = self.model_utils.test(self.model,
+                                               self._test_loader,
+                                               self.loss_fn,
+                                               self.device)
+                print(f"\tClient {self.node_id} round {i}", 
+                  f"Loss: {test_loss}",
+                  f"Acc: {acc}",
+                  )
                 pass
 
     def get_weights(self) -> Dict[str, Tensor]:
@@ -132,12 +131,22 @@ class SCAFFOLDClient(BaseClient):
                 c[k] = v.to(self.device)
             y_i = copy.deepcopy(x)
             self.model.load_state_dict(y_i)
-            self.local_train(self.model, self.optim, self.dloader, self.loss_fn, self.device, c, self.c_i)
+            for i in range(self.config["local_runs"]):
+                self.local_train(self.model, self.optim, self.dloader, self.loss_fn, self.device, c, self.c_i)
+            print("Round {}, Client {} finished training with loss {}".format(round, self.node_id, avg_loss))
+            test_loss, acc = self.model_utils.test(self.model,
+                                               self._test_loader,
+                                               self.loss_fn,
+                                               self.device)
+            print(f"\tClient {self.node_id} round {round}", 
+                  f"Loss: {test_loss}",
+                  f"Acc: {acc}",
+                  )
             # for every parameter in the model, compute the local pseudo gradient
             # and update the client control
             K = len(self.dloader)
             local_pseudo_grad, c_i_plus, c_i_delta = OrderedDict(), OrderedDict(), OrderedDict()
-            for k, v in self.model.named_parameters():
+            for k, v in self.model.state_dict().items():
                 local_pseudo_grad[k] = v - x[k]
                 c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
                 c_i_delta[k] = c_i_plus[k] - self.c_i[k]
@@ -170,7 +179,7 @@ class SCAFFOLDServer(BaseServer):
         self.config = config
         self.set_model_parameters(config)
         self.c = OrderedDict()
-        for n, p in self.model.named_parameters():
+        for n, p in self.model.state_dict().items():
             self.c[n] = torch.zeros_like(p)
 
         # print(self.c.keys()) 'lin2.weight'
@@ -217,10 +226,9 @@ class SCAFFOLDServer(BaseServer):
         Update the model weights
         """
         # print('%.6f' % delta_x['param1'].item(), "\tSERVER WEIGHT UPDATE")
-        state_dict = self.model.state_dict()
-        for k, v in self.model.named_parameters():
+        state_dict = OrderedDict()
+        for k, v in self.model.state_dict().items():
             state_dict[k] = v + self.config["lr_server"] * delta_x[k]
-
 
         # print("\tTEST WEIGHT", torch.linalg.norm(delta_x['lin2.weight']).item())
         # print("\tMODEL UPDATED?", torch.linalg.norm(self.model.state_dict()['lin2.weight']).item())
@@ -243,7 +251,7 @@ class SCAFFOLDServer(BaseServer):
         Get the covariates
         """
         c_temp = OrderedDict()
-        for k, _ in self.model.named_parameters():
+        for k, _ in self.model.state_dict().items():
             c_temp[k] = copy.deepcopy(self.c[k]).to("cpu")
         return c_temp
     
