@@ -1,18 +1,16 @@
 import jmespath, importlib, os
 
 
-def load_config(config_path, seed):
+def load_config(config_path):
     path = '.'.join(config_path.split('.')[1].split('/')[1:])
     print(path)
-    config_file = importlib.import_module(path)
-    for config_name,config in vars(config_file).items():
-        if not config_name.startswith("__"):
-            yield process_config(config, seed)
+    config = importlib.import_module(path).current_config
+    return process_config(config)
 
-def process_config(config, seed):
+def process_config(config):
     config['num_gpus'] = len(config.get('device_ids'))
     # config['batch_size'] = config.get('batch_size', 64) * config['num_gpus']
-    config['seed'] = seed
+    config['seed'] = config.get('seed') or 1
     config['load_existing'] = config.get('load_existing') or False
 
     experiment_name = "{}_{}_{}clients_{}samples_{}".format(
