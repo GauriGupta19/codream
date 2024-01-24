@@ -332,12 +332,12 @@ scaffold = {
     "dump_dir": "./expt_dump/",
     "dpath": "./imgs/cifar10",
     "seed": 1,
-    "device_ids": {"node_0": [3], "node_1": [1], "node_2": [3],},
+    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [3]},
     # Learning setup
-    "num_clients": 2, "samples_per_client": 2000,
-    "local_runs": 5,
-    "epochs": 1000, "model": "resnet18",
-    "lr_client": 0.1, "batch_size": 256,
+    "num_clients": 2, "samples_per_client": 1024,
+    "local_runs": 1,
+    "epochs": 1000, "model": "toy",
+    "lr_client": 0.05, "batch_size": 256,
     "lr_server": 1.,
     "model_lr": 0.1, # decoy parameter not used in scaffold
     "exp_keys": []
