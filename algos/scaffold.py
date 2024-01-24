@@ -36,17 +36,12 @@ class ScaffoldOptimizer(Optimizer):
 
         for group in self.param_groups:
             # print(group['params'])
-            # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-            # print(client_controls.values())
             for p, c, ci in zip(group['params'], server_controls.values(), client_controls.values()):
                 if p.grad is None:
                     print("what is going on?", p.shape, c.shape, ci.shape)
                     continue
                 dp = p.grad.data - ci.data + c.data
                 p.data.sub_(group['lr'] * dp)
-
-            # p = group['params'][0]
-            # p.data.sub_(group['lr'] * (p.grad.data + server_controls[group['name']].data - client_controls[group['name']].data))
 
         return loss
 
@@ -60,20 +55,8 @@ class SCAFFOLDClient(BaseClient):
         self.c_i = OrderedDict()
         for n, p in self.model.state_dict().items():
             self.c_i[n] = torch.zeros_like(p)
-        # print(list(self.model.named_parameters()))
-        # raise Exception("stop here")
-        # print("data loader length", len(self.dloader))
-        # self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config["lr_client"], weight_decay=1e-4)
         self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
 
-        # named_dicts = [
-        #     {
-        #         'params': [param],
-        #         'lr': self.config['lr_client'],
-        #         'name': name,
-        #     } for (name, param) in self.model.named_parameters()
-        # ]
-        # self.optim = ScaffoldOptimizer(named_dicts, lr=self.config["lr_client"], weight_decay=0.0001)
     
     def local_train(self, model, optim, dloader, loss_fn, device, c, c_i):
         """
@@ -96,10 +79,6 @@ class SCAFFOLDClient(BaseClient):
                                                self._test_loader,
                                                self.loss_fn,
                                                self.device)
-                print(f"\tClient {self.node_id} round {i}", 
-                  f"Loss: {test_loss}",
-                  f"Acc: {acc}",
-                  )
                 pass
 
     def get_weights(self) -> Dict[str, Tensor]:
@@ -132,8 +111,11 @@ class SCAFFOLDClient(BaseClient):
             y_i = copy.deepcopy(x)
             self.model.load_state_dict(y_i)
             for i in range(self.config["local_runs"]):
-                self.local_train(self.model, self.optim, self.dloader, self.loss_fn, self.device, c, self.c_i)
-            print("Round {}, Client {} finished training with loss {}".format(round, self.node_id, avg_loss))
+                new_c, new_c_i = OrderedDict(), OrderedDict()
+                for k, v in self.model.named_parameters():
+                    new_c[k] = c[k]
+                    new_c_i[k] = self.c_i[k]
+                self.local_train(self.model, self.optim, self.dloader, self.loss_fn, self.device, new_c, new_c_i)
             test_loss, acc = self.model_utils.test(self.model,
                                                self._test_loader,
                                                self.loss_fn,
