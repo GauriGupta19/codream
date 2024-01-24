@@ -25,6 +25,7 @@ class CommProtocol(object):
     ACK_QUAL_LAB = 5  # Used after clients receive and sets qualified labels from server, signals that training is ready to commence
     CLIENT_STATS = 2
 
+
 def put_on_cpu(wts):
     for k, v in wts.items():
         wts[k] = v.to("cpu")
@@ -71,10 +72,9 @@ class FedGenClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
-        test_loss, acc = self.model_utils.test(self.model,
-                                               self._test_loader,
-                                               self.loss_fn,
-                                               self.device)
+        test_loss, acc = self.model_utils.test(
+            self.model, self._test_loader, self.loss_fn, self.device
+        )
         return acc
 
     def get_representation(self) -> Dict[str, Tensor]:
@@ -132,7 +132,7 @@ class FedGenClient(BaseClient):
         # then start regular training
         for round in range(start_epochs, total_epochs):
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
-            print('round', round)
+            print("round", round)
             for i in range(self.config["local_runs"]):
                 # print("training locally")
                 self.local_train()
@@ -152,6 +152,7 @@ class FedGenClient(BaseClient):
             # TODO repr is a nested list, where first element is classifier and second is generator
             # TODO confirm what server sends to client, and what client sends to server
             self.set_representation(repr[0], repr[1])
+
 
 class FedGenServer(BaseServer):
     def __init__(self, config) -> None:
@@ -216,7 +217,9 @@ class FedGenServer(BaseServer):
 
         return all_weights, all_models
 
-    def train_generator(self, weights: List[int], model_wts: List[OrderedDict[str, Tensor]]):
+    def train_generator(
+        self, weights: List[int], model_wts: List[OrderedDict[str, Tensor]]
+    ):
         """
         step called by single round after calling receive_models
         Used to train and update generater
@@ -224,20 +227,34 @@ class FedGenServer(BaseServer):
         assert self.generator is not None
         self.generator.train()
         num_clients = len(model_wts)
-        models = [self.model_utils.get_model(self.config["model"],self.config["dset"],
-                                                 self.device, self.device_ids,
-                                                 num_classes=10,) for i in range(num_clients)]
+        # models = [
+        #     self.model_utils.get_model(
+        #         self.config["model"],
+        #         self.config["dset"],
+        #         self.device,
+        #         self.device_ids,
+        #         num_classes=10,
+        #     )
+        #     for i in range(num_clients)
+        # ]
+        model_base = self.model_utils.get_model(
+            self.config["model"],
+            self.config["dset"],
+            self.device,
+            self.device_ids,
+            num_classes=10,
+        )
         for _ in range(self.config["local_runs"]):
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
             logits = 0
-            for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
+            for _, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # assert model.device == z.device
-                models[i].load_state_dict(model_wt)
-                models[i] = models[i].to(self.device)
-                models[i].eval()
-                logits += models[i](z) * w
+                model_base.load_state_dict(model_wt)
+                model_base = model_base.to(self.device)
+                model_base.eval()
+                logits += model_base(z) * w
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
             loss.backward()
@@ -257,12 +274,12 @@ class FedGenServer(BaseServer):
         #     self.best_acc = acc
         #     self.model_utils.save_model(self.model, self.model_save_path)
         return acc, test_loss
-        
+
     def aggregate(self, weights: List[int], model_wts: List[OrderedDict[str, Tensor]]):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
-        
+
         num_clients = len(model_wts)
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
@@ -273,9 +290,11 @@ class FedGenServer(BaseServer):
                 if client_num == 0:
                     avgd_wts[key] = weights[client_num] * local_wts[key].to(self.device)
                 else:
-                    avgd_wts[key] += weights[client_num] * local_wts[key].to(self.device)
+                    avgd_wts[key] += weights[client_num] * local_wts[key].to(
+                        self.device
+                    )
         return avgd_wts
-    
+
     def aggregate_parameters(self, all_models: List[nn.Module], all_weights: List[int]):
         """helper function that updates the new parameter for classifier training"""
         assert len(all_models) > 0
@@ -311,7 +330,6 @@ class FedGenServer(BaseServer):
         ), self.get_representation(self.generator)
         repr_to_client = (classifier_p, generator_p)
         # repr_to_client = (self.model, self.generator)
-        
 
     def single_round(self):
         """
@@ -329,13 +347,13 @@ class FedGenServer(BaseServer):
                 )
             )
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
-        
+
         self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.wait_for_all_clients(
             self.clients, self.tag.DONE
         )  # should receive list where each entry is tuple of (client_i model update, client_i num samples)
         model_wts, weights = list(zip(*reprs))
-        weights = [w/sum(weights) for w in weights]
+        weights = [w / sum(weights) for w in weights]
         # all_weights, all_models = self.receive_models(reprs)
         self.train_generator(weights, model_wts)
         # print(f"THIS IS ALL WEIGHTS: {all_weights}")
@@ -343,7 +361,9 @@ class FedGenServer(BaseServer):
         # self.set_representation()  # distribute classifier and generator updates back to clients
         for client_node in self.clients:
             self.comm_utils.send_signal(
-                dest=client_node, data = (avgd_wts, self.get_representation(self.generator)), tag=self.tag.UPDATES
+                dest=client_node,
+                data=(avgd_wts, self.get_representation(self.generator)),
+                tag=self.tag.UPDATES,
             )
 
     def run_protocol(self):
@@ -362,11 +382,6 @@ class FedGenServer(BaseServer):
         assert len(class_counts_all_clients) == len(self.clients)
         assert len(self.qualified_labels) == 0
 
-        # print(
-        #     "received class count distribution from all clients: ",
-        #     class_counts_all_clients,
-        # )
-
         self.num_classes = len(class_counts_all_clients[0])
 
         # qualified labels is just the sum of client labels that meet the minimum label amount
@@ -377,8 +392,6 @@ class FedGenServer(BaseServer):
                 self.qualified_labels.extend(
                     [class_id for _ in range(int(client_label_count[class_id]))]
                 )
-        # print(f"set of qualified labels: {set(self.qualified_labels)}")
-        # print(f"set of test labels:{set(self._test_loader.dataset.targets)}")
 
         # send qualified labels back to clients
         for client_node in self.clients:
