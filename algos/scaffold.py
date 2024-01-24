@@ -29,18 +29,8 @@ class ScaffoldOptimizer(Optimizer):
         if closure is not None:
             loss = closure
 
-        # print(len(self.param_groups[0]['params']))
-        # print(len(server_controls.keys()))
-        # print(len(client_controls.keys()))
-        # raise Exception("stop here")
-
         for group in self.param_groups:
-            # print(group['params'])
-            assert(len(group["params"]) == len(server_controls) == len(client_controls))
             for p, c, ci in zip(group['params'], server_controls.values(), client_controls.values()):
-                # if p.grad is None:
-                #     print("what is going on?", p.shape, c.shape, ci.shape)
-                #     continue
                 dp = p.grad.data - ci.data + c.data
                 p.data.sub_(group['lr'] * dp)
 
@@ -57,43 +47,43 @@ class SCAFFOLDClient(BaseClient):
         for (name, param) in self.model.named_parameters():
             self.c_i[name] = torch.zeros_like(param.data)
         self.optim = ScaffoldOptimizer(self.model.parameters(), lr=self.config["lr_client"], weight_decay=0.0001)
-        # self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config["lr_client"], momentum=0.9, weight_decay=0.0001)
     
     def local_train(self, model: nn.Module, optim, dloader, loss_fn, device, c, c_i):
         """
         Train the model locally
         """
-        param1 = list(filter(lambda a: a[0] == 'param1', model.named_parameters()))[0][1]
         model.train()
         for i, (x, y) in enumerate(dloader):
-
             optim.zero_grad()
             x, y = x.to(device), y.to(device)
             y_hat = model(x)
-            # print("Shape of x,y, y_hat: ", x.shape, y.shape, y_hat.shape)
+            loss = loss_fn(y_hat, y)
+            loss.backward()
+            optim.step(c, c_i)
+
+    def get_grads(self, model, dloader, loss_fn, device):
+        # takes a pass through all the records in the dloader and accumulates the gradients
+        for i, (x, y) in enumerate(dloader):
+            x, y = x.to(device), y.to(device)
+            y_hat = model(x)
             loss = loss_fn(y_hat, y)
             loss.backward()
 
-            if self.node_id == 1:
-                print(f"\tClient {self.node_id} epoch {i}", 
-                    f"Loss: {'%.3f' % loss.item()}"
-                    )
-                grad = param1.grad.item()
-                step = grad + c['param1'].item() - c_i['param1'].item()
-                print(
-                    "\t\tparam1", '%.4f' % param1.data.item(), 
-                    "grad", '%.4f' % grad, 
-                    "c", '%.4f' % c['param1'].item(),
-                    "c_i", '%.4f' % c_i['param1'].item(),
-                    "step", '%.4f' % step,
-                    "gradient direction?", "yes" if grad*step > 0 else "NO!"
-                    )
-            
-            # for param, server_control, client_control in zip(self.model.parameters(), c.values(), c_i.values()):
-            #     param.grad += server_control - client_control
-            # optim.step({k: torch.zeros_like(c1).to(device) for k, c1 in c.items()}, {k: torch.zeros_like(c_i1).to(device) for k, c_i1 in c_i.items()})
-            optim.step(c, c_i)
-            # optim.step()
+        scaling_factor = 1 / len(dloader)
+        return {k: scaling_factor * v.grad for k, v in model.named_parameters()}
+ 
+
+    def get_weights(self) -> Dict[str, Tensor]:
+        """
+        Share the model weights
+        """
+        return self.model.state_dict()
+
+    def set_weights(self, weights: OrderedDict[str, Tensor]):
+        """
+        Set the model weights
+        """
+        self.model.load_state_dict(weights)
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -110,7 +100,7 @@ class SCAFFOLDClient(BaseClient):
             
             y_i = copy.deepcopy(x)
             self.model.load_state_dict(y_i)
-
+            grad_x = self.get_grads(self.model, self.dloader, self.loss_fn, self.device)
             for i in range(self.config["local_runs"]):
                 # new_c, new_c_i = OrderedDict(), OrderedDict()
                 # for k, v in self.model.named_parameters():
@@ -120,15 +110,17 @@ class SCAFFOLDClient(BaseClient):
             
             # for every parameter in the model, compute the local pseudo gradient
             # and update the client control
-            K = len(self.dloader)
-
-            local_pseudo_grad = OrderedDict()
+            K = len(self.dloader) * self.config["batch_size"]
+            local_pseudo_grad, c_i_plus, c_i_delta = OrderedDict(), OrderedDict(), OrderedDict()
             for k, v in self.model.state_dict().items():
                 local_pseudo_grad[k] = v - x[k]
-
-            c_i_plus, c_i_delta = OrderedDict(), OrderedDict()
-            for k in self.c_i.keys():
-                c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
+                # Option 1 of Scaffold paper
+                try:
+                    c_i_plus[k] = grad_x[k].detach()
+                except KeyError:
+                    c_i_plus[k] = torch.zeros_like(v)
+                # Option 2 of Scaffold paper - unstable but efficient
+                # c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
                 c_i_delta[k] = c_i_plus[k] - self.c_i[k]
 
             if self.node_id == 1:
@@ -233,10 +225,7 @@ class SCAFFOLDServer(BaseServer):
         """
         Get the covariates
         """
-        c_temp = OrderedDict()
-        for k, v in self.c.items():
-            c_temp[k] = copy.deepcopy(v).to("cpu")
-        return c_temp
+        return self.c
     
     def get_weights(self) -> Dict[str, Tensor]:
         """
