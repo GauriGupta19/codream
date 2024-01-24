@@ -366,6 +366,10 @@ class FedGenServer(BaseServer):
         self.train_generator(weights, model_wts)
         # print(f"THIS IS ALL WEIGHTS: {all_weights}")
         avgd_wts = self.aggregate(weights, model_wts)
+        # set own model
+        self.model.load_state_dict(avgd_wts)
+        self.model = self.model.to(self.device)
+
         # self.set_representation()  # distribute classifier and generator updates back to clients
         for client_node in self.clients:
             self.comm_utils.send_signal(
