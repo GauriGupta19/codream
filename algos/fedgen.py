@@ -227,42 +227,42 @@ class FedGenServer(BaseServer):
         assert self.generator is not None
         self.generator.train()
         num_clients = len(model_wts)
-        # models = [
-        #     self.model_utils.get_model(
-        #         self.config["model"],
-        #         self.config["dset"],
-        #         self.device,
-        #         self.device_ids,
-        #         num_classes=10,
-        #     )
-        #     for i in range(num_clients)
-        # ]
-        model_base = self.model_utils.get_model(
-            self.config["model"],
-            self.config["dset"],
-            self.device,
-            self.device_ids,
-            num_classes=10,
-        )
+        models = [
+            self.model_utils.get_model(
+                self.config["model"],
+                self.config["dset"],
+                self.device,
+                self.device_ids,
+                num_classes=10,
+            )
+            for i in range(num_clients)
+        ]
+        # model_base = self.model_utils.get_model(
+        #     self.config["model"],
+        #     self.config["dset"],
+        #     self.device,
+        #     self.device_ids,
+        #     num_classes=10,
+        # )
         for _ in range(self.config["local_runs"]):
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
             logits = 0
-            for _, (w, model_wt) in enumerate(zip(weights, model_wts)):
+            for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # assert model.device == z.device
-                model_base.load_state_dict(model_wt)
-                model_base = model_base.to(self.device)
-                model_base.eval()
-                logits += model_base(z) * w
+                models[i].load_state_dict(model_wt)
+                models[i] = models[i].to(self.device)
+                models[i].eval()
+                logits += models[i](z) * w
                 # reset model
-                model_base = self.model_utils.get_model(
-                    self.config["model"],
-                    self.config["dset"],
-                    self.device,
-                    self.device_ids,
-                    num_classes=10,
-                )
+                # model_base = self.model_utils.get_model(
+                #     self.config["model"],
+                #     self.config["dset"],
+                #     self.device,
+                #     self.device_ids,
+                #     num_classes=10,
+                # )
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
             loss.backward()
