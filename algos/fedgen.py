@@ -255,6 +255,14 @@ class FedGenServer(BaseServer):
                 model_base = model_base.to(self.device)
                 model_base.eval()
                 logits += model_base(z) * w
+                # reset model
+                model_base = self.model_utils.get_model(
+                    self.config["model"],
+                    self.config["dset"],
+                    self.device,
+                    self.device_ids,
+                    num_classes=10,
+                )
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
             loss.backward()
