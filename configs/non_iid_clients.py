@@ -555,6 +555,14 @@ fedgen = {
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
     "dpath": "./imgs/cifar10",
+    "heterogeneous_models": False,
+    "models": {
+        "0": "resnet18",
+        "1": "wrn16_1",
+        "2": "vgg11",
+        "3": "resnet34",
+        "4": "wrn40_1",
+    },
     "seed": 4,
     "device_ids": {
         "node_0": [1],
