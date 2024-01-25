@@ -72,18 +72,9 @@ class BaseNode(ABC):
         # for fedGen
         if config["algo"] == "fedgen":
             # first add model head
-            # Check if the model has an attribute named 'fc'
-            if hasattr(self.model, "fc"):
-                model_head = copy.deepcopy(self.model.fc)
-            elif hasattr(self.model, "classifier"):
-                # Check if the model has an attribute named 'classifier'
-                model_head = copy.deepcopy(self.model.classifier)
-            else:
-                # If the fully connected layer has a different name, update this accordingly
-                raise AttributeError(
-                    "The fully connected layer attribute is not found."
-                )
-            self.model.fc = nn.Identity()
+            print(self.model)
+            model_head = copy.deepcopy(self.model.linear)
+            self.model.linear = nn.Identity()
             self.model = BaseHeadSplit(self.model, model_head)
 
             # then need to get the feature dimension from model
@@ -92,16 +83,17 @@ class BaseNode(ABC):
             feature_dim_list = None
 
             # Get a batch of data (assuming you want just one sample)
-            for _, (X, y) in enumerate(data_loader):
-                feature_dim_list = X.size()
-                break
-            print(f"THIS IS FEATURE DIM: {feature_dim_list}")
+            # for _, (X, y) in enumerate(data_loader):
+            #     feature_dim_list = X.size()
+            #     break
+            # print(f"THIS IS FEATURE DIM: {feature_dim_list}")
 
-            assert feature_dim_list is not None
+            # assert feature_dim_list is not None
 
-            feature_dim = 1
-            for val in feature_dim_list:
-                feature_dim *= val
+            # feature_dim = 1
+            # for val in feature_dim_list:
+            #     feature_dim *= val
+            feature_dim = 512
 
             self.generator = self.model_utils.get_generator(
                 num_classes=num_classes,

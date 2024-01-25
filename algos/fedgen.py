@@ -227,24 +227,19 @@ class FedGenServer(BaseServer):
         assert self.generator is not None
         self.generator.train()
         num_clients = len(model_wts)
-        models = [
-            self.model_utils.get_model(
+
+        models = list()
+        for i in range(num_clients):
+            model_i = self.model_utils.get_model(
                 self.config["model"],
                 self.config["dset"],
                 self.device,
                 self.device_ids,
                 num_classes=10,
             )
-            for i in range(num_clients)
-        ]
-        # model_base = self.model_utils.get_model(
-        #     self.config["model"],
-        #     self.config["dset"],
-        #     self.device,
-        #     self.device_ids,
-        #     num_classes=10,
-        # )
-        # for _ in range(self.config["local_runs"]):
+            model_i.linear = nn.Identity()
+            models.append(model_i)
+
         for j in range(100):
             loss_tot = 0
             labels = np.random.choice(self.qualified_labels, self.batch_size)

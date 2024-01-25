@@ -161,7 +161,7 @@ class ModelUtils:
                 self.adjust_learning_rate(optim, kwargs["epoch"])
 
             position = kwargs.get("position", 0)
-            output = model(data, position=position)
+            output = model(data)
 
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
@@ -364,8 +364,8 @@ class Generative(nn.Module):
 
         z = self.fc1(z)
         z = self.fc(z)
-        z = z.view(z.shape[0], -1, 32, 32)
-
+        # z = z.view(z.shape[0], -1, 32, 32)
+        print(f"after forward, z dim:{z.shape}")
         return z
 
 
@@ -379,6 +379,7 @@ class BaseHeadSplit(nn.Module):
 
     def forward(self, x):
         out = self.base(x)
+        print(f"base output size:{out.shape}")
         out = self.head(out)
 
         return out
