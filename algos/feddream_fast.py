@@ -4,6 +4,7 @@ import time
 from typing import List, Tuple
 from collections import OrderedDict
 import torch
+import numpy as np
 import torch.nn as nn
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
@@ -106,26 +107,26 @@ class FedDreamFastClient(BaseClient):
         
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
-        # for _ in range(5):
-        #     tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                             self.optim,
-        #                                             self.dloader,
-        #                                             self.loss_fn,
-        #                                             self.device)
-        if ((self.node_id==1 or self.node_id==2) and self.round<=120):
-            for _ in range(5):
-                tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                        self.optim,
-                                                        self.dloader,
-                                                        self.loss_fn,
-                                                        self.device)
-        if ((self.node_id==3 or self.node_id==4)):
-            for _ in range(5):
-                tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                        self.optim,
-                                                        self.dloader,
-                                                        self.loss_fn,
-                                                        self.device)
+        for _ in range(5):
+            tr_loss, tr_acc = self.model_utils.train(self.model,
+                                                    self.optim,
+                                                    self.dloader,
+                                                    self.loss_fn,
+                                                    self.device)
+        # if ((self.node_id==1 or self.node_id==2) and self.round<=120):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
+        # if ((self.node_id==3 or self.node_id==4)):
+        #     for _ in range(5):
+        #         tr_loss, tr_acc = self.model_utils.train(self.model,
+        #                                                 self.optim,
+        #                                                 self.dloader,
+        #                                                 self.loss_fn,
+        #                                                 self.device)
         print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
         if self.round % self.local_train_freq == 0:
             synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
@@ -425,7 +426,10 @@ class FedDreamFastServer(BaseServer):
         imgs = (reps.detach().clamp(0, 1).cpu().numpy()*255).astype('uint8')
         # performance depends on model output of the transformed input
         for i in range(len(imgs)):
-            img = Image.fromarray(imgs[i].transpose(1, 2, 0))
+            if imgs[i].shape[0]==1:
+                img = Image.fromarray(np.squeeze(imgs[i], axis=0))
+            else:
+                img = Image.fromarray(imgs[i].transpose(1, 2, 0))
             inp = self.transform(img)
             self.reps[i] = inp
         self.reps = self.reps.detach()   

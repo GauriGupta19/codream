@@ -9,10 +9,11 @@ b_default = "./configs/non_iid_clients.py"
 parser = argparse.ArgumentParser(description='Run collaborative learning experiments')
 parser.add_argument('-b', nargs='?', default=b_default, type=str,
                     help='filepath for benchmark config, default: {}'.format(b_default))
+parser.add_argument('-seed', nargs='?', default=4, type=int)
 args = parser.parse_args()
 
-scheduler = Scheduler()
-scheduler.assign_config_by_path(args.b)
-scheduler.initialize()
-scheduler.run_job()
-# 
+for seed in [1,2,3,5]:
+    scheduler = Scheduler()
+    scheduler.assign_config_by_path(args.b, seed)
+    scheduler.initialize()
+    scheduler.run_job()
