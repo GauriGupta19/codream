@@ -62,11 +62,11 @@ class FedGenClient(BaseClient):
             self.batch_size,
             self.generator,
         )
-        print(
-            "Client {} finished training with loss {}, accuracy {}".format(
-                self.node_id, avg_loss, acc
-            )
-        )
+        # print(
+        #     "Client {} finished training with loss {}, accuracy {}".format(
+        #         self.node_id, avg_loss, acc
+        #     )
+        # )
 
     def local_test(self, **kwargs):
         """
@@ -90,20 +90,11 @@ class FedGenClient(BaseClient):
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
-        # TODO this is for debugging to make sure models are being updated correctly
-        # need to change impl later because this will prob be way too big
 
         self.generator.load_state_dict(generator)
         self.model.load_state_dict(classifier)
         self.generator = self.generator.to(self.device)
         self.model = self.model.to(self.device)
-        # for new_p, old_p in zip(classifier.parameters(), self.model.parameters()):
-        #     new_p = new_p.to(self.device)
-        #     old_p.data = new_p.data.clone()
-
-        # for new_p, old_p in zip(generator.parameters(), self.generator.parameters()):
-        #     new_p = new_p.to(self.device)
-        #     old_p.data = new_p.data.clone()
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -120,9 +111,6 @@ class FedGenClient(BaseClient):
         )
         # set qualified labels
         self.qualified_labels = qualified_labels
-        # print(
-        #     f"client {self.node_id} received qualified labels {qualified_labels} from server!"
-        # )
 
         # then send ack to server to signal that training is ready to start
         self.comm_utils.send_signal(
@@ -134,12 +122,9 @@ class FedGenClient(BaseClient):
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
             print("round", round)
             for i in range(self.config["local_runs"]):
-                # print("training locally")
                 self.local_train()
             # then during normal trianing wait for repr from server, then send updats back to server
             # NOTE client does not send generator information to server
-            # classifier_param = self.get_representation()
-            # classifier = self.model
 
             self.comm_utils.send_signal(
                 dest=self.server_node,
@@ -240,7 +225,7 @@ class FedGenServer(BaseServer):
             # model_i.linear = nn.Identity()
             models.append(model_i)
 
-        for j in range(100):
+        for j in range(1000):
             loss_tot = 0
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
@@ -252,18 +237,9 @@ class FedGenServer(BaseServer):
                 models[i] = models[i].to(self.device)
                 models[i].eval()
                 logits += models[i].linear(z) * w
-                # reset model
-                # model_base = self.model_utils.get_model(
-                #     self.config["model"],
-                #     self.config["dset"],
-                #     self.device,
-                #     self.device_ids,
-                #     num_classes=10,
-                # )
+
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
-            if i % 10 == 0:
-                print(f"loss is {loss} in gen training round {j}")
             loss_tot += loss
             loss.backward()
             self.generative_optimizer.step()
@@ -281,9 +257,9 @@ class FedGenServer(BaseServer):
             self.model, self._test_loader, self.loss_fn, self.device
         )
         # TODO save the model if the accuracy is better than the best accuracy so far
-        # if acc > self.best_acc:
-        #     self.best_acc = acc
-        #     self.model_utils.save_model(self.model, self.model_save_path)
+        if acc > self.best_acc:
+            self.best_acc = acc
+            self.model_utils.save_model(self.model, self.model_save_path)
         return acc, test_loss
 
     def aggregate(self, weights: List[int], model_wts: List[OrderedDict[str, Tensor]]):
@@ -437,3 +413,4 @@ class FedGenServer(BaseServer):
                 "round: {} Best test_acc:{:.4f}".format(round, self.best_acc)
             )
             self.log_utils.log_console("Round {} done".format(round))
+        print(f"best accuracy after all epochs:{self.best_accuracy}")

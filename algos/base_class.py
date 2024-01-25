@@ -71,28 +71,12 @@ class BaseNode(ABC):
 
         # for fedGen
         if config["algo"] == "fedgen":
-            # first add model head
-            # print(self.model)
-            # model_head = copy.deepcopy(self.model.linear)
-            # self.model.linear = nn.Identity()
-            # self.model = BaseHeadSplit(self.model, model_head)
 
-            # then need to get the feature dimension from model
-            # make a toy prediction
             data_loader = self.dset_obj.train_dset
             feature_dim_list = None
 
-            # Get a batch of data (assuming you want just one sample)
-            # for _, (X, y) in enumerate(data_loader):
-            #     feature_dim_list = X.size()
-            #     break
-            # print(f"THIS IS FEATURE DIM: {feature_dim_list}")
-
-            # assert feature_dim_list is not None
-
-            # feature_dim = 1
-            # for val in feature_dim_list:
-            #     feature_dim *= val
+            # TODO this is hard-coded
+            # might need to be changed for non-resnet models
             feature_dim = 512
 
             self.generator = self.model_utils.get_generator(
@@ -101,7 +85,6 @@ class BaseNode(ABC):
                 hidden_dim=32,
                 feature_dim=feature_dim,
             )
-            print("generator created!")
 
         # load a checkpoint if load_existing is set to True
         if config["load_existing"]:

@@ -566,10 +566,10 @@ fedgen = {
     "seed": 4,
     "device_ids": {
         "node_0": [1],
-        "node_1": [2],
-        "node_2": [3],
-        "node_3": [4],
-        "node_4": [2],
+        "node_1": [0],
+        "node_2": [2],
+        "node_3": [3],
+        "node_4": [3],
     },
     # Learning setup
     "num_clients": 4,
