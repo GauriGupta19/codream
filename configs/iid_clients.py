@@ -331,7 +331,7 @@ fedgen = {
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid",
     "dpath": "./imgs/cifar10",
-    "seed": 1,
+    "seed": 4,
     "device_ids": {
         "node_0": [1],
         "node_1": [2],
