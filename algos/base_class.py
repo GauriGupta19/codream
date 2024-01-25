@@ -72,7 +72,17 @@ class BaseNode(ABC):
         # for fedGen
         if config["algo"] == "fedgen":
             # first add model head
-            model_head = copy.deepcopy(self.model.fc)
+            # Check if the model has an attribute named 'fc'
+            if hasattr(self.model, "fc"):
+                model_head = copy.deepcopy(self.model.fc)
+            elif hasattr(self.model, "classifier"):
+                # Check if the model has an attribute named 'classifier'
+                model_head = copy.deepcopy(self.model.classifier)
+            else:
+                # If the fully connected layer has a different name, update this accordingly
+                raise AttributeError(
+                    "The fully connected layer attribute is not found."
+                )
             self.model.fc = nn.Identity()
             self.model = BaseHeadSplit(self.model, model_head)
 
