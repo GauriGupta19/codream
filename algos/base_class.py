@@ -40,7 +40,8 @@ class BaseNode(ABC):
 
     def set_model_parameters(self, config):
         # Model related parameters
-        optim = torch.optim.SGD
+        optim = torch.optim.Adam
+        # optim = torch.optim.SGD
         num_classes = self.dset_obj.NUM_CLS
         if config.get("heterogeneous_models", False):
             self.model = self.model_utils.get_model(config["models"][str(self.node_id)], config["dset"], self.device, self.device_ids, num_classes=num_classes)
@@ -58,8 +59,8 @@ class BaseNode(ABC):
                 print("No checkpoint path specified for node {}".format(self.node_id))
             # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
             # self.model_utils.load_model(self.model, config["checkpoint"])
-        self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4,)
-        # self.optim = optim(self.model.parameters(), lr=3e-4)
+        # self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4,)
+        self.optim = optim(self.model.parameters(), lr=config["model_lr"])
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod

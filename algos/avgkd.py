@@ -88,9 +88,9 @@ class AvgKDClient(BaseClient):
             # self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
             # print("Client waiting for semaphore from {}".format(self.server_node))
             if round == 0:
-                # warmup_rounds = 150
-                # for i in range(warmup_rounds):
-                for i in range(self.config["local_runs"]):
+                warmup_rounds = 50
+                for i in range(warmup_rounds):
+                # for i in range(self.config["local_runs"]):
                     self.local_train(i)
             else:
                 self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
@@ -103,6 +103,10 @@ class AvgKDClient(BaseClient):
                 labels_per_batch = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
                 # print(self.node_id, labels_per_batch)
                 # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
+
+                # for i in range(self.config["local_runs"]):
+                #     # self.local_train()
+                #     self.local_train(i)
 
                 for i in range(self.config["local_runs"]):
                     # self.local_train()
