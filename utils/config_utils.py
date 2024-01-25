@@ -1,16 +1,20 @@
+import random
 import jmespath, importlib, os
 
 
-def load_config(config_path):
+def load_config(config_path, idx, seed):
     path = '.'.join(config_path.split('.')[1].split('/')[1:])
-    print(path)
-    config = importlib.import_module(path).current_config
-    return process_config(config)
+    config_file=importlib.import_module(path)
+    l=[]
+    for config_name,config in vars(config_file):
+        if not config_name.startswith("__"):
+            l.append(config)
+    return process_config(config[idx], seed)
 
-def process_config(config):
+def process_config(config, seed):
     config['num_gpus'] = len(config.get('device_ids'))
     # config['batch_size'] = config.get('batch_size', 64) * config['num_gpus']
-    config['seed'] = config.get('seed') or 1
+    config['seed'] = seed
     config['load_existing'] = config.get('load_existing') or False
 
     experiment_name = "{}_{}_{}clients_{}samples_{}".format(
@@ -37,5 +41,8 @@ def process_config(config):
     config["images_path"] = images_path
     config["results_path"] = results_path
     config["saved_models"] = results_path + "/saved_models/"
+
+    for node in config["device_ids"]:
+        config["device_ids"][node]=random.randint(0,1)
 
     return config

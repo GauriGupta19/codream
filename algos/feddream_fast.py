@@ -12,7 +12,7 @@ from utils.modules import KLDiv, kldiv, total_variation_loss, reptile_grad, foma
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
 from torchvision import transforms
-from kornia import augmentation
+#from kornia import augmentation
 from PIL import Image
 import torchvision.transforms as T
 
