@@ -333,13 +333,12 @@ fedgen = {
     "dpath": "./imgs/cifar10",
     "seed": 1,
     "device_ids": {
-        "node_0": [0],
-        "node_1": [1],
-        "node_2": [2],
-        "node_3": [3],
+        "node_0": [1],
+        "node_1": [2],
+        "node_2": [3],
     },
     # Learning setup
-    "num_clients": 3,
+    "num_clients": 2,
     "samples_per_client": 1000,
     "alpha": 0.1,
     # "class_per_client": 2,

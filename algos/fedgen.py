@@ -170,14 +170,14 @@ class FedGenServer(BaseServer):
         # Hard coded values taken from official implementation
         self.generative_optimizer = torch.optim.Adam(
             params=self.generator.parameters(),
-            lr=3e-4,
+            lr=0.005,
             betas=(0.9, 0.999),
             eps=1e-08,
-            weight_decay=1e-2,
+            weight_decay=0,
             amsgrad=False,
         )
         self.generative_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer=self.generative_optimizer, gamma=0.98
+            optimizer=self.generative_optimizer, gamma=0.99
         )
 
         assert self.generator is not None
@@ -244,7 +244,9 @@ class FedGenServer(BaseServer):
         #     self.device_ids,
         #     num_classes=10,
         # )
-        for _ in range(self.config["local_runs"]):
+        # for _ in range(self.config["local_runs"]):
+        for j in range(100):
+            loss_tot = 0
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
@@ -265,8 +267,14 @@ class FedGenServer(BaseServer):
                 # )
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
+            if i%10 == 0:
+                print(f"loss is {loss} in gen training round {j}")
+            loss_tot += loss
             loss.backward()
             self.generative_optimizer.step()
+        mean_loss = loss_tot / self.config["local_runs"]
+        print(f"current mean generator loss:{mean_loss}")
+        self.log_utils.log_tb(f"mean_gen_loss", mean_loss, self.round)
         self.generative_lr_scheduler.step()
 
     def test(self):
@@ -369,7 +377,6 @@ class FedGenServer(BaseServer):
         # set own model
         self.model.load_state_dict(avgd_wts)
         self.model = self.model.to(self.device)
-
         # self.set_representation()  # distribute classifier and generator updates back to clients
         for client_node in self.clients:
             self.comm_utils.send_signal(

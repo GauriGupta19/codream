@@ -167,7 +167,7 @@ class ModelUtils:
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
 
             loss = loss_fn(output, target)
-            print(f"normal classifier loss{loss}")
+            # print(f"normal classifier loss{loss}")
 
             # fedGen modification of additive loss
             labels = np.random.choice(qualified_labels, batch_size)
@@ -176,7 +176,7 @@ class ModelUtils:
             z = generative_model(labels)
 
             loss += loss_fn(model(z), labels)
-            print(f"loss after generator loss appended{loss}")
+            # print(f"loss after generator loss appended{loss}")
 
             loss.backward()
             optim.step()
