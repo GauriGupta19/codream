@@ -175,7 +175,7 @@ class ModelUtils:
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
 
-            loss += loss_fn(model.head(z), labels)
+            loss += loss_fn(model.linear(z), labels)
             # print(f"loss after generator loss appended{loss}")
 
             loss.backward()
@@ -365,7 +365,7 @@ class Generative(nn.Module):
         z = self.fc1(z)
         z = self.fc(z)
         # z = z.view(z.shape[0], -1, 32, 32)
-        print(f"after forward, z dim:{z.shape}")
+        # print(f"after forward, z dim:{z.shape}")
         return z
 
 
@@ -379,7 +379,7 @@ class BaseHeadSplit(nn.Module):
 
     def forward(self, x):
         out = self.base(x)
-        print(f"base output size:{out.shape}")
+        # print(f"base output size:{out.shape}")
         out = self.head(out)
 
         return out

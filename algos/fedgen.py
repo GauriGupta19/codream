@@ -237,7 +237,7 @@ class FedGenServer(BaseServer):
                 self.device_ids,
                 num_classes=10,
             )
-            model_i.linear = nn.Identity()
+            # model_i.linear = nn.Identity()
             models.append(model_i)
 
         for j in range(100):
@@ -251,7 +251,7 @@ class FedGenServer(BaseServer):
                 models[i].load_state_dict(model_wt)
                 models[i] = models[i].to(self.device)
                 models[i].eval()
-                logits += models[i].head(z) * w
+                logits += models[i].linear(z) * w
                 # reset model
                 # model_base = self.model_utils.get_model(
                 #     self.config["model"],

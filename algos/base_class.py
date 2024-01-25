@@ -72,10 +72,10 @@ class BaseNode(ABC):
         # for fedGen
         if config["algo"] == "fedgen":
             # first add model head
-            print(self.model)
-            model_head = copy.deepcopy(self.model.linear)
-            self.model.linear = nn.Identity()
-            self.model = BaseHeadSplit(self.model, model_head)
+            # print(self.model)
+            # model_head = copy.deepcopy(self.model.linear)
+            # self.model.linear = nn.Identity()
+            # self.model = BaseHeadSplit(self.model, model_head)
 
             # then need to get the feature dimension from model
             # make a toy prediction
