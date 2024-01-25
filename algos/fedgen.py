@@ -256,7 +256,7 @@ class FedGenServer(BaseServer):
                 models[i].load_state_dict(model_wt)
                 models[i] = models[i].to(self.device)
                 models[i].eval()
-                logits += models[i](z) * w
+                logits += models[i].head(z) * w
                 # reset model
                 # model_base = self.model_utils.get_model(
                 #     self.config["model"],
@@ -267,7 +267,7 @@ class FedGenServer(BaseServer):
                 # )
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
-            if i%10 == 0:
+            if i % 10 == 0:
                 print(f"loss is {loss} in gen training round {j}")
             loss_tot += loss
             loss.backward()

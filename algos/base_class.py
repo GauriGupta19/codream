@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 import numpy as np
+import copy
 from utils.comm_utils import CommUtils
 from utils.data_utils import (
     get_dataset,
@@ -14,6 +15,8 @@ from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
+import torch.nn as nn
+from utils.model_utils import BaseHeadSplit
 
 
 class BaseNode(ABC):
@@ -68,10 +71,14 @@ class BaseNode(ABC):
 
         # for fedGen
         if config["algo"] == "fedgen":
-            # first need to get the feature dimension from model
+            # first add model head
+            model_head = copy.deepcopy(self.model.fc)
+            self.model.fc = nn.Identity()
+            self.model = BaseHeadSplit(self.model, model_head)
+
+            # then need to get the feature dimension from model
             # make a toy prediction
             data_loader = self.dset_obj.train_dset
-
             feature_dim_list = None
 
             # Get a batch of data (assuming you want just one sample)

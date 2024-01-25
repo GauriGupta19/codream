@@ -175,7 +175,7 @@ class ModelUtils:
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
 
-            loss += loss_fn(model(z), labels)
+            loss += loss_fn(model.head(z), labels)
             # print(f"loss after generator loss appended{loss}")
 
             loss.backward()
@@ -367,6 +367,21 @@ class Generative(nn.Module):
         z = z.view(z.shape[0], -1, 32, 32)
 
         return z
+
+
+# split an original model into a base and a head
+class BaseHeadSplit(nn.Module):
+    def __init__(self, base, head):
+        super(BaseHeadSplit, self).__init__()
+
+        self.base = base
+        self.head = head
+
+    def forward(self, x):
+        out = self.base(x)
+        out = self.head(out)
+
+        return out
 
 
 # # FedGEN, from official github
