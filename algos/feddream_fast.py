@@ -114,7 +114,7 @@ class FedDreamFastClient(BaseClient):
                                                     self.dloader,
                                                     self.loss_fn,
                                                     self.device)
-        # if (self.node_id==2 and self.round<=120):
+        # if ((self.node_id==2) and self.round<=120):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
         #                                                 self.optim,
@@ -128,7 +128,7 @@ class FedDreamFastClient(BaseClient):
         #                                                 self.dloader,
         #                                                 self.loss_fn,
         #                                                 self.device)
-        # if ((self.node_id==1 or self.node_id==3) or self.node_id==4):
+        # if ((self.node_id==1 or self.node_id==4) or self.node_id==3):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
         #                                                 self.optim,
