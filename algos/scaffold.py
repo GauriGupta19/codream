@@ -107,7 +107,7 @@ class SCAFFOLDClient(BaseClient):
                 #     new_c[k] = c[k]
                 #     new_c_i[k] = self.c_i[k]
                 self.local_train(self.model, self.optim, self.dloader, self.loss_fn, self.device, c, self.c_i)
-            
+
             # for every parameter in the model, compute the local pseudo gradient
             # and update the client control
             K = len(self.dloader) * self.config["batch_size"]
@@ -117,37 +117,17 @@ class SCAFFOLDClient(BaseClient):
                 # Option 1 of Scaffold paper
                 try:
                     c_i_plus[k] = grad_x[k].detach()
+                    c_i_delta[k] = c_i_plus[k] - self.c_i[k]
                 except KeyError:
-                    c_i_plus[k] = torch.zeros_like(v)
+                    pass
                 # Option 2 of Scaffold paper - unstable but efficient
                 # c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
-                c_i_delta[k] = c_i_plus[k] - self.c_i[k]
-
-            if self.node_id == 1:
-                print("pseudo grad", '%.4f' % local_pseudo_grad['param1'].item())
-
-                
-            # for k, v in self.model.state_dict().items():
-            #     local_pseudo_grad[k] = v - x[k]
-            #     c_i_plus[k] = c[k] - self.c_i[k] + (1 / (K * self.config["lr_client"])) * (-1 * local_pseudo_grad[k])
-            #     c_i_delta[k] = c_i_plus[k] - self.c_i[k]
-            
-            # print (f"\tClient {self.node_id}", "\t\t After Training")
-            # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % c_i_plus['param1'].item(), "c_i_plus")
-            # print(f"\tClient {self.node_id}", "\t\t", '%.6f' % self.model.state_dict()['param1'].item(), "y")
 
             test_loss, acc = self.model_utils.test(self.model,
                                                self._test_loader,
                                                self.loss_fn,
                                                self.device)
-            if self.node_id == 1:
-                print(f"\tClient {self.node_id}", 
-                    # "\n\t\tc_i_plus", '%.6f' % c_i_plus['param1'].item(), 
-                    # "\n\t\tc_i_delta", '%.6f' % c_i_delta['param1'].item(), 
-                    # "\n\t\ty_i", '%.6f' % self.model.state_dict()['param1'].item(),
-                    "\n\t\ttest loss", test_loss, 
-                    "\n\t\tacc", acc)
-                  
+
             self.comm_utils.send_signal(dest=self.server_node, data=local_pseudo_grad, tag=self.tag.WTS)
             self.comm_utils.send_signal(dest=self.server_node, data=c_i_delta, tag=self.tag.COV)
             self.c_i = c_i_plus
