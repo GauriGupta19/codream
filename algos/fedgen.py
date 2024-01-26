@@ -225,7 +225,7 @@ class FedGenServer(BaseServer):
             # model_i.linear = nn.Identity()
             models.append(model_i)
 
-        for j in range(1000):
+        for j in range(100):
             loss_tot = 0
             labels = np.random.choice(self.qualified_labels, self.batch_size)
             labels = torch.LongTensor(labels).to(self.device)
