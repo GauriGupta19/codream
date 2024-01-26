@@ -86,7 +86,7 @@ class FedGenClient(BaseClient):
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
-        if self.config["heterogenous_models"] == False:
+        if self.config["heterogeneous_models"] == False:
             assert classifier != None
             self.model.load_state_dict(classifier)
             self.model = self.model.to(self.device)
@@ -222,7 +222,7 @@ class FedGenServer(BaseServer):
         # num_clients = len(model_wts)
 
         models = dict()
-        if self.config["heterogenous_models"] == False:
+        if self.config["heterogeneous_models"] == False:
             for client_i in reference_dict:
                 model_i = self.model_utils.get_model(
                     self.config["model"],
@@ -337,7 +337,7 @@ class FedGenServer(BaseServer):
         model_wts, weights, best_acc, best_loss, client_id = list(zip(*reprs))
 
         # first log some statas to tensorboard
-        for i in client_id:
+        for i in range(len(client_id)):
             self.log_utils.log_tb(f"test_acc/client{client_id[i]}", best_acc[i], round)
             self.log_utils.log_tb(f"test_loss/client{client_id[i]}", best_loss[i], round)
 
