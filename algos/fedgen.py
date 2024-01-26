@@ -221,8 +221,9 @@ class FedGenServer(BaseServer):
         self.generator.train()
         # num_clients = len(model_wts)
 
-        models = [None for _ in range(len(reference_dict))]
-        print(models, "models list")
+        # models = [None for _ in range(len(reference_dict))]
+        models = list()
+        # print(models, "models list")
         if self.config["heterogeneous_models"] is False:
             print("non hetero in line 226")
             for client_i in reference_dict:
@@ -235,7 +236,7 @@ class FedGenServer(BaseServer):
                     num_classes=10,
                 )
                 # model_i.linear = nn.Identity()
-                models[client_i - 1] = model_i
+                models.append(model_i)
         else:
             print("hetero in line 238")
             # for non-heterogenous models, go through the model list in config
@@ -248,7 +249,7 @@ class FedGenServer(BaseServer):
                     self.device_ids,
                     num_classe=10,
                 )
-                models[client_i - 1] = model_i
+                models.append(model_i)
 
         for j in range(100):
             loss_tot = 0
@@ -354,7 +355,7 @@ class FedGenServer(BaseServer):
         for i in range(len(client_id)):
             reference_dict[client_id[i]] = (weights[i], model_wts[i])
 
-        print(f"REFERENCE_DICT:{reference_dict}")
+        # print(f"REFERENCE_DICT:{reference_dict}")
 
         self.train_generator(reference_dict)
         if not self.config["heterogeneous_models"]:
