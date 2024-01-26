@@ -210,23 +210,17 @@ class FedGenServer(BaseServer):
 
         return all_weights, all_models
 
-    def train_generator(
-        self, reference_dict: Dict[int, Tuple[int, OrderedDict[str, Tensor]]]
-    ):
+    def train_generator(self, weights, model_weights):
         """
         step called by single round after calling receive_models
         Used to train and update generater
         """
         assert self.generator is not None
         self.generator.train()
-        # num_clients = len(model_wts)
-
-        # models = [None for _ in range(len(reference_dict))]
+        num_clients = len(model_weights)
         models = list()
-        # print(models, "models list")
         if self.config["heterogeneous_models"] is False:
-            print("non hetero in line 226")
-            for client_i in reference_dict:
+            for i in range(num_clients):
                 # print(client_i)
                 model_i = self.model_utils.get_model(
                     self.config["model"],
@@ -241,9 +235,9 @@ class FedGenServer(BaseServer):
             print("hetero in line 238")
             # for non-heterogenous models, go through the model list in config
             model_list_config = self.config["models"]
-            for client_i in reference_dict:
+            for i in range(num_clients):
                 model_i = self.model_utils.get_model(
-                    model_list_config[str(client_i)],
+                    model_list_config[str(i + 1)],
                     self.config["dset"],
                     self.device,
                     self.device_ids,
@@ -257,17 +251,17 @@ class FedGenServer(BaseServer):
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
             logits = 0
-            for i in reference_dict:
-                w, model_wt = (
-                    reference_dict[i][0],
-                    reference_dict[i][1],
-                )
-                # for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
+            # for i in reference_dict:
+            #     w, model_wt = (
+            #         reference_dict[i][0],
+            #         reference_dict[i][1],
+            #     )
+            for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # TODO go back and fix this!
-                models[i - 1].load_state_dict(model_wt)
-                models[i - 1] = models[i - 1].to(self.device)
-                models[i - 1].eval()
-                logits += models[i - 1].linear(z) * w
+                models[i].load_state_dict(model_wt)
+                models[i] = models[i].to(self.device)
+                models[i].eval()
+                logits += models[i].linear(z) * w
 
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
@@ -351,13 +345,13 @@ class FedGenServer(BaseServer):
 
         weights = [w / sum(weights) for w in weights]
 
-        reference_dict = dict()
-        for i in range(len(client_id)):
-            reference_dict[client_id[i]] = (weights[i], model_wts[i])
+        # reference_dict = dict()
+        # for i in range(len(client_id)):
+        #     reference_dict[client_id[i]] = (weights[i], model_wts[i])
 
-        # print(f"REFERENCE_DICT:{reference_dict}")
+        # # print(f"REFERENCE_DICT:{reference_dict}")
 
-        self.train_generator(reference_dict)
+        self.train_generator(weights, model_wts)
         if not self.config["heterogeneous_models"]:
             avgd_wts = self.aggregate(weights, model_wts)
             print(f"weights after aggregation: {avgd_wts}")
