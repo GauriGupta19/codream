@@ -221,10 +221,12 @@ class FedGenServer(BaseServer):
         self.generator.train()
         # num_clients = len(model_wts)
 
-        models = list()
+        models = [None for _ in range(len(reference_dict))]
+        print(models, "models list")
         if self.config["heterogeneous_models"] is False:
             print("non hetero in line 226")
             for client_i in reference_dict:
+                # print(client_i)
                 model_i = self.model_utils.get_model(
                     self.config["model"],
                     self.config["dset"],
@@ -262,7 +264,7 @@ class FedGenServer(BaseServer):
                 # for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # TODO go back and fix this!
                 models[i - 1].load_state_dict(model_wt)
-                models[i - 1] = models[i].to(self.device)
+                models[i - 1] = models[i-1].to(self.device)
                 models[i - 1].eval()
                 logits += models[i - 1].linear(z) * w
 
