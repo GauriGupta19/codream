@@ -17,7 +17,7 @@ class CommProtocol(object):
     Communication protocol tags for the server and clients
     """
 
-    DONE = 0  # Used to signal that the client is done with the current round
+    DONE = 0  # Used to signal that the client is done with the current round: (model_update, samples per client, best acc, best loss, node_id)
     START = 1  # Used to signal by the server to start the current round
     UPDATES = 2  # Used to send the updates from the server to the clients, include classifier + generator param updates
     SEND_CLS_CNT = 3  # Used to send self.class_counts from clients to server
@@ -42,7 +42,7 @@ class FedGenClient(BaseClient):
         self.batch_size = self.config["batch_size"]
         assert self.generator is not None
 
-    def local_train(self, **kwargs):
+    def local_train(self, **kwargs) -> tuple[float, float]:
         """
         trains for one round
         where loss is sum of predefined loss function and loss from generator
@@ -62,11 +62,7 @@ class FedGenClient(BaseClient):
             self.batch_size,
             self.generator,
         )
-        # print(
-        #     "Client {} finished training with loss {}, accuracy {}".format(
-        #         self.node_id, avg_loss, acc
-        #     )
-        # )
+        return avg_loss, acc
 
     def local_test(self, **kwargs):
         """
@@ -90,11 +86,13 @@ class FedGenClient(BaseClient):
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
+        if self.config["heterogenous_models"] == False:
+            assert classifier != None
+            self.model.load_state_dict(classifier)
+            self.model = self.model.to(self.device)
 
         self.generator.load_state_dict(generator)
-        self.model.load_state_dict(classifier)
         self.generator = self.generator.to(self.device)
-        self.model = self.model.to(self.device)
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -120,22 +118,32 @@ class FedGenClient(BaseClient):
         # then start regular training
         for round in range(start_epochs, total_epochs):
             self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
-            print("round", round)
+            best_loss, best_acc = 0, 0
+            best_round = None
             for i in range(self.config["local_runs"]):
-                self.local_train()
+                loss, acc = self.local_train()
+                if acc > best_acc:
+                    best_loss, best_acc = loss, acc
+                    best_round = round
+
             # then during normal trianing wait for repr from server, then send updats back to server
             # NOTE client does not send generator information to server
 
             self.comm_utils.send_signal(
                 dest=self.server_node,
-                data=(self.get_representation(), self.config["samples_per_client"]),
+                data=(
+                    self.get_representation(),
+                    self.config["samples_per_client"],
+                    best_loss,
+                    best_acc,
+                    self.node_id,
+                ),
                 tag=self.tag.DONE,
             )
             repr = self.comm_utils.wait_for_signal(
                 src=self.server_node, tag=self.tag.UPDATES
             )
-            # TODO repr is a nested list, where first element is classifier and second is generator
-            # TODO confirm what server sends to client, and what client sends to server
+
             self.set_representation(repr[0], repr[1])
 
 
@@ -203,7 +211,7 @@ class FedGenServer(BaseServer):
         return all_weights, all_models
 
     def train_generator(
-        self, weights: List[int], model_wts: List[OrderedDict[str, Tensor]]
+        self, reference_dict: Dict[int, Tuple[int, OrderedDict[str, Tensor]]]
     ):
         """
         step called by single round after calling receive_models
@@ -211,19 +219,31 @@ class FedGenServer(BaseServer):
         """
         assert self.generator is not None
         self.generator.train()
-        num_clients = len(model_wts)
+        # num_clients = len(model_wts)
 
-        models = list()
-        for i in range(num_clients):
-            model_i = self.model_utils.get_model(
-                self.config["model"],
-                self.config["dset"],
-                self.device,
-                self.device_ids,
-                num_classes=10,
-            )
-            # model_i.linear = nn.Identity()
-            models.append(model_i)
+        models = dict()
+        if self.config["heterogenous_models"] == False:
+            for client_i in reference_dict:
+                model_i = self.model_utils.get_model(
+                    self.config["model"],
+                    self.config["dset"],
+                    self.device,
+                    self.device_ids,
+                    num_classes=10,
+                )
+                # model_i.linear = nn.Identity()
+                models[client_i] = model_i
+        else:
+            # for non-heterogenous models, go through the model list in config
+            model_list_config = self.config["models"]
+            for client_i in reference_dict:
+                model_i = self.model_utils.get_model(
+                    model_list_config[str(client_i)],
+                    self.config["dset"],
+                    self.device,
+                    self.device_ids,
+                    num_classe=10,
+                )
 
         for j in range(100):
             loss_tot = 0
@@ -231,8 +251,13 @@ class FedGenServer(BaseServer):
             labels = torch.LongTensor(labels).to(self.device)
             z = self.generator(labels).to(self.device)
             logits = 0
-            for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
-                # assert model.device == z.device
+            for i in reference_dict:
+                w, model_wt = (
+                    reference_dict[i][0],
+                    reference_dict[i][1],
+                )
+                # for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
+                # TODO go back and fix this!
                 models[i].load_state_dict(model_wt)
                 models[i] = models[i].to(self.device)
                 models[i].eval()
@@ -282,43 +307,13 @@ class FedGenServer(BaseServer):
                     )
         return avgd_wts
 
-    def aggregate_parameters(self, all_models: List[nn.Module], all_weights: List[int]):
-        """helper function that updates the new parameter for classifier training"""
-        assert len(all_models) > 0
-
-        self.model = copy.deepcopy(all_models[0])
-        for param in self.model.parameters():
-            param.data.zero_()
-
-        # NOTE this procedure should modify the classifier
-        for w, client_model in zip(all_weights, all_models):
-            for server_param, client_param in zip(
-                self.model.parameters(), client_model.parameters()
-            ):
-                server_param.data += w * client_param.data.clone()
-
     def get_representation(self, model: nn.Module):
         """
         Share the model weights
         """
         return put_on_cpu(model.state_dict())
-        # return [list(model.parameters())]
 
-    def set_representation(self):
-        """
-        Helper function called by single round
-
-        Sets updated model and distribute it to client
-        where client receives (classifier, generator)
-        """
-
-        classifier_p, generator_p = self.get_representation(
-            self.model
-        ), self.get_representation(self.generator)
-        repr_to_client = (classifier_p, generator_p)
-        # repr_to_client = (self.model, self.generator)
-
-    def single_round(self):
+    def single_round(self, round: int):
         """
         Runs regular trianing procedure for a single round
 
@@ -339,16 +334,28 @@ class FedGenServer(BaseServer):
         reprs = self.comm_utils.wait_for_all_clients(
             self.clients, self.tag.DONE
         )  # should receive list where each entry is tuple of (client_i model update, client_i num samples)
-        model_wts, weights = list(zip(*reprs))
+        model_wts, weights, best_acc, best_loss, client_id = list(zip(*reprs))
+
+        # first log some statas to tensorboard
+        for i in client_id:
+            self.log_utils.log_tb(f"test_acc/client{client_id[i]}", best_acc[i], round)
+            self.log_utils.log_tb(f"test_loss/client{client_id[i]}", best_loss[i], round)
+
         weights = [w / sum(weights) for w in weights]
-        # all_weights, all_models = self.receive_models(reprs)
-        self.train_generator(weights, model_wts)
-        # print(f"THIS IS ALL WEIGHTS: {all_weights}")
-        avgd_wts = self.aggregate(weights, model_wts)
-        # set own model
-        self.model.load_state_dict(avgd_wts)
-        self.model = self.model.to(self.device)
-        # self.set_representation()  # distribute classifier and generator updates back to clients
+
+        reference_dict = dict()
+        for i in range(len(client_id)):
+            reference_dict[client_id[i]] = (weights[i], model_wts[i])
+
+        self.train_generator(reference_dict)
+        if self.config["heterogeneous_models"] == False:
+            avgd_wts = self.aggregate(weights, model_wts)
+            # set own model
+            self.model.load_state_dict(avgd_wts)
+            self.model = self.model.to(self.device)
+        else:
+            avgd_wts = None
+
         for client_node in self.clients:
             self.comm_utils.send_signal(
                 dest=client_node,
@@ -404,7 +411,7 @@ class FedGenServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
-            self.single_round()
+            self.single_round(round)
             acc, loss = self.test()
             self.log_utils.log_tb(f"test_acc", acc, round)
             self.log_utils.log_tb(f"test_loss", loss, round)
