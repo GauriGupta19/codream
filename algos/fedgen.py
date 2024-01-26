@@ -221,8 +221,9 @@ class FedGenServer(BaseServer):
         self.generator.train()
         # num_clients = len(model_wts)
 
-        models = dict()
-        if self.config["heterogeneous_models"] == False:
+        models = list()
+        if self.config["heterogeneous_models"] is False:
+            print("non hetero in line 226")
             for client_i in reference_dict:
                 model_i = self.model_utils.get_model(
                     self.config["model"],
@@ -232,8 +233,9 @@ class FedGenServer(BaseServer):
                     num_classes=10,
                 )
                 # model_i.linear = nn.Identity()
-                models[client_i] = model_i
+                models[client_i - 1] = model_i
         else:
+            print("hetero in line 238")
             # for non-heterogenous models, go through the model list in config
             model_list_config = self.config["models"]
             for client_i in reference_dict:
@@ -244,6 +246,7 @@ class FedGenServer(BaseServer):
                     self.device_ids,
                     num_classe=10,
                 )
+                models[client_i - 1] = model_i
 
         for j in range(100):
             loss_tot = 0
@@ -258,10 +261,10 @@ class FedGenServer(BaseServer):
                 )
                 # for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # TODO go back and fix this!
-                models[i].load_state_dict(model_wt)
-                models[i] = models[i].to(self.device)
-                models[i].eval()
-                logits += models[i].linear(z) * w
+                models[i - 1].load_state_dict(model_wt)
+                models[i - 1] = models[i].to(self.device)
+                models[i - 1].eval()
+                logits += models[i - 1].linear(z) * w
 
             self.generative_optimizer.zero_grad()
             loss = self.loss_fn(logits, labels)
@@ -339,7 +342,9 @@ class FedGenServer(BaseServer):
         # first log some statas to tensorboard
         for i in range(len(client_id)):
             self.log_utils.log_tb(f"test_acc/client{client_id[i]}", best_acc[i], round)
-            self.log_utils.log_tb(f"test_loss/client{client_id[i]}", best_loss[i], round)
+            self.log_utils.log_tb(
+                f"test_loss/client{client_id[i]}", best_loss[i], round
+            )
 
         weights = [w / sum(weights) for w in weights]
 
@@ -348,12 +353,14 @@ class FedGenServer(BaseServer):
             reference_dict[client_id[i]] = (weights[i], model_wts[i])
 
         self.train_generator(reference_dict)
-        if self.config["heterogeneous_models"] == False:
+        if not self.config["heterogeneous_models"]:
+            print("non hereo in line 357")
             avgd_wts = self.aggregate(weights, model_wts)
             # set own model
             self.model.load_state_dict(avgd_wts)
             self.model = self.model.to(self.device)
         else:
+            print("hetero in line 363")
             avgd_wts = None
 
         for client_node in self.clients:
