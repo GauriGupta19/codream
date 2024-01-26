@@ -1,0 +1,44 @@
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+exp path: ./expt_dump/mnist/iid/iid_clients_avgkd_svhn_lr0.001_mnist_4clients_50samples_10_algo_avgkd_seed_4_seed4
+['./__pycache__/', './.ipynb_checkpoints/', './imgs/', './expt_dump_old/', './expt_dump/', './expt_dump/mnist/iid/'] ['./utils/', './expt_dump/', './__pycache__/', './imgs/', './models/', './algos/', './configs/']
+avgkd
+avgkd
+avgkd
+avgkd
+Model resnet18 loading on device cuda:0
+Model resnet18 loading on device cuda:1
+Model resnet18 loading on device cuda:0
+Model resnet18 loading on device cuda:1
+source code copied to exp_dump
+avgkd
+Model resnet18 loading on device cuda:0
+Model resnet18 loaded on device cuda:1
+round 0
+Model resnet18 loaded on device cuda:0
+round 0
+Model resnet18 loaded on device cuda:0
+round 0
+Model resnet18 loaded on device cuda:1
+round 0
+Model resnet18 loaded on device cuda:0
+Client 3 finished training locally with loss (0.03042755089700222, 1.0) at local round 49
+Client 2 finished training locally with loss (0.02845299057662487, 1.0) at local round 49
+Client 4 finished training locally with loss (0.030617041513323784, 1.0) at local round 49
+Client 1 finished training locally with loss (0.02827056497335434, 1.0) at local round 49
+round 1
+round 1
+round 1
+round 1
+test_acc/client0 0.2572 0
+test_acc/client1 0.2533 0
+test_acc/client2 0.2001 0
+test_acc/client3 0.3193 0
