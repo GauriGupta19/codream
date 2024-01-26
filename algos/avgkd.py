@@ -104,9 +104,9 @@ class AvgKDClient(BaseClient):
                 # print(self.node_id, labels_per_batch)
                 # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
 
-                # for i in range(self.config["local_runs"]):
-                #     # self.local_train()
-                #     self.local_train(i)
+                for i in range(self.config["local_runs"]):
+                    # self.local_train()
+                    self.local_train(i)
 
                 for i in range(self.config["local_runs"]):
                     # self.local_train()

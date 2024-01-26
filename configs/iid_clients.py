@@ -100,7 +100,7 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd_adam",
+    "exp_type": "iid_clients_avgkd_adam_local",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
@@ -109,7 +109,7 @@ avgkd = {
     # both are not used at the same time
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [2], "node_4": [3]},
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
     # communication epochs = 20 and local runs = 20 as per paper on AvgKD
     "epochs": 400, "local_runs": 20,
     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
