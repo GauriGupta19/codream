@@ -90,11 +90,13 @@ class FedGenClient(BaseClient):
         Note: Not implementing local feature extractor at this moment
         """
         assert self.generator is not None
+        if self.config["heterogeneous_models"] is False:
+            assert classifier is not None
+            self.model.load_state_dict(classifier)
+            self.model = self.model.to(self.device)
 
         self.generator.load_state_dict(generator)
-        self.model.load_state_dict(classifier)
         self.generator = self.generator.to(self.device)
-        self.model = self.model.to(self.device)
 
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
@@ -214,16 +216,28 @@ class FedGenServer(BaseServer):
         num_clients = len(model_wts)
 
         models = list()
-        for i in range(num_clients):
-            model_i = self.model_utils.get_model(
-                self.config["model"],
-                self.config["dset"],
-                self.device,
-                self.device_ids,
-                num_classes=10,
-            )
-            # model_i.linear = nn.Identity()
-            models.append(model_i)
+        if self.config["heterogeneous_models"] is False:
+            for i in range(num_clients):
+                model_i = self.model_utils.get_model(
+                    self.config["model"],
+                    self.config["dset"],
+                    self.device,
+                    self.device_ids,
+                    num_classes=10,
+                )
+                # model_i.linear = nn.Identity()
+                models.append(model_i)
+        else:
+            for i in range(num_clients):
+                model_i = self.model_utils.get_model(
+                    self.config["models"][i + 1],
+                    self.config["dset"],
+                    self.device,
+                    self.device_ids,
+                    num_classes=10,
+                )
+                # model_i.linear = nn.Identity()
+                models.append(model_i)
 
         for j in range(1000):
             loss_tot = 0
@@ -344,10 +358,13 @@ class FedGenServer(BaseServer):
         # all_weights, all_models = self.receive_models(reprs)
         self.train_generator(weights, model_wts)
         # print(f"THIS IS ALL WEIGHTS: {all_weights}")
-        avgd_wts = self.aggregate(weights, model_wts)
-        # set own model
-        self.model.load_state_dict(avgd_wts)
-        self.model = self.model.to(self.device)
+        if self.config["heterogeneous_models"] is False:
+            avgd_wts = self.aggregate(weights, model_wts)
+            # set own model
+            self.model.load_state_dict(avgd_wts)
+            self.model = self.model.to(self.device)
+        else:
+            avgd_wts = None
         # self.set_representation()  # distribute classifier and generator updates back to clients
         for client_node in self.clients:
             self.comm_utils.send_signal(
