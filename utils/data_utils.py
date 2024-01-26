@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.transforms as T
 from torchvision.datasets.cifar import CIFAR10, CIFAR100
 from torchvision.datasets import MNIST, SVHN, EMNIST
-#import medmnist
+import medmnist
 from torch.utils.data import Subset, Dataset
 from PIL import Image
 from glob import glob

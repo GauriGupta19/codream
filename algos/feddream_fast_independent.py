@@ -12,7 +12,7 @@ from utils.modules import KLDiv, kldiv, reptile_grad, fomaml_grad, reset_l0, res
 from torch.utils.data import TensorDataset, DataLoader
 from utils.data_utils import CustomDataset
 from torchvision import transforms
-#from kornia import augmentation
+from kornia import augmentation
 from PIL import Image
 import torchvision.transforms as T
 from utils.fedadam import FedadamOptimizer

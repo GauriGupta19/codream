@@ -45,9 +45,8 @@ class Scheduler():
     def __init__(self) -> None:
         pass
 
-    def assign_config_by_path(self, config_path, idx, seed) -> None:
-        self.config = load_config(config_path, idx, seed)
-        print(self.config["algo"],self.config[seed])
+    def assign_config_by_path(self, config_path) -> None:
+        self.config = load_config(config_path)
 
     def initialize(self) -> None:
         assert self.config is not None, "Config should be set when initializing"
