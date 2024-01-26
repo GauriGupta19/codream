@@ -264,7 +264,7 @@ class FedGenServer(BaseServer):
                 # for i, (w, model_wt) in enumerate(zip(weights, model_wts)):
                 # TODO go back and fix this!
                 models[i - 1].load_state_dict(model_wt)
-                models[i - 1] = models[i-1].to(self.device)
+                models[i - 1] = models[i - 1].to(self.device)
                 models[i - 1].eval()
                 logits += models[i - 1].linear(z) * w
 
@@ -354,10 +354,12 @@ class FedGenServer(BaseServer):
         for i in range(len(client_id)):
             reference_dict[client_id[i]] = (weights[i], model_wts[i])
 
+        print(f"REFERENCE_DICT:{reference_dict}")
+
         self.train_generator(reference_dict)
         if not self.config["heterogeneous_models"]:
-            print("non hereo in line 357")
             avgd_wts = self.aggregate(weights, model_wts)
+            print(f"weights after aggregation: {avgd_wts}")
             # set own model
             self.model.load_state_dict(avgd_wts)
             self.model = self.model.to(self.device)
