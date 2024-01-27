@@ -76,8 +76,6 @@ class BaseNode(ABC):
 
             # TODO this is hard-coded
             # might need to be changed for non-resnet models
-            model_name = config["models"][str(self.node_id)]
-            # if "resnet" in model_name:
             feature_dim = 512
 
             self.generator = self.model_utils.get_generator(
@@ -198,10 +196,16 @@ class BaseClient(BaseNode):
                 ],
             )
         self.class_counts = [0] * self.dset_obj.NUM_CLS
+
         for x, y in dset:
             if not isinstance(y, int):
                 y = y.item()
             self.class_counts[y] += 1
+        self.num_classes = 0
+        for class_count in self.class_counts:
+            if class_count != 0:
+                self.num_classes += 1
+
         self.samples_per_client = [c / samples_per_client for c in self.class_counts]
         print(f"samples per client:{self.samples_per_client}")
         self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
