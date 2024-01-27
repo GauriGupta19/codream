@@ -62,11 +62,11 @@ class FedGenClient(BaseClient):
             self.batch_size,
             self.generator,
         )
-        # print(
-        #     "Client {} finished training with loss {}, accuracy {}".format(
-        #         self.node_id, avg_loss, acc
-        #     )
-        # )
+        print(
+            "Client {} finished training with loss {}, accuracy {}".format(
+                self.node_id, avg_loss, acc
+            )
+        )
 
     def local_test(self, **kwargs):
         """
@@ -267,6 +267,7 @@ class FedGenServer(BaseServer):
         helper test function called by run_protocol to evaluate model performance
         after each round of training
         """
+        print(self.model.linear.state_dict())
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
@@ -363,9 +364,11 @@ class FedGenServer(BaseServer):
             # set own model
             self.model.load_state_dict(avgd_wts)
             self.model = self.model.to(self.device)
+            print(self.model.linear.state_dict())
         else:
             avgd_wts = None
         # self.set_representation()  # distribute classifier and generator updates back to clients
+        # print(f"avgd_wts:{avgd_wts}")
         for client_node in self.clients:
             self.comm_utils.send_signal(
                 dest=client_node,
