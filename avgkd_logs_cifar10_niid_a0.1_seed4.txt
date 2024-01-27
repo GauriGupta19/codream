@@ -1,0 +1,726 @@
+Namespace(b='./configs/non_iid_clients.py', seed=-1)
+configs.non_iid_clients
+Namespace(b='./configs/non_iid_clients.py', seed=-1)
+configs.non_iid_clients
+Namespace(b='./configs/non_iid_clients.py', seed=-1)
+configs.non_iid_clients
+Namespace(b='./configs/non_iid_clients.py', seed=-1)
+configs.non_iid_clients
+Namespace(b='./configs/non_iid_clients.py', seed=-1)
+configs.non_iid_clients
+exp path: ./expt_dump/cifar10/alpha_0.1/non_iid_balanced_clients_avgkd_seed4_cifar10_4clients_1000samples_10_algo_avgkd_alpha_0.1_seed4
+avgkd
+['./__pycache__/', './.ipynb_checkpoints/', './imgs/', './expt_dump_old/', './expt_dump/', './expt_dump/cifar10/alpha_0.1/'] ['./utils/', './expt_dump/', './old_logs/', './__pycache__/', './expt_dump_old/', './imgs/', './models/', './algos/', './configs/']
+avgkd
+avgkd
+avgkd
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+source code copied to exp_dump
+avgkd
+Files already downloaded and verified
+Model resnet18 loading on device cuda:6
+Model resnet18 loading on device cuda:7
+Model resnet18 loading on device cuda:7
+Model resnet18 loading on device cuda:6
+Files already downloaded and verified
+Model resnet18 loading on device cuda:6
+Model resnet18 loaded on device cuda:6
+starting creating data
+Model resnet18 loaded on device cuda:7
+starting creating data
+Model resnet18 loaded on device cuda:6
+starting creating data
+Model resnet18 loaded on device cuda:7
+starting creating data
+using non_iid_balanced 0.1
+using non_iid_balanced 0.1
+using non_iid_balanced 0.1
+using non_iid_balanced 0.1
+Model resnet18 loaded on device cuda:6
+round 0
+round 0
+round 0
+round 0
+Client 3 finished training locally with loss (1.7889514863491058, 0.85) at local round 19
+Client 4 finished training locally with loss (0.8576551228761673, 0.928) at local round 19
+Client 1 finished training locally with loss (0.7161428183317184, 0.93) at local round 19
+Client 2 finished training locally with loss (1.3111146688461304, 0.894) at local round 19
+round 1
+round 1
+round 1
+round 1
+test_acc/client0 0.2848 0
+test_acc/client1 0.2054 0
+test_acc/client2 0.2733 0
+test_acc/client3 0.2068 0
+Client 1 finished training avgKD with loss (5.497483253479004, 0.724) at local round 19
+Client 2 finished training avgKD with loss (5.542380452156067, 0.589) at local round 19
+Client 3 finished training avgKD with loss (5.88367772102356, 0.313) at local round 19
+Client 4 finished training avgKD with loss (5.715437173843384, 0.893) at local round 19
+round 2
+round 2
+round 2
+round 2
+test_acc/client0 0.2429 1
+test_acc/client1 0.2024 1
+test_acc/client2 0.2796 1
+test_acc/client3 0.2232 1
+Client 3 finished training avgKD with loss (6.524159550666809, 0.489) at local round 19
+Client 4 finished training avgKD with loss (5.8400880098342896, 0.892) at local round 19
+Client 1 finished training avgKD with loss (5.786924362182617, 0.79) at local round 19
+Client 2 finished training avgKD with loss (6.111007332801819, 0.77) at local round 19
+round 3
+round 3
+round 3
+round 3
+test_acc/client0 0.2757 2
+test_acc/client1 0.2177 2
+test_acc/client2 0.2665 2
+test_acc/client3 0.1978 2
+Client 4 finished training avgKD with loss (6.071855068206787, 0.907) at local round 19
+Client 3 finished training avgKD with loss (6.727615237236023, 0.48) at local round 19
+Client 2 finished training avgKD with loss (6.322470784187317, 0.777) at local round 19
+Client 1 finished training avgKD with loss (6.058658599853516, 0.808) at local round 19
+round 4
+round 4
+round 4
+round 4
+test_acc/client0 0.2782 3
+test_acc/client1 0.2214 3
+test_acc/client2 0.2681 3
+test_acc/client3 0.191 3
+Client 4 finished training avgKD with loss (6.156637787818909, 0.903) at local round 19
+Client 3 finished training avgKD with loss (6.774082183837891, 0.546) at local round 19
+Client 2 finished training avgKD with loss (6.416326642036438, 0.771) at local round 19
+Client 1 finished training avgKD with loss (6.144596815109253, 0.832) at local round 19
+round 5
+round 5
+round 5
+round 5
+test_acc/client0 0.2812 4
+test_acc/client1 0.2225 4
+test_acc/client2 0.2822 4
+test_acc/client3 0.1895 4
+Client 2 finished training avgKD with loss (6.480018615722656, 0.798) at local round 19
+Client 1 finished training avgKD with loss (6.1848156452178955, 0.841) at local round 19
+Client 4 finished training avgKD with loss (6.149377942085266, 0.914) at local round 19
+Client 3 finished training avgKD with loss (6.859854578971863, 0.523) at local round 19
+round 6
+round 6
+round 6
+round 6
+test_acc/client0 0.2775 5
+test_acc/client1 0.2161 5
+test_acc/client2 0.2833 5
+test_acc/client3 0.2077 5
+Client 1 finished training avgKD with loss (6.188162922859192, 0.849) at local round 19
+Client 2 finished training avgKD with loss (6.493425130844116, 0.808) at local round 19
+Client 4 finished training avgKD with loss (6.244779109954834, 0.911) at local round 19
+Client 3 finished training avgKD with loss (6.836233854293823, 0.559) at local round 19
+round 7
+round 7
+round 7
+round 7
+test_acc/client0 0.2863 6
+test_acc/client1 0.2138 6
+test_acc/client2 0.2986 6
+test_acc/client3 0.2071 6
+Client 3 finished training avgKD with loss (6.886175155639648, 0.55) at local round 19
+Client 4 finished training avgKD with loss (6.215432286262512, 0.915) at local round 19
+Client 1 finished training avgKD with loss (6.187014579772949, 0.867) at local round 19
+Client 2 finished training avgKD with loss (6.488376975059509, 0.795) at local round 19
+round 8
+round 8
+round 8
+round 8
+test_acc/client0 0.2831 7
+test_acc/client1 0.2149 7
+test_acc/client2 0.292 7
+test_acc/client3 0.2053 7
+Client 4 finished training avgKD with loss (6.205028414726257, 0.914) at local round 19
+Client 3 finished training avgKD with loss (6.848589539527893, 0.579) at local round 19
+Client 2 finished training avgKD with loss (6.46707558631897, 0.786) at local round 19
+Client 1 finished training avgKD with loss (6.1691542863845825, 0.858) at local round 19
+round 9
+round 9
+round 9
+round 9
+test_acc/client0 0.2839 8
+test_acc/client1 0.219 8
+test_acc/client2 0.2959 8
+test_acc/client3 0.2154 8
+Client 3 finished training avgKD with loss (6.812981724739075, 0.587) at local round 19
+Client 4 finished training avgKD with loss (6.187612056732178, 0.915) at local round 19
+Client 1 finished training avgKD with loss (6.09931480884552, 0.868) at local round 19
+Client 2 finished training avgKD with loss (6.433908581733704, 0.796) at local round 19
+round 10
+round 10
+round 10
+round 10
+test_acc/client0 0.286 9
+test_acc/client1 0.2238 9
+test_acc/client2 0.3055 9
+test_acc/client3 0.2183 9
+Client 1 finished training avgKD with loss (6.09731650352478, 0.88) at local round 19
+Client 3 finished training avgKD with loss (6.7825233936309814, 0.641) at local round 19
+Client 2 finished training avgKD with loss (6.387209177017212, 0.805) at local round 19
+Client 4 finished training avgKD with loss (6.163712859153748, 0.915) at local round 19
+round 11
+round 11
+round 11
+round 11
+test_acc/client0 0.2896 10
+test_acc/client1 0.2252 10
+test_acc/client2 0.3063 10
+test_acc/client3 0.2221 10
+Client 3 finished training avgKD with loss (6.7576950788497925, 0.65) at local round 19
+Client 4 finished training avgKD with loss (6.155547022819519, 0.918) at local round 19
+Client 1 finished training avgKD with loss (6.121009707450867, 0.859) at local round 19
+Client 2 finished training avgKD with loss (6.3730995655059814, 0.805) at local round 19
+round 12
+round 12
+round 12
+round 12
+test_acc/client0 0.2857 11
+test_acc/client1 0.2278 11
+test_acc/client2 0.3108 11
+test_acc/client3 0.2225 11
+Client 3 finished training avgKD with loss (6.7208861112594604, 0.672) at local round 19
+Client 1 finished training avgKD with loss (6.05702817440033, 0.88) at local round 19
+Client 2 finished training avgKD with loss (6.337366461753845, 0.809) at local round 19
+Client 4 finished training avgKD with loss (6.127541899681091, 0.909) at local round 19
+round 13
+round 13
+round 13
+round 13
+test_acc/client0 0.2878 12
+test_acc/client1 0.2289 12
+test_acc/client2 0.316 12
+test_acc/client3 0.2123 12
+Client 1 finished training avgKD with loss (6.002203822135925, 0.868) at local round 19
+Client 2 finished training avgKD with loss (6.298200249671936, 0.811) at local round 19
+Client 3 finished training avgKD with loss (6.693867206573486, 0.664) at local round 19
+Client 4 finished training avgKD with loss (6.074557065963745, 0.916) at local round 19
+round 14
+round 14
+round 14
+round 14
+test_acc/client0 0.2905 13
+test_acc/client1 0.2287 13
+test_acc/client2 0.3187 13
+test_acc/client3 0.2156 13
+Client 3 finished training avgKD with loss (6.680566310882568, 0.658) at local round 19
+Client 4 finished training avgKD with loss (6.02943480014801, 0.913) at local round 19
+Client 2 finished training avgKD with loss (6.243009090423584, 0.827) at local round 19
+Client 1 finished training avgKD with loss (5.943170666694641, 0.886) at local round 19
+round 15
+round 15
+round 15
+round 15
+test_acc/client0 0.2936 14
+test_acc/client1 0.2288 14
+test_acc/client2 0.3208 14
+test_acc/client3 0.218 14
+Client 1 finished training avgKD with loss (5.904023170471191, 0.896) at local round 19
+Client 2 finished training avgKD with loss (6.231876730918884, 0.827) at local round 19
+Client 4 finished training avgKD with loss (6.017608642578125, 0.913) at local round 19
+Client 3 finished training avgKD with loss (6.670909523963928, 0.672) at local round 19
+round 16
+round 16
+round 16
+round 16
+test_acc/client0 0.2945 15
+test_acc/client1 0.2293 15
+test_acc/client2 0.3203 15
+test_acc/client3 0.2185 15
+Client 3 finished training avgKD with loss (6.649852633476257, 0.701) at local round 19
+Client 4 finished training avgKD with loss (5.9738417863845825, 0.927) at local round 19
+Client 2 finished training avgKD with loss (6.188864827156067, 0.847) at local round 19
+Client 1 finished training avgKD with loss (5.838537096977234, 0.909) at local round 19
+round 17
+round 17
+round 17
+round 17
+test_acc/client0 0.2959 16
+test_acc/client1 0.2346 16
+test_acc/client2 0.3241 16
+test_acc/client3 0.2178 16
+Client 4 finished training avgKD with loss (5.922771096229553, 0.92) at local round 19
+Client 3 finished training avgKD with loss (6.615318655967712, 0.701) at local round 19
+Client 1 finished training avgKD with loss (5.805515289306641, 0.904) at local round 19
+Client 2 finished training avgKD with loss (6.154914855957031, 0.84) at local round 19
+round 18
+round 18
+round 18
+round 18
+test_acc/client0 0.2957 17
+test_acc/client1 0.2397 17
+test_acc/client2 0.3228 17
+test_acc/client3 0.2286 17
+Client 3 finished training avgKD with loss (6.590584754943848, 0.686) at local round 19
+Client 4 finished training avgKD with loss (5.8767852783203125, 0.932) at local round 19
+Client 1 finished training avgKD with loss (5.746251106262207, 0.916) at local round 19
+Client 2 finished training avgKD with loss (6.107752203941345, 0.837) at local round 19
+round 19
+round 19
+round 19
+round 19
+test_acc/client0 0.2979 18
+test_acc/client1 0.2343 18
+test_acc/client2 0.3251 18
+test_acc/client3 0.2263 18
+Client 3 finished training avgKD with loss (6.572252035140991, 0.684) at local round 19
+Client 4 finished training avgKD with loss (5.860255479812622, 0.925) at local round 19
+Client 2 finished training avgKD with loss (6.102547287940979, 0.849) at local round 19
+Client 1 finished training avgKD with loss (5.735169053077698, 0.921) at local round 19
+round 20
+round 20
+round 20
+round 20
+test_acc/client0 0.2979 19
+test_acc/client1 0.2393 19
+test_acc/client2 0.3257 19
+test_acc/client3 0.2339 19
+Client 3 finished training avgKD with loss (6.550200700759888, 0.675) at local round 19
+Client 4 finished training avgKD with loss (5.838465690612793, 0.926) at local round 19
+Client 1 finished training avgKD with loss (5.7001200914382935, 0.927) at local round 19
+Client 2 finished training avgKD with loss (6.0406986474990845, 0.857) at local round 19
+round 21
+round 21
+round 21
+round 21
+test_acc/client0 0.2971 20
+test_acc/client1 0.2396 20
+test_acc/client2 0.327 20
+test_acc/client3 0.2314 20
+Client 3 finished training avgKD with loss (6.530413031578064, 0.674) at local round 19
+Client 4 finished training avgKD with loss (5.8325724601745605, 0.93) at local round 19
+Client 2 finished training avgKD with loss (6.013791799545288, 0.859) at local round 19
+Client 1 finished training avgKD with loss (5.692613840103149, 0.925) at local round 19
+round 22
+round 22
+round 22
+round 22
+test_acc/client0 0.2979 21
+test_acc/client1 0.2442 21
+test_acc/client2 0.3308 21
+test_acc/client3 0.2371 21
+Client 4 finished training avgKD with loss (5.8046956062316895, 0.932) at local round 19
+Client 3 finished training avgKD with loss (6.512326955795288, 0.673) at local round 19
+Client 2 finished training avgKD with loss (5.965819716453552, 0.858) at local round 19
+Client 1 finished training avgKD with loss (5.643924593925476, 0.933) at local round 19
+round 23
+round 23
+round 23
+round 23
+test_acc/client0 0.2998 22
+test_acc/client1 0.2423 22
+test_acc/client2 0.3312 22
+test_acc/client3 0.2413 22
+Client 3 finished training avgKD with loss (6.479699969291687, 0.7) at local round 19
+Client 2 finished training avgKD with loss (5.955557703971863, 0.869) at local round 19
+Client 1 finished training avgKD with loss (5.627948045730591, 0.923) at local round 19
+Client 4 finished training avgKD with loss (5.796772599220276, 0.929) at local round 19
+round 24
+round 24
+round 24
+round 24
+test_acc/client0 0.2993 23
+test_acc/client1 0.2445 23
+test_acc/client2 0.3338 23
+test_acc/client3 0.2436 23
+Client 3 finished training avgKD with loss (6.465282917022705, 0.684) at local round 19
+Client 4 finished training avgKD with loss (5.764432907104492, 0.932) at local round 19
+Client 2 finished training avgKD with loss (5.897363066673279, 0.867) at local round 19
+Client 1 finished training avgKD with loss (5.592278957366943, 0.931) at local round 19
+round 25
+round 25
+round 25
+round 25
+test_acc/client0 0.2986 24
+test_acc/client1 0.2441 24
+test_acc/client2 0.3291 24
+test_acc/client3 0.2449 24
+Client 3 finished training avgKD with loss (6.440334439277649, 0.683) at local round 19
+Client 4 finished training avgKD with loss (5.727277398109436, 0.927) at local round 19
+Client 1 finished training avgKD with loss (5.572978854179382, 0.916) at local round 19
+Client 2 finished training avgKD with loss (5.879489779472351, 0.869) at local round 19
+round 26
+round 26
+round 26
+round 26
+test_acc/client0 0.3049 25
+test_acc/client1 0.2489 25
+test_acc/client2 0.334 25
+test_acc/client3 0.2498 25
+Client 3 finished training avgKD with loss (6.436004281044006, 0.677) at local round 19
+Client 4 finished training avgKD with loss (5.721756458282471, 0.926) at local round 19
+Client 1 finished training avgKD with loss (5.529571294784546, 0.933) at local round 19
+Client 2 finished training avgKD with loss (5.841216802597046, 0.874) at local round 19
+round 27
+round 27
+round 27
+round 27
+test_acc/client0 0.3017 26
+test_acc/client1 0.2471 26
+test_acc/client2 0.3246 26
+test_acc/client3 0.2494 26
+Client 3 finished training avgKD with loss (6.402019262313843, 0.671) at local round 19
+Client 4 finished training avgKD with loss (5.681913256645203, 0.934) at local round 19
+Client 1 finished training avgKD with loss (5.490298271179199, 0.941) at local round 19
+Client 2 finished training avgKD with loss (5.8194509744644165, 0.876) at local round 19
+round 28
+round 28
+round 28
+round 28
+test_acc/client0 0.3028 27
+test_acc/client1 0.2491 27
+test_acc/client2 0.3371 27
+test_acc/client3 0.2536 27
+Client 2 finished training avgKD with loss (5.81108820438385, 0.869) at local round 19
+Client 1 finished training avgKD with loss (5.471609950065613, 0.939) at local round 19
+Client 3 finished training avgKD with loss (6.383703351020813, 0.668) at local round 19
+Client 4 finished training avgKD with loss (5.657758355140686, 0.936) at local round 19
+round 29
+round 29
+round 29
+round 29
+test_acc/client0 0.3023 28
+test_acc/client1 0.2507 28
+test_acc/client2 0.3245 28
+test_acc/client3 0.2546 28
+Client 1 finished training avgKD with loss (5.4526978731155396, 0.945) at local round 19
+Client 3 finished training avgKD with loss (6.374202132225037, 0.688) at local round 19
+Client 2 finished training avgKD with loss (5.782575249671936, 0.873) at local round 19
+Client 4 finished training avgKD with loss (5.636760950088501, 0.934) at local round 19
+round 30
+round 30
+round 30
+round 30
+test_acc/client0 0.304 29
+test_acc/client1 0.2519 29
+test_acc/client2 0.3367 29
+test_acc/client3 0.258 29
+Client 3 finished training avgKD with loss (6.357866287231445, 0.654) at local round 19
+Client 4 finished training avgKD with loss (5.626473903656006, 0.943) at local round 19
+Client 2 finished training avgKD with loss (5.7590004205703735, 0.882) at local round 19
+Client 1 finished training avgKD with loss (5.424342751502991, 0.944) at local round 19
+round 31
+round 31
+round 31
+round 31
+test_acc/client0 0.3051 30
+test_acc/client1 0.25 30
+test_acc/client2 0.3323 30
+test_acc/client3 0.2546 30
+Client 3 finished training avgKD with loss (6.3559229373931885, 0.675) at local round 19
+Client 4 finished training avgKD with loss (5.601346254348755, 0.942) at local round 19
+Client 2 finished training avgKD with loss (5.746152758598328, 0.879) at local round 19
+Client 1 finished training avgKD with loss (5.4233081340789795, 0.955) at local round 19
+round 32
+round 32
+round 32
+round 32
+test_acc/client0 0.3022 31
+test_acc/client1 0.2503 31
+test_acc/client2 0.3336 31
+test_acc/client3 0.2558 31
+Client 1 finished training avgKD with loss (5.399442791938782, 0.947) at local round 19
+Client 2 finished training avgKD with loss (5.718916058540344, 0.887) at local round 19
+Client 4 finished training avgKD with loss (5.6165958642959595, 0.946) at local round 19
+Client 3 finished training avgKD with loss (6.325704216957092, 0.652) at local round 19
+round 33
+round 33
+round 33
+round 33
+test_acc/client0 0.2998 32
+test_acc/client1 0.2504 32
+test_acc/client2 0.3293 32
+test_acc/client3 0.2584 32
+Client 4 finished training avgKD with loss (5.568358778953552, 0.941) at local round 19
+Client 3 finished training avgKD with loss (6.326232433319092, 0.658) at local round 19
+Client 2 finished training avgKD with loss (5.6995155811309814, 0.878) at local round 19
+Client 1 finished training avgKD with loss (5.384267091751099, 0.957) at local round 19
+round 34
+round 34
+round 34
+round 34
+test_acc/client0 0.3021 33
+test_acc/client1 0.2474 33
+test_acc/client2 0.3319 33
+test_acc/client3 0.2562 33
+Client 3 finished training avgKD with loss (6.291615843772888, 0.666) at local round 19
+Client 4 finished training avgKD with loss (5.572320222854614, 0.949) at local round 19
+Client 1 finished training avgKD with loss (5.365617156028748, 0.946) at local round 19
+Client 2 finished training avgKD with loss (5.683759331703186, 0.881) at local round 19
+round 35
+round 35
+round 35
+round 35
+test_acc/client0 0.2993 34
+test_acc/client1 0.2526 34
+test_acc/client2 0.3275 34
+test_acc/client3 0.2577 34
+Client 3 finished training avgKD with loss (6.2942951917648315, 0.674) at local round 19
+Client 2 finished training avgKD with loss (5.671223759651184, 0.877) at local round 19
+Client 4 finished training avgKD with loss (5.555841565132141, 0.943) at local round 19
+Client 1 finished training avgKD with loss (5.379310607910156, 0.954) at local round 19
+round 36
+round 36
+round 36
+round 36
+test_acc/client0 0.2982 35
+test_acc/client1 0.2517 35
+test_acc/client2 0.3236 35
+test_acc/client3 0.2599 35
+Client 3 finished training avgKD with loss (6.275400400161743, 0.684) at local round 19
+Client 4 finished training avgKD with loss (5.560178518295288, 0.94) at local round 19
+Client 1 finished training avgKD with loss (5.370261311531067, 0.959) at local round 19
+Client 2 finished training avgKD with loss (5.666988372802734, 0.892) at local round 19
+round 37
+round 37
+round 37
+round 37
+test_acc/client0 0.3009 36
+test_acc/client1 0.2525 36
+test_acc/client2 0.3247 36
+test_acc/client3 0.2621 36
+Client 2 finished training avgKD with loss (5.6622233390808105, 0.886) at local round 19
+Client 3 finished training avgKD with loss (6.280618071556091, 0.692) at local round 19
+Client 1 finished training avgKD with loss (5.370030045509338, 0.958) at local round 19
+Client 4 finished training avgKD with loss (5.569375157356262, 0.944) at local round 19
+round 38
+round 38
+round 38
+round 38
+test_acc/client0 0.3003 37
+test_acc/client1 0.2527 37
+test_acc/client2 0.3248 37
+test_acc/client3 0.2644 37
+Client 3 finished training avgKD with loss (6.2799636125564575, 0.688) at local round 19
+Client 4 finished training avgKD with loss (5.564126491546631, 0.94) at local round 19
+Client 2 finished training avgKD with loss (5.669739842414856, 0.889) at local round 19
+Client 1 finished training avgKD with loss (5.373125672340393, 0.952) at local round 19
+round 39
+round 39
+round 39
+round 39
+test_acc/client0 0.3003 38
+test_acc/client1 0.2506 38
+test_acc/client2 0.3203 38
+test_acc/client3 0.2632 38
+Client 1 finished training avgKD with loss (5.380624532699585, 0.952) at local round 19
+Client 4 finished training avgKD with loss (5.558147668838501, 0.943) at local round 19
+Client 2 finished training avgKD with loss (5.657454013824463, 0.895) at local round 19
+Client 3 finished training avgKD with loss (6.273341774940491, 0.687) at local round 19
+round 40
+round 40
+round 40
+round 40
+test_acc/client0 0.2996 39
+test_acc/client1 0.2509 39
+test_acc/client2 0.325 39
+test_acc/client3 0.2653 39
+Client 1 finished training avgKD with loss (5.350326895713806, 0.968) at local round 19
+Client 3 finished training avgKD with loss (6.265455722808838, 0.69) at local round 19
+Client 2 finished training avgKD with loss (5.662878751754761, 0.885) at local round 19
+Client 4 finished training avgKD with loss (5.534492254257202, 0.946) at local round 19
+round 41
+round 41
+round 41
+round 41
+test_acc/client0 0.3013 40
+test_acc/client1 0.2518 40
+test_acc/client2 0.3222 40
+test_acc/client3 0.2696 40
+Client 3 finished training avgKD with loss (6.2597984075546265, 0.688) at local round 19
+Client 1 finished training avgKD with loss (5.347951292991638, 0.963) at local round 19
+Client 2 finished training avgKD with loss (5.645764946937561, 0.897) at local round 19
+Client 4 finished training avgKD with loss (5.530560255050659, 0.944) at local round 19
+round 42
+round 42
+round 42
+round 42
+test_acc/client0 0.3021 41
+test_acc/client1 0.2541 41
+test_acc/client2 0.3197 41
+test_acc/client3 0.2697 41
+Client 3 finished training avgKD with loss (6.256217002868652, 0.686) at local round 19
+Client 4 finished training avgKD with loss (5.529481410980225, 0.943) at local round 19
+Client 1 finished training avgKD with loss (5.347988128662109, 0.962) at local round 19
+Client 2 finished training avgKD with loss (5.654118537902832, 0.903) at local round 19
+round 43
+round 43
+round 43
+round 43
+test_acc/client0 0.3013 42
+test_acc/client1 0.2546 42
+test_acc/client2 0.3216 42
+test_acc/client3 0.2731 42
+Client 3 finished training avgKD with loss (6.261599898338318, 0.727) at local round 19
+Client 4 finished training avgKD with loss (5.518602132797241, 0.942) at local round 19
+Client 1 finished training avgKD with loss (5.34419572353363, 0.965) at local round 19
+Client 2 finished training avgKD with loss (5.653230309486389, 0.9) at local round 19
+round 44
+round 44
+round 44
+round 44
+test_acc/client0 0.3018 43
+test_acc/client1 0.2551 43
+test_acc/client2 0.3252 43
+test_acc/client3 0.2733 43
+Client 3 finished training avgKD with loss (6.235399842262268, 0.691) at local round 19
+Client 1 finished training avgKD with loss (5.359747529029846, 0.957) at local round 19
+Client 4 finished training avgKD with loss (5.526605248451233, 0.94) at local round 19
+Client 2 finished training avgKD with loss (5.6364710330963135, 0.895) at local round 19
+round 45
+round 45
+round 45
+round 45
+test_acc/client0 0.3055 44
+test_acc/client1 0.2558 44
+test_acc/client2 0.3216 44
+test_acc/client3 0.2759 44
+Client 1 finished training avgKD with loss (5.320904016494751, 0.966) at local round 19
+Client 2 finished training avgKD with loss (5.626737117767334, 0.905) at local round 19
+Client 3 finished training avgKD with loss (6.235407710075378, 0.723) at local round 19
+Client 4 finished training avgKD with loss (5.501077771186829, 0.943) at local round 19
+round 46
+round 46
+round 46
+round 46
+test_acc/client0 0.3046 45
+test_acc/client1 0.2538 45
+test_acc/client2 0.3289 45
+test_acc/client3 0.2743 45
+Client 3 finished training avgKD with loss (6.214870929718018, 0.709) at local round 19
+Client 1 finished training avgKD with loss (5.314168095588684, 0.964) at local round 19
+Client 2 finished training avgKD with loss (5.6103010177612305, 0.893) at local round 19
+Client 4 finished training avgKD with loss (5.493723154067993, 0.935) at local round 19
+round 47
+round 47
+round 47
+round 47
+test_acc/client0 0.3056 46
+test_acc/client1 0.2601 46
+test_acc/client2 0.323 46
+test_acc/client3 0.2748 46
+Client 3 finished training avgKD with loss (6.187642931938171, 0.688) at local round 19
+Client 1 finished training avgKD with loss (5.313269019126892, 0.957) at local round 19
+Client 2 finished training avgKD with loss (5.595070958137512, 0.901) at local round 19
+Client 4 finished training avgKD with loss (5.481444597244263, 0.941) at local round 19
+round 48
+round 48
+round 48
+round 48
+test_acc/client0 0.3048 47
+test_acc/client1 0.2548 47
+test_acc/client2 0.3233 47
+test_acc/client3 0.2781 47
+Client 3 finished training avgKD with loss (6.194084286689758, 0.68) at local round 19
+Client 4 finished training avgKD with loss (5.477258324623108, 0.944) at local round 19
+Client 2 finished training avgKD with loss (5.585097312927246, 0.9) at local round 19
+Client 1 finished training avgKD with loss (5.297192573547363, 0.962) at local round 19
+round 49
+round 49
+round 49
+round 49
+test_acc/client0 0.3044 48
+test_acc/client1 0.2543 48
+test_acc/client2 0.3202 48
+test_acc/client3 0.2753 48
+Client 2 finished training avgKD with loss (5.591819524765015, 0.905) at local round 19
+Client 1 finished training avgKD with loss (5.320389628410339, 0.963) at local round 19
+Client 3 finished training avgKD with loss (6.1881773471832275, 0.68) at local round 19
+Client 4 finished training avgKD with loss (5.475130677223206, 0.946) at local round 19
+round 50
+round 50
+round 50
+round 50
+test_acc/client0 0.3042 49
+test_acc/client1 0.2547 49
+test_acc/client2 0.3298 49
+test_acc/client3 0.2751 49
+Client 2 finished training avgKD with loss (5.56718373298645, 0.906) at local round 19
+Client 3 finished training avgKD with loss (6.179657459259033, 0.709) at local round 19
+Client 1 finished training avgKD with loss (5.312822937965393, 0.961) at local round 19
+Client 4 finished training avgKD with loss (5.465796232223511, 0.947) at local round 19
+round 51
+round 51
+round 51
+round 51
+test_acc/client0 0.305 50
+test_acc/client1 0.2556 50
+test_acc/client2 0.3224 50
+test_acc/client3 0.279 50
+Client 3 finished training avgKD with loss (6.1951987743377686, 0.67) at local round 19
+Client 4 finished training avgKD with loss (5.467370390892029, 0.953) at local round 19
+Client 1 finished training avgKD with loss (5.29850161075592, 0.96) at local round 19
+Client 2 finished training avgKD with loss (5.564984321594238, 0.905) at local round 19
+round 52
+round 52
+round 52
+round 52
+test_acc/client0 0.3063 51
+test_acc/client1 0.2554 51
+test_acc/client2 0.3265 51
+test_acc/client3 0.2731 51
+Client 1 finished training avgKD with loss (5.29995059967041, 0.954) at local round 19
+Client 2 finished training avgKD with loss (5.539094686508179, 0.906) at local round 19
+Client 3 finished training avgKD with loss (6.176622152328491, 0.676) at local round 19
+Client 4 finished training avgKD with loss (5.45832097530365, 0.951) at local round 19
+round 53
+round 53
+round 53
+round 53
+test_acc/client0 0.305 52
+test_acc/client1 0.2574 52
+test_acc/client2 0.323 52
+test_acc/client3 0.2794 52
+Client 3 finished training avgKD with loss (6.157029151916504, 0.699) at local round 19
+Client 4 finished training avgKD with loss (5.4379119873046875, 0.952) at local round 19
+Client 1 finished training avgKD with loss (5.275016903877258, 0.96) at local round 19
+Client 2 finished training avgKD with loss (5.528254270553589, 0.889) at local round 19
+round 54
+round 54
+round 54
+round 54
+test_acc/client0 0.305 53
+test_acc/client1 0.2575 53
+test_acc/client2 0.3263 53
+test_acc/client3 0.2734 53
+Client 3 finished training avgKD with loss (6.13509202003479, 0.69) at local round 19
+Client 4 finished training avgKD with loss (5.422014236450195, 0.958) at local round 19
+Client 1 finished training avgKD with loss (5.274852395057678, 0.962) at local round 19
+Client 2 finished training avgKD with loss (5.5065388679504395, 0.908) at local round 19
+round 55
+round 55
+round 55
+round 55
+test_acc/client0 0.3049 54
+test_acc/client1 0.2588 54
+test_acc/client2 0.3251 54
+test_acc/client3 0.2729 54
+Client 3 finished training avgKD with loss (6.128991961479187, 0.691) at local round 19
+Client 1 finished training avgKD with loss (5.249809741973877, 0.969) at local round 19
+Client 2 finished training avgKD with loss (5.493218183517456, 0.898) at local round 19
+Client 4 finished training avgKD with loss (5.402959823608398, 0.949) at local round 19
+round 56
+round 56
+round 56
+round 56
+test_acc/client0 0.3067 55
+test_acc/client1 0.2582 55
+test_acc/client2 0.3302 55
+test_acc/client3 0.27 55
+Client 3 finished training avgKD with loss (6.131602048873901, 0.706) at local round 19
+Client 1 finished training avgKD with loss (5.243123769760132, 0.969) at local round 19
+Client 4 finished training avgKD with loss (5.371818900108337, 0.95) at local round 19
+Client 2 finished training avgKD with loss (5.503736853599548, 0.902) at local round 19

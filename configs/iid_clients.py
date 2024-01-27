@@ -100,11 +100,11 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd_svhn_lr0.001",
-    "dset": "svhn",
-    "dump_dir": "./expt_dump/svhn/iid/",
-    "dpath": "./imgs/svhn",
-    "seed": 4,
+    "exp_type": "iid_clients_avgkd_seed1",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
+    "seed": 1,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup

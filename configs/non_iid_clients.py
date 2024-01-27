@@ -301,22 +301,42 @@ fl = {
     "exp_keys": ["algo", "alpha"]
 }
 
+# avgkd = {
+#     "algo": "avgkd",
+#     "exp_id": 10,
+#     "exp_type": "non_iid_balanced_clients_avgkd_seed4",
+#     "dset": "cifar10",
+#     "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
+#     "dpath": "./imgs/cifar10",
+#     "seed": 4,
+#     # server can have overlapping device ids with clients because
+#     # both are not used at the same time
+#     "device_ids": {"node_0": [6], "node_1": [6], "node_2": [6], "node_3": [7], "node_4": [7]},
+
+#     # Learning setup
+#     "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
+#     "epochs": 400, "local_runs": 20,
+#     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+#     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
+#     "exp_keys": ["algo", "alpha"]
+# }
+
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "non_iid_balanced_clients_het_avgkd_final",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
-    "dpath": "./imgs/cifar10",
+    "exp_type": "non_iid_balanced_clients_avgkd_seed4",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/alpha_1/",
+    "dpath": "./imgs/mnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [2], "node_4": [3]},
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
-    "epochs": 400, "local_runs": 20,
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "num_clients": 4, "samples_per_client": 50, "samples_per_label":400, "alpha": 1,
+    "epochs": 400, "local_runs": 50,
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
     "exp_keys": ["algo", "alpha"]
 }

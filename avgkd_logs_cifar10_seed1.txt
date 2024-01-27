@@ -1,0 +1,46 @@
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+avgkd
+exp path: ./expt_dump/cifar10/iid/iid_clients_avgkd_seed1_cifar10_4clients_1000samples_10_algo_avgkd_seed_1_seed1
+['./__pycache__/', './.ipynb_checkpoints/', './imgs/', './expt_dump_old/', './expt_dump/', './expt_dump/cifar10/iid/'] ['./utils/', './expt_dump/', './old_logs/', './__pycache__/', './expt_dump_old/', './imgs/', './models/', './algos/', './configs/']
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+avgkd
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+avgkd
+Namespace(b='./configs/iid_clients.py', seed=-1)
+configs.iid_clients
+avgkd
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+source code copied to exp_dump
+avgkd
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Model resnet18 loading on device cuda:3
+Model resnet18 loading on device cuda:3
+Model resnet18 loading on device cuda:2
+Model resnet18 loading on device cuda:2
+Files already downloaded and verified
+Model resnet18 loading on device cuda:2
+Model resnet18 loaded on device cuda:2
+Model resnet18 loaded on device cuda:2
+Model resnet18 loaded on device cuda:2
+Model resnet18 loaded on device cuda:3
+round 0
+Model resnet18 loaded on device cuda:3
+round 0
+round 0
+round 0
+Client 2 finished training locally with loss (2.367738038301468, 0.802) at local round 19
+Client 3 finished training locally with loss (2.672655940055847, 0.765) at local round 19
+Client 4 finished training locally with loss (3.040070414543152, 0.743) at local round 19
+Client 1 finished training locally with loss (2.7466108798980713, 0.763) at local round 19

@@ -95,7 +95,7 @@ class BaseClient(BaseNode):
             #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
-            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            # plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             dset = Subset(train_dset, indices[client_idx]) 
             print("using non_iid_balanced", config["alpha"])   
@@ -103,7 +103,7 @@ class BaseClient(BaseNode):
             #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_labels(self.dset_obj, config["num_clients"], config["samples_per_label"], config["alpha"])
-            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            # plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             dset = Subset(train_dset, indices[client_idx]) 
             print("using non_iid_balanced", config["alpha"])   
