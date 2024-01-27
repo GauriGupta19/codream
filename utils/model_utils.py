@@ -172,9 +172,13 @@ class ModelUtils:
             labels = np.random.choice(qualified_labels, batch_size)
             labels = torch.LongTensor(labels).to(device)
             z = generative_model(labels)
-
-            loss += loss_fn(model.linear(z), labels)
-
+            try:
+                last_layer_pred = model.linear(z)
+            except:
+                print(model.fc)
+                last_layer_pred = model.fc(z)
+                # print(model.layer÷÷s[-1])
+            loss += loss_fn(last_layer_pred, labels)
             loss.backward()
             optim.step()
             train_loss += loss.item()

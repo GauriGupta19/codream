@@ -62,11 +62,7 @@ class FedGenClient(BaseClient):
             self.batch_size,
             self.generator,
         )
-        print(
-            "Client {} finished training with loss {}, accuracy {}".format(
-                self.node_id, avg_loss, acc
-            )
-        )
+        return avg_loss, acc
 
     def local_test(self, **kwargs):
         """
