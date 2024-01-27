@@ -77,8 +77,8 @@ class BaseNode(ABC):
             # TODO this is hard-coded
             # might need to be changed for non-resnet models
             model_name = config["models"][str(self.node_id)]
-            if "resnet" in model_name:
-                feature_dim = 512
+            # if "resnet" in model_name:
+            feature_dim = 512
 
             self.generator = self.model_utils.get_generator(
                 num_classes=num_classes,
