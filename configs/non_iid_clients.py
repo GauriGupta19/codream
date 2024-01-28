@@ -301,45 +301,45 @@ fl = {
     "exp_keys": ["algo", "alpha"]
 }
 
+avgkd = {
+    "algo": "avgkd",
+    "exp_id": 10,
+    "exp_type": "non_iid_balanced_clients_avgkd_seed5",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/alpha_0.1/",
+    "dpath": "./imgs/svhn",
+    "seed": 5,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    "device_ids": {"node_0": [5], "node_1": [5], "node_2": [5], "node_3": [7], "node_4": [7]},
+
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
+    "epochs": 400, "local_runs": 20,
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
+}
+
 # avgkd = {
 #     "algo": "avgkd",
 #     "exp_id": 10,
-#     "exp_type": "non_iid_balanced_clients_avgkd_seed1",
-#     "dset": "svhn",
-#     "dump_dir": "./expt_dump/svhn/alpha_1/",
-#     "dpath": "./imgs/svhn",
-#     "seed": 1,
+#     "exp_type": "non_iid_balanced_clients_avgkd_seed2",
+#     "dset": "mnist",
+#     "dump_dir": "./expt_dump/mnist/alpha_0.1/",
+#     "dpath": "./imgs/mnist",
+#     "seed": 2,
 #     # server can have overlapping device ids with clients because
 #     # both are not used at the same time
 #     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
 
 #     # Learning setup
-#     "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
-#     "epochs": 400, "local_runs": 20,
+#     "num_clients": 4, "samples_per_client": 50, "samples_per_label":400, "alpha": 0.1,
+#     "epochs": 400, "local_runs": 50,
 #     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
 #     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
 #     "exp_keys": ["algo", "alpha"]
 # }
-
-avgkd = {
-    "algo": "avgkd",
-    "exp_id": 10,
-    "exp_type": "non_iid_balanced_clients_avgkd_seed2",
-    "dset": "mnist",
-    "dump_dir": "./expt_dump/mnist/alpha_0.1/",
-    "dpath": "./imgs/mnist",
-    "seed": 2,
-    # server can have overlapping device ids with clients because
-    # both are not used at the same time
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
-
-    # Learning setup
-    "num_clients": 4, "samples_per_client": 50, "samples_per_label":400, "alpha": 0.1,
-    "epochs": 400, "local_runs": 50,
-    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
-    "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
-    "exp_keys": ["algo", "alpha"]
-}
 
 fedprox = {
     "algo": "fedprox",
@@ -431,8 +431,8 @@ centralized = {
 # current_config =  feddream_fast
 # current_config = feddream_fast_indp
 # current_config = feddream_fast_noniid
-# current_config =  fl
-current_config =  avgkd
+current_config =  fl
+# current_config =  avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
