@@ -104,15 +104,17 @@ class FedDreamFastClient(BaseClient):
         if test_loss < self.best_loss:
             self.best_loss = test_loss
             # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+        return test_acc
         
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
-        for _ in range(5):
-            tr_loss, tr_acc = self.model_utils.train(self.model,
-                                                    self.optim,
-                                                    self.dloader,
-                                                    self.loss_fn,
-                                                    self.device)
+        if (self.round <= self.local__train_epochs):
+            for _ in range(5):
+                tr_loss, tr_acc = self.model_utils.train(self.model,
+                                                        self.optim,
+                                                        self.dloader,
+                                                        self.loss_fn,
+                                                        self.device)
         # if ((self.node_id==1 or self.node_id==2) and self.round<=120):
         #     for _ in range(5):
         #         tr_loss, tr_acc = self.model_utils.train(self.model,
@@ -238,7 +240,7 @@ class FedDreamFastClient(BaseClient):
         # if self.log_console:
             # self.log_utils.log_console("Starting local warmup rounds")
         if not self.config["load_existing"]:
-            self.local_warmup()
+            test_acc = self.local_warmup()
         else:
             print("skipping local warmup because checkpoints are loaded")
             test_loss, test_acc = self.model_utils.test(self.model,
@@ -251,6 +253,11 @@ class FedDreamFastClient(BaseClient):
         self.comm_utils.send_signal(dest=self.server_node,
                                     data=None,
                                     tag=self.tag.DONE_WARMUP)
+        self.comm_utils.send_signal(dest=self.server_node,
+                                    data=test_acc,
+                                    tag=self.tag.DONE_WARMUP)
+        self.local__train_epochs = self.comm_utils.wait_for_signal(src=self.server_node,
+                                                  tag=self.tag.DONE_WARMUP)
         start_epochs = self.config.get("start_epochs", 0)
         s_model = self.config["models"]["0"] if "models" in self.config  else self.config["model"]
         self.s_model = self.model_utils.get_model(s_model, self.config["dset"], 
@@ -517,9 +524,15 @@ class FedDreamFastServer(BaseServer):
         # Wait for the students to finish warmup rounds
         if self.log_console:
             self.log_utils.log_console("Waiting for students to finish warmup rounds")
-        self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.DONE_WARMUP)
-        start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
+        self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.DONE_WARMUP)
+        test_accs = self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.DONE_WARMUP)
+        local_client_rounds = [int((acc/max(test_accs))*total_epochs) for acc in test_accs]
+        self.log_utils.log_console(f"client_rounds {local_client_rounds}")
+        for i, client in enumerate(self.clients):
+            self.comm_utils.send_signal(dest=client, data=local_client_rounds[i], 
+                                        tag=self.tag.DONE_WARMUP)
+        start_epochs = self.config.get("start_epochs", 0)
         for round in range(start_epochs, total_epochs):
             self.round = round
             for client in self.clients:

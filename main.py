@@ -12,7 +12,7 @@ parser.add_argument('-b', nargs='?', default=b_default, type=str,
 parser.add_argument('-seed', nargs='?', default=4, type=int)
 args = parser.parse_args()
 
-for seed in [1,2,3,5]:
+for seed in [2]:
     scheduler = Scheduler()
     scheduler.assign_config_by_path(args.b, seed)
     scheduler.initialize()

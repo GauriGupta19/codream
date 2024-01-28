@@ -1,17 +1,17 @@
 feddream_fast = {
-    "seed": 4,
+    "seed": 1,
     "algo": "feddream_fast",
     "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast",
+    "exp_type": "non_iid_balanced_clients_feddream_fast_testing",
     "load_existing": False,
     "checkpoint_paths": {},
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
-    "dpath": "./imgs/cifar10",
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/alpha_0.1/",
+    "dpath": "./imgs/svhn",
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
     # "samples_per_label":1000,
-    "device_ids": {"node_0": [1,2,3], "node_1": [0], "node_2": [1], "node_3": [2], "node_4": [3]},
+    "device_ids": {"node_0": [7], "node_1": [7], "node_2": [6], "node_3": [5], "node_4": [4]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
@@ -23,7 +23,7 @@ feddream_fast = {
     "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
     "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
-    "warmup": 20, "local_train_freq": 5,
+    "warmup": 200, "local_train_freq": 5,
 
     # adaptive distillation parameters
     "adaptive_server": True,  "adaptive_distill_start_round": 10, 
@@ -253,10 +253,10 @@ fl = {
     "seed": 8,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [6], "node_1": [6], "node_2": [6], "node_3": [7], "node_4": [7]},
+    "device_ids": {"node_0": [3], "node_1": [3], "node_2": [3], "node_3": [2], "node_4": [2]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 0.1,
+    "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "alpha"]
