@@ -100,18 +100,18 @@ fl = {
 avgkd = {
     "algo": "avgkd",
     "exp_id": 10,
-    "exp_type": "iid_clients_avgkd_seed1",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
-    "seed": 1,
+    "exp_type": "iid_clients_avgkd_seed2",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
+    "seed": 2,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [2], "node_3": [3], "node_4": [3]},
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
     # communication epochs = 20 and local runs = 20 as per paper on AvgKD
-    "epochs": 400, "local_runs": 20,
+    "epochs": 400, "local_runs": 50,
     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
     "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
