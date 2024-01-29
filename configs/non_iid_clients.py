@@ -2,7 +2,7 @@ feddream_fast = {
     "seed": 1,
     "algo": "feddream_fast",
     "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast_testing",
+    "exp_type": "non_iid_balanced_clients_feddream_fast_early_stopping",
     "load_existing": False,
     "checkpoint_paths": {},
     "dset": "svhn",
@@ -11,7 +11,7 @@ feddream_fast = {
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
     # "samples_per_label":1000,
-    "device_ids": {"node_0": [7], "node_1": [7], "node_2": [6], "node_3": [5], "node_4": [4]},
+    "device_ids": {"node_0": [1], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [0]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
@@ -253,7 +253,7 @@ fl = {
     "seed": 8,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [3], "node_1": [3], "node_2": [3], "node_3": [2], "node_4": [2]},
+    "device_ids": {"node_0": [3], "node_1": [3], "node_2": [0], "node_3": [2], "node_4": [1]},
 
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000, "alpha": 0.1,
@@ -326,12 +326,12 @@ centralized = {
     "algo": "centralized",
     "exp_id": 6,
     "exp_type": "non_iid_balanced_clients_centralized",
-    "dset": "svhn",
-    "dump_dir": "./expt_dump/svhn/alpha_1/",
-    "dpath": "./imgs/svhn",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/alpha_1/",
+    "dpath": "./imgs/cifar10",
     "seed": 3,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [0]},
+    "device_ids": {"node_0": [1]},
 
     # Learning setup
    "num_clients": 1, "samples_per_client": 1000,

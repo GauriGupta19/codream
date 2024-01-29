@@ -101,8 +101,8 @@ class FedDreamFastClient(BaseClient):
                                                                                 acc,
                                                                                 test_acc))
         # save the model if the test loss is lower than the best loss
-        if test_loss < self.best_loss:
-            self.best_loss = test_loss
+        # if test_loss < self.best_loss:
+        #     self.best_loss = test_loss
             # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
         return test_acc
         
