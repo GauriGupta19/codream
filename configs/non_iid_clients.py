@@ -2,7 +2,7 @@ feddream_fast = {
     "seed": 1,
     "algo": "feddream_fast",
     "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast_early_stop",
+    "exp_type": "non_iid_balanced_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
     "dset": "mnist",
