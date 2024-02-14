@@ -300,6 +300,26 @@ moon = {
     "exp_keys": ["algo", "alpha"]
 }
 
+scaffold = {
+    "algo": "scaffold",
+    "exp_id": 1,
+    "exp_type": "non_iid_balanced_clients_scaffold",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
+    "dpath": "./imgs/cifar10",
+    "seed": 4,
+    "device_ids": {"node_0": [2], "node_1": [4], "node_2": [3], "node_3": [2], "node_4": [1]},
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
+    "local_runs": 5,
+    "epochs": 400, "model": "resnet18",
+    "lr_client": 0.1, "batch_size": 256,
+    "lr_server": 1.,
+    "model_lr": 0.1, # decoy parameter not used in scaffold
+    "exp_keys": ["alpha", "local_runs"]
+}
+
+
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
@@ -334,8 +354,9 @@ centralized = {
     "device_ids": {"node_0": [3]},
 
     # Learning setup
-   "num_clients": 1, "samples_per_client": 1000,
-    "client_data_units": 4, "alpha": 1,
+
+    "num_clients": 1, "samples_per_client": 1000,
+    "client_data_units": 4, "alpha": 0.1,
 
     "epochs": 400,
     "model": "resnet18",
@@ -349,10 +370,11 @@ centralized = {
 # current_config = non_iid_balanced_clients_independent
 # current_config = non_iid_balanced_clients_collab
 # current_config = feddream
-current_config =  feddream_fast
+current_config = feddream_fast
 # current_config = feddream_fast_noniid
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
 # current_config = centralized
+# current_config = scaffold
