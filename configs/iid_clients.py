@@ -101,15 +101,15 @@ fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
     "exp_type": "iid_clients_fedprox",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
+    "seed": 3,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [0]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -286,20 +286,20 @@ feddream = {
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
-    "exp_type": "iid_clients_isolated_heterogeneous",
+    "exp_type": "iid_clients_isolated",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [0], "node_3": [3], "node_4": [3]},
+    "device_ids": {"node_0": [6], "node_1": [6], "node_2": [6], "node_3": [7], "node_4": [7]},
 
     # Learning setup
     "num_clients": 4, "samples_per_client": 1000,
     "epochs": 400, "local_runs": 5,
     # optional for het models
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
 
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -309,12 +309,12 @@ centralized = {
     "algo": "centralized",
     "exp_id": 6,
     "exp_type": "iid_clients_centralized",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
+    "seed": 2,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [7]},
+    "device_ids": {"node_0": [3]},
 
     # Learning setup
     "num_clients": 1, "samples_per_client": 4000,
@@ -346,11 +346,11 @@ scaffold = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-current_config = feddream_fast
+# current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
-# current_config = isolated
+current_config = isolated
 # current_config = centralized
 current_config = scaffold
