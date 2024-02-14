@@ -90,8 +90,8 @@ fl = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 2, "samples_per_client": 1000,
-    "device_ids": {"node_0": [3], "node_1": [0], "node_2": [3]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -346,7 +346,7 @@ scaffold = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-# current_config = feddream_fast
+current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
 # current_config = fedprox
