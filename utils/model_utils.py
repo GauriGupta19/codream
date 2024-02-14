@@ -5,30 +5,6 @@ from torch.nn.parallel import DataParallel
 import models
 from resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
-class ToyCifarModel(nn.Module):
-    def __init__(self, num_classes) -> None:
-        super(ToyCifarModel, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=3, padding=1)
-        self.relu = nn.ReLU()
-        self.flatten = nn.Flatten()
-        self.lin1 = nn.Linear(in_features=32*32, out_features=num_classes)
-        self.param1 = nn.parameter.Parameter(torch.tensor([[0.0]]))
-        self.lin2 = nn.Linear(in_features=num_classes, out_features=num_classes)
-    
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.flatten(x)
-        x = self.lin1(x)
-        x = self.relu(x)
-        x = x + self.param1.expand(*x.shape)
-        x = self.lin2(x)
-        return x
-
-def get_toy(num_classes):
-    print("Creating toy model with number of classes: ", num_classes)
-    return ToyCifarModel(num_classes)
-
 MODEL_DICT = {
     # https://github.com/polo5/ZeroShotKnowledgeTransfer
     'wrn16_1': models.wresnet.wrn_16_1,
@@ -54,7 +30,6 @@ MODEL_DICT = {
     'resnet50':  models.resnet.resnet50,
     'resnet18':  models.resnet.resnet18,
     'resnet34':  models.resnet.resnet34,
-    'toy': get_toy
 }
 
 class ModelUtils():
