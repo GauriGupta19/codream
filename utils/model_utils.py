@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
 import models
-from resnet import ResNet18, ResNet34, ResNet50, ResNet101
+from utils.resnet import ResNet18, ResNet34, ResNet50, ResNet101
 
 MODEL_DICT = {
     # https://github.com/polo5/ZeroShotKnowledgeTransfer
