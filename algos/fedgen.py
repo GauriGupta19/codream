@@ -8,6 +8,7 @@ from torch import Tensor
 import torch.nn as nn
 
 from algos.base_class import BaseClient, BaseServer
+from utils.model_utils import ModelUtils
 
 # Based on https://github.com/TsingZ0/PFLlib
 
@@ -40,6 +41,14 @@ class FedGenClient(BaseClient):
         self.mu = 1
         self.qualified_labels = list()  # TODO figure out when this field is filled
         self.batch_size = self.config["batch_size"]
+        num_classes = self.dset_obj.NUM_CLS
+        self.model_utils = ModelUtils()
+        self.generator = self.model_utils.get_generator(
+            num_classes=num_classes,
+            device=self.device,
+            hidden_dim=32,
+            feature_dim=512,
+        )
         assert self.generator is not None
 
     def local_train(self, **kwargs) -> tuple[float, float]:
@@ -172,7 +181,14 @@ class FedGenServer(BaseServer):
         self.generative_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer=self.generative_optimizer, gamma=0.99
         )
-
+        num_classes = self.dset_obj.NUM_CLS
+        self.model_utils = ModelUtils()
+        self.generator = self.model_utils.get_generator(
+            num_classes=num_classes,
+            device=self.device,
+            hidden_dim=32,
+            feature_dim=512,
+        )
         assert self.generator is not None
 
     def update_stats(self, stats: List[List[float]], round: int):
@@ -416,4 +432,4 @@ class FedGenServer(BaseServer):
                 "round: {} Best test_acc:{:.4f}".format(round, self.best_acc)
             )
             self.log_utils.log_console("Round {} done".format(round))
-        print(f"best accuracy after all epochs:{self.best_accuracy}")
+        print(f"best accuracy after all epochs:{self.best_acc}")

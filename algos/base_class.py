@@ -17,6 +17,7 @@ from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
 import torch.nn as nn
 from utils.model_utils import BaseHeadSplit
+from utils.model_utils import ModelUtils
 
 
 class BaseNode(ABC):
@@ -67,22 +68,6 @@ class BaseNode(ABC):
                 self.device,
                 self.device_ids,
                 num_classes=num_classes,
-            )
-
-        # for fedGen
-        if config["algo"] == "fedgen":
-            data_loader = self.dset_obj.train_dset
-            feature_dim_list = None
-
-            # TODO this is hard-coded
-            # might need to be changed for non-resnet models
-            feature_dim = 512
-
-            self.generator = self.model_utils.get_generator(
-                num_classes=num_classes,
-                device=self.device,
-                hidden_dim=32,
-                feature_dim=feature_dim,
             )
 
         # load a checkpoint if load_existing is set to True
@@ -210,9 +195,6 @@ class BaseClient(BaseNode):
         print(f"samples per client:{self.samples_per_client}")
         self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-
-        assert self.num_classes != 0
-        print(f"node {self.node_id} num classes is {self.num_classes}")
 
     def local_train(self, dataset, **kwargs):
         """
