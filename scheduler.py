@@ -9,10 +9,6 @@ from algos.feddream_fast_independent import (
     FedDreamFastClientIndp,
     FedDreamFastServerIndp,
 )
-from algos.feddream_fast_noniid import (
-    FedDreamFastNoniidClient,
-    FedDreamFastNoniidServer,
-)
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedClient, IsolatedServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
