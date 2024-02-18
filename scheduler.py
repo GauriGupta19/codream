@@ -5,10 +5,7 @@ from algos.dare import DAREClient, DAREServer
 from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.feddream import FedDreamClient, FedDreamServer
 from algos.feddream_fast import FedDreamFastClient, FedDreamFastServer
-from algos.feddream_fast_independent import (
-    FedDreamFastClientIndp,
-    FedDreamFastServerIndp,
-)
+from algos.feddream_fast_independent import FedDreamFastClientIndp, FedDreamFastServerIndp
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedClient, IsolatedServer
 from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
@@ -60,9 +57,7 @@ class Scheduler:
 
         # set seeds
         seed = self.config["seed"]
-        torch.manual_seed(seed)
-        random.seed(seed)
-        numpy.random.seed(seed)
+        torch.manual_seed(seed); random.seed(seed); numpy.random.seed(seed)
 
         if rank == 0:
             copy_source_code(self.config)
