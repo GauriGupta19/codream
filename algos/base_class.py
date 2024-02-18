@@ -24,7 +24,6 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
-
         self.set_constants()
 
     def set_constants(self):
@@ -50,7 +49,6 @@ class BaseNode(ABC):
             self.model = self.model_utils.get_model(config["models"][str(self.node_id)], config["dset"], self.device, self.device_ids, num_classes=num_classes)
         else:
             self.model = self.model_utils.get_model(config["model"], config["dset"], self.device, self.device_ids, num_classes=num_classes)
-
         # load a checkpoint if load_existing is set to True
         if config["load_existing"]:
             node_checkpoint_path = config["checkpoint_paths"].get(str(self.node_id), None)
@@ -76,7 +74,6 @@ class BaseClient(BaseNode):
     """
     Abstract class for all algorithms
     """
-
     def __init__(self, config) -> None:
         super().__init__(config)
         self.server_node = 0
@@ -103,17 +100,16 @@ class BaseClient(BaseNode):
             split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
-
             dset = Subset(train_dset, indices[client_idx])
             print("using non_iid_balanced", config["alpha"])
         elif config["exp_type"].startswith("non_iid_balanced_labels"):
-            # all nodes will eventually generate the same data
+            #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_labels(self.dset_obj, config["num_clients"], config["samples_per_label"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
-            dset = Subset(train_dset, indices[client_idx])
-            print("using non_iid_balanced", config["alpha"])
+            dset = Subset(train_dset, indices[client_idx]) 
+            print("using non_iid_balanced", config["alpha"])   
         elif config["exp_type"].startswith("non_iid_labels"):
             num_classes = config["class_per_client"]
             sp = np.arange(client_idx * num_classes, (client_idx + 1) * num_classes)
@@ -163,11 +159,10 @@ class BaseServer(BaseNode):
     """
     Abstract class for orchestrator
     """
-
     def __init__(self, config) -> None:
         super().__init__(config)
         self.num_clients = config["num_clients"]
-        self.clients = list(range(1, self.num_clients + 1))
+        self.clients = list(range(1, self.num_clients+1))
         self.set_data_parameters(config)
 
     def set_data_parameters(self, config):

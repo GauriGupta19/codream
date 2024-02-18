@@ -37,11 +37,11 @@ algo_map = {
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
     print(algo_name)
-    return algo_map[algo_name][rank > 0](config)
+    return algo_map[algo_name][rank>0](config)
 
-
-class Scheduler:
-    """Manages the overall orchestration of experiments"""
+class Scheduler():
+    """ Manages the overall orchestration of experiments
+    """
 
     def __init__(self) -> None:
         pass

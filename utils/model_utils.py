@@ -63,7 +63,7 @@ class ModelUtils():
         print(f"Model {model_name} loading on device {device}")
         model = model.to(device)
         print(f"Model {model_name} loaded on device {device}")
-        # model = DataParallel(model.to(device), device_ids=device_ids)
+        #model = DataParallel(model.to(device), device_ids=device_ids)
         return model
 
     @staticmethod
@@ -268,7 +268,7 @@ class ModelUtils():
             for previous_net in previous_nets:
                 _, feat_p = previous_net(data, position=position, out_feature=True)
                 nega = cos(feat, feat_p)
-                logits = torch.cat((logits, nega.reshape(-1, 1)), dim=1)
+                logits = torch.cat((logits, nega.reshape(-1,1)), dim=1)
             logits /= temperature
             labels = torch.zeros(data.size(0)).long()
             loss += mu * loss_fn(logits, labels.to(device))
@@ -285,7 +285,8 @@ class ModelUtils():
         return train_loss, acc
 
     def test(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
-        """TODO: generate docstring"""
+        """TODO: generate docstring
+        """
         model.eval()
         test_loss = 0
         correct = 0
@@ -323,8 +324,9 @@ class ModelUtils():
             wts[key] = wts[key].to(device)
         model_.load_state_dict(wts)
 
-    def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
-                       device: torch.device) -> list:
+    def move_to_device(
+        self, items: List[Tuple[torch.Tensor, torch.Tensor]], device: torch.device
+    ) -> list:
         # Expects a list of tuples with each tupe containing two tensors
         return [[item[0].to(device), item[1].to(device)] for item in items]
 
