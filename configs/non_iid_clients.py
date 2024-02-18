@@ -1,14 +1,15 @@
 feddream_fast = {
-    "seed": 4,
+    "seed": 1,
     "algo": "feddream_fast",
     "exp_id": "distadam",
     "exp_type": "non_iid_balanced_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
-    "dset": "pathmnist",
-    "dump_dir": "./expt_dump/pathmnist/alpha_0.1/",
-    "dpath": "./imgs/pathmnist",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/alpha_0.1/",
+    "dpath": "./imgs/mnist",
     # Learning setup
+<<<<<<< HEAD
     "num_clients": 4,
     "samples_per_client": 1000,
     "samples_per_label": 400,
@@ -24,6 +25,13 @@ feddream_fast = {
     "model": "resnet18",
     "model_lr": 0.2,
     "batch_size": 256,
+=======
+    "num_clients": 4, "samples_per_client": 50, "alpha": 0.1,
+    # "samples_per_label":1000,
+    "device_ids": {"node_0": [1], "node_1": [1], "node_2": [4], "node_3": [5], "node_4": [3]},
+    "epochs": 400, "model": "resnet18",
+    "model_lr": 0.2, "batch_size": 256,
+>>>>>>> fast_feddream
     # optional for het models
     "heterogeneous_models": False,
     "models": {
@@ -34,18 +42,28 @@ feddream_fast = {
         "4": "wrn40_1",
     },
     # params for model
+<<<<<<< HEAD
     "position": 0,
     "inp_shape": [0, 3, 32, 32],
+=======
+    "position": 0, "inp_shape": [0, 1, 28, 28],
+>>>>>>> fast_feddream
     # Params for gradient descent on data
     "global_steps": 1,
     "local_steps": 5,
     "nx_samples": 5,
     # for local training
+<<<<<<< HEAD
     "distill_batch_size": 256,
     "distill_epochs": 100,
     "dset_size": 25 * 256,
     "warmup": 20,
     "local_train_freq": 5,
+=======
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
+    "warmup": 50, "local_train_freq": 5,
+
+>>>>>>> fast_feddream
     # adaptive distillation parameters
     "adaptive_server": True,
     "adaptive_distill_start_round": 10,
@@ -411,9 +429,10 @@ fl = {
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_1/",
     "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "seed": 8,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
+<<<<<<< HEAD
     "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [3]},
     # Learning setup
     "num_clients": 4,
@@ -426,6 +445,15 @@ fl = {
     "model_lr": 0.1,
     "batch_size": 256,
     "exp_keys": ["algo", "alpha"],
+=======
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
+
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "alpha": 1,
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
+>>>>>>> fast_feddream
 }
 
 fedprox = {
@@ -435,9 +463,10 @@ fedprox = {
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_1/",
     "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "seed": 9,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
+<<<<<<< HEAD
     "device_ids": {
         "node_0": [1],
         "node_1": [1],
@@ -456,6 +485,15 @@ fedprox = {
     "model_lr": 0.1,
     "batch_size": 256,
     "exp_keys": ["algo", "alpha"],
+=======
+    "device_ids": {"node_0": [4], "node_1": [4], "node_2": [5], "node_3": [5], "node_4": [4]},
+
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
+>>>>>>> fast_feddream
 }
 
 moon = {
@@ -463,90 +501,85 @@ moon = {
     "exp_id": 10,
     "exp_type": "non_iid_balanced_clients_moon",
     "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/alpha_1/",
+    "dpath": "./imgs/cifar10",
+    "seed": 2,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    "device_ids": {"node_0": [2], "node_1": [2], "node_2": [3], "node_3": [3], "node_4": [2]},
+
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
+}
+
+scaffold = {
+    "algo": "scaffold",
+    "exp_id": 1,
+    "exp_type": "non_iid_balanced_clients_scaffold",
+    "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
     "dpath": "./imgs/cifar10",
     "seed": 4,
-    # server can have overlapping device ids with clients because
-    # both are not used at the same time
-    "device_ids": {
-        "node_0": [3],
-        "node_1": [3],
-        "node_2": [2],
-        "node_3": [1],
-        "node_4": [2],
-    },
+    "device_ids": {"node_0": [2], "node_1": [4], "node_2": [3], "node_3": [2], "node_4": [1]},
     # Learning setup
-    "num_clients": 4,
-    "samples_per_client": 1000,
-    "samples_per_label": 400,
-    "alpha": 0.1,
-    "epochs": 400,
+    "num_clients": 4, "samples_per_client": 1000, "samples_per_label":400, "alpha": 1,
     "local_runs": 5,
-    "model": "resnet18",
-    "model_lr": 0.1,
-    "batch_size": 256,
-    "exp_keys": ["algo", "alpha"],
+    "epochs": 400, "model": "resnet18",
+    "lr_client": 0.1, "batch_size": 256,
+    "lr_server": 1.,
+    "model_lr": 0.1, # decoy parameter not used in scaffold
+    "exp_keys": ["alpha", "local_runs"]
 }
+
 
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
-    "exp_type": "non_iid_balanced_clients_isolated_heterogeneous",
-    "dset": "pathmnist",
-    "dump_dir": "./expt_dump/pathmnist/alpha_0.1/",
-    "dpath": "./imgs/pathmnist",
+    "exp_type": "non_iid_balanced_clients_isolated",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/alpha_1/",
+    "dpath": "./imgs/mnist",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {
-        "node_0": [2],
-        "node_1": [2],
-        "node_2": [2],
-        "node_3": [4],
-        "node_4": [4],
-    },
+    "device_ids": {"node_0": [2], "node_1": [3], "node_2": [4], "node_3": [5], "node_4": [2]},
+
     # Learning setup
-    "num_clients": 4,
-    "samples_per_client": 1000,
-    "alpha": 0.1,
-    "epochs": 400,
-    "local_runs": 5,
+    "num_clients": 4, "samples_per_client": 50, "alpha": 1,
+    "epochs": 400, "local_runs": 5,
     # optional for het models
-    "heterogeneous_models": True,
-    "models": {
-        "0": "resnet18",
-        "1": "wrn16_1",
-        "2": "vgg11",
-        "3": "resnet34",
-        "4": "wrn40_1",
-    },
-    "model": "resnet18",
-    "model_lr": 0.1,
-    "batch_size": 256,
-    "exp_keys": ["algo", "alpha"],
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "alpha"]
 }
 
 centralized = {
     "algo": "centralized",
     "exp_id": 6,
     "exp_type": "non_iid_balanced_clients_centralized",
-    "dset": "pathmnist",
-    "dump_dir": "./expt_dump/pathmnist/alpha_0.1/",
-    "dpath": "./imgs/pathmnist",
-    "seed": 4,
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/alpha_1/",
+    "dpath": "./imgs/svhn",
+    "seed": 3,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [2]},
+    "device_ids": {"node_0": [3]},
+
     # Learning setup
-    "num_clients": 1,
-    "samples_per_client": 1000,
-    "client_data_units": 4,
-    "alpha": 0.1,
+
+    "num_clients": 1, "samples_per_client": 1000,
+    "client_data_units": 4, "alpha": 0.1,
+
     "epochs": 400,
     "model": "resnet18",
     "model_lr": 0.1,
     "batch_size": 256,
     "exp_keys": ["alpha", "client_data_units", "epochs"],
 }
+
 fedgen = {
     "algo": "fedgen",
     "exp_id": "test",
@@ -599,10 +632,12 @@ fedgen = {
 # current_config = non_iid_balanced_clients_collab
 # current_config = feddream
 # current_config =  feddream_fast
+current_config = feddream_fast
 # current_config = feddream_fast_noniid
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
 # current_config = centralized
-current_config = fedgen
+# current_config = fedgen
+# current_config = scaffold

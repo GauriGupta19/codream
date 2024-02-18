@@ -1,4 +1,3 @@
-
 feddream_fast = {
     # adaptive_distill_start_round: 30 also works fine
     # need not wait for gen warmup, can start client training immediately
@@ -12,31 +11,58 @@ feddream_fast = {
     "dump_dir": "./expt_dump/pathmnist/iid/",
     "dpath": "./imgs/pathmnist",
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [1], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
-    "epochs": 400, "model": "resnet18",
-    "model_lr": 0.2, "batch_size": 256,
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "device_ids": {
+        "node_0": [1],
+        "node_1": [2],
+        "node_2": [3],
+        "node_3": [6],
+        "node_4": [7],
+    },
+    "epochs": 400,
+    "model": "resnet18",
+    "model_lr": 0.2,
+    "batch_size": 256,
     # optional for het models
-    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
-    
+    "heterogeneous_models": False,
+    "models": {
+        "0": "resnet18",
+        "1": "wrn16_1",
+        "2": "vgg11",
+        "3": "resnet34",
+        "4": "wrn40_1",
+    },
     # params for model
-    "position": 0, "inp_shape": [0, 3, 32, 32],
+    "position": 0,
+    "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
-    "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
+    "global_steps": 1,
+    "local_steps": 5,
+    "nx_samples": 5,
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
-    "warmup": 20, "local_train_freq": 5,
-
+    "distill_batch_size": 256,
+    "distill_epochs": 100,
+    "dset_size": 25 * 256,
+    "warmup": 20,
+    "local_train_freq": 5,
     # adaptive distillation parameters
-    "adaptive_server": True,  "adaptive_distill_start_round": 10, 
-
-    #fast-meta deepinversion parameters
-    "lr_z": 0.0015, "lr_g": 5e-3,
-    "adv": 1.33, "bn": 10, "oh": 0.5, "bn_mmt": 0.9,
-    "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
-
-    "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["local_steps", "nx_samples", "optimizer_type"]
+    "adaptive_server": True,
+    "adaptive_distill_start_round": 10,
+    # fast-meta deepinversion parameters
+    "lr_z": 0.0015,
+    "lr_g": 5e-3,
+    "adv": 1.33,
+    "bn": 10,
+    "oh": 0.5,
+    "bn_mmt": 0.9,
+    "reset_bn": 0,
+    "reset_l0": 1,
+    "ismaml": 0,
+    "optimizer_type": "avg",
+    "log_console": True,
+    "log_tb_freq": 1,
+    "exp_keys": ["local_steps", "nx_samples", "optimizer_type"],
 }
 
 feddream_fast_indp = {
@@ -52,31 +78,50 @@ feddream_fast_indp = {
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [4], "node_4": [5]},
-    "epochs": 400, "model": "resnet18",
-    "model_lr": 0.2, "batch_size": 256,
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "device_ids": {
+        "node_0": [0],
+        "node_1": [1],
+        "node_2": [2],
+        "node_3": [4],
+        "node_4": [5],
+    },
+    "epochs": 400,
+    "model": "resnet18",
+    "model_lr": 0.2,
+    "batch_size": 256,
     # optional for het models
     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "resnet34", "2": "vgg11", "3": "wrn16_1", "4": "wrn40_1"},
-    
     # params for model
-    "position": 0, "inp_shape": [0, 3, 32, 32],
+    "position": 0,
+    "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
-    "global_steps": 1, "local_steps": 2, "nx_samples": 1, 
+    "global_steps": 1,
+    "local_steps": 2,
+    "nx_samples": 1,
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 5*4*256, 
-    "warmup": 20, "local_train_freq": 5,
-
+    "distill_batch_size": 256,
+    "distill_epochs": 100,
+    "dset_size": 5 * 4 * 256,
+    "warmup": 20,
+    "local_train_freq": 5,
     # adaptive distillation parameters
-    "adaptive_server": True,  "adaptive_distill_start_round": 10, 
-
-    #fast-meta deepinversion parameters
-    "lr_z": 0.0015, "lr_g": 5e-3,
-    "adv": 1.33, "bn": 10, "oh": 0.5, "bn_mmt": 0.9,
-    "reset_bn": 0, "reset_l0": 1,"ismaml": 0,
-
-    "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["local_steps", "nx_samples"]
+    "adaptive_server": True,
+    "adaptive_distill_start_round": 10,
+    # fast-meta deepinversion parameters
+    "lr_z": 0.0015,
+    "lr_g": 5e-3,
+    "adv": 1.33,
+    "bn": 10,
+    "oh": 0.5,
+    "bn_mmt": 0.9,
+    "reset_bn": 0,
+    "reset_l0": 1,
+    "ismaml": 0,
+    "log_console": True,
+    "log_tb_freq": 1,
+    "exp_keys": ["local_steps", "nx_samples"],
 }
 
 fl = {
@@ -90,29 +135,49 @@ fl = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
-    "epochs": 400, "local_runs": 5,
-    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
-    "exp_keys": ["algo", "seed"]
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "device_ids": {
+        "node_0": [3],
+        "node_1": [6],
+        "node_2": [2],
+        "node_3": [4],
+        "node_4": [5],
+    },
+    "epochs": 400,
+    "local_runs": 5,
+    "model": "resnet18",
+    "model_lr": 0.1,
+    "batch_size": 256,
+    "exp_keys": ["algo", "seed"],
 }
 
 fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
     "exp_type": "iid_clients_fedprox",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
+    "seed": 3,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
-    "epochs": 400, "local_runs": 5,
-    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
-    "exp_keys": ["algo", "seed"]
+    "num_clients": 4,
+    "samples_per_client": 50,
+    "device_ids": {
+        "node_0": [0],
+        "node_1": [0],
+        "node_2": [1],
+        "node_3": [1],
+        "node_4": [0],
+    },
+    "epochs": 400,
+    "local_runs": 5,
+    "model": "resnet18",
+    "model_lr": 0.1,
+    "batch_size": 256,
+    "exp_keys": ["algo", "seed"],
 }
 
 moon = {
@@ -126,11 +191,21 @@ moon = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
-    "epochs": 400, "local_runs": 5,
-    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
-    "exp_keys": ["algo", "seed"]
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "device_ids": {
+        "node_0": [0],
+        "node_1": [0],
+        "node_2": [1],
+        "node_3": [1],
+        "node_4": [2],
+    },
+    "epochs": 400,
+    "local_runs": 5,
+    "model": "resnet18",
+    "model_lr": 0.1,
+    "batch_size": 256,
+    "exp_keys": ["algo", "seed"],
 }
 
 independent_dreams = {
@@ -138,39 +213,47 @@ independent_dreams = {
     "exp_id": "dare",
     "exp_type": "iid_clients_independent_dreams",
     "load_existing": False,
-    "checkpoint_paths": {"1": "expt_dump/iid_clients_distill_reps_cifar10_1clients_25000samples_distadam_num_clients_1_samples_per_client_25000_distill_epochs_10_global_steps_2000_local_steps_0_warmup_250_seed2/saved_models/user1.pt"},
+    "checkpoint_paths": {
+        "1": "expt_dump/iid_clients_distill_reps_cifar10_1clients_25000samples_distadam_num_clients_1_samples_per_client_25000_distill_epochs_10_global_steps_2000_local_steps_0_warmup_250_seed2/saved_models/user1.pt"
+    },
     "dset": "pathmnist",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs",
     "seed": 3,
     # Learning setup
-    "num_clients": 1, "top_k": 1, "samples_per_client": 1000,
+    "num_clients": 1,
+    "top_k": 1,
+    "samples_per_client": 1000,
     # "device_ids": {"node_0": [4], "node_1": [7], "node_2": [6], "node_3": [1], "node_4": [2], "node_5": [3]},
     "device_ids": {"node_0": [0], "node_1": [1]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
-
-    "epochs": 500, "model": "resnet34",
-    "model_lr": 0.1, "batch_size": 256,
-
+    "epochs": 500,
+    "model": "resnet34",
+    "model_lr": 0.1,
+    "batch_size": 256,
     # params for model
-
-    "position": 0, "inp_shape": [0, 3, 28, 28],
-    "method": "orig", "ismaml": 0,
+    "position": 0,
+    "inp_shape": [0, 3, 28, 28],
+    "method": "orig",
+    "ismaml": 0,
     # "position": 4, "inp_shape": [0, 256, 8, 8], "out_shape": [0, 256, 8, 8],
-    
     # "method": "orig", "ismaml": 1,
     # "lr_g": 5e-3, "lr_z": 0.015,
     # "position": 0, "inp_shape": [0, 256], "out_shape": [0, 3, 32, 32],
-
     # Params for gradient descent on data
     "inversion_algo": "send_reps",
-    "data_lr": 0.05, "steps": 2000,
-    "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
-    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 200,
+    "data_lr": 0.05,
+    "steps": 2000,
+    "alpha_preds": 0.1,
+    "alpha_tv": 2.5e-3,
+    "alpha_l2": 1e-7,
+    "alpha_f": 10.0,
+    "distill_batch_size": 128,
+    "distill_epochs": 10,
+    "warmup": 200,
     "first_time_steps": 2000,
-
-    "exp_keys": ["distill_epochs", "steps", "position", "warmup"]
+    "exp_keys": ["distill_epochs", "steps", "position", "warmup"],
 }
 
 collab_dreams = {
@@ -184,30 +267,54 @@ collab_dreams = {
     "dpath": "./imgs/",
     "seed": 2,
     # Learning setup
-    "num_clients": 2, "top_k": 1, "samples_per_client": 1000,
+    "num_clients": 2,
+    "top_k": 1,
+    "samples_per_client": 1000,
     # "device_ids": {"node_0": [0], "node_1": [1,2], "node_2": [2,3], "node_3": [3], "node_4": [0], "node_5": [1]},
     "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
-
-    "epochs": 500, "model": "resnet34",
-    "model_lr": 0.1, "batch_size": 256,
-
+    "epochs": 500,
+    "model": "resnet34",
+    "model_lr": 0.1,
+    "batch_size": 256,
     # params for model
     # "position": 0, "inp_shape": [0, 3, 28, 28], "method": "orig",
-    "position": 4, "inp_shape": [0, 256, 8, 8], "method": "orig",
-
+    "position": 4,
+    "inp_shape": [0, 256, 8, 8],
+    "method": "orig",
     # Params for gradient descent on data
     # "inversion_algo": "send_model_centralized",
     "inversion_algo": "send_grads",
-    "fedadam": False, "distadam": True,
-    "server_lr": 0.01, "server_beta_1": 0.9, "server_beta_2": 0.99, "server_tau": 1e-9,
-    "global_steps": 2000, "local_steps": 0, "local_lr": 1e-3,
-    "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
-    "distill_batch_size": 256, "distill_epochs": 20, "warmup": 20, "lambda": 0.1,
-    "first_time_steps": 100, "adaptive_distill": True, "append_dataset": True,
-
-    "exp_keys": ["adaptive_distill", "append_dataset", "distill_epochs", "global_steps", "local_steps","warmup", "position"]
+    "fedadam": False,
+    "distadam": True,
+    "server_lr": 0.01,
+    "server_beta_1": 0.9,
+    "server_beta_2": 0.99,
+    "server_tau": 1e-9,
+    "global_steps": 2000,
+    "local_steps": 0,
+    "local_lr": 1e-3,
+    "alpha_preds": 0.1,
+    "alpha_tv": 2.5e-3,
+    "alpha_l2": 1e-7,
+    "alpha_f": 10.0,
+    "distill_batch_size": 256,
+    "distill_epochs": 20,
+    "warmup": 20,
+    "lambda": 0.1,
+    "first_time_steps": 100,
+    "adaptive_distill": True,
+    "append_dataset": True,
+    "exp_keys": [
+        "adaptive_distill",
+        "append_dataset",
+        "distill_epochs",
+        "global_steps",
+        "local_steps",
+        "warmup",
+        "position",
+    ],
 }
 
 iid_clients_distill_distadam_pathmnist = {
@@ -221,31 +328,52 @@ iid_clients_distill_distadam_pathmnist = {
     "dpath": "./imgs/",
     "seed": 2,
     # Learning setup
-    "num_clients": 5, "top_k": 1, "samples_per_client": 12000,
+    "num_clients": 5,
+    "top_k": 1,
+    "samples_per_client": 12000,
     # "device_ids": {"node_0": [6,1,4,2,5], "node_1": [6], "node_2": [1], "node_3": [4], "node_4": [2], "node_5": [5]},
-    "device_ids": {"node_0": [0], "node_1": [1], "node_2": [2], "node_3": [3], "node_4": [0], "node_5": [1,2]},
+    "device_ids": {
+        "node_0": [0],
+        "node_1": [1],
+        "node_2": [2],
+        "node_3": [3],
+        "node_4": [0],
+        "node_5": [1, 2],
+    },
     # "device_ids": {"node_0": [0], "node_1": [1]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
-
-    "epochs": 2000, "model": "resnet34",
-    "model_lr": 0.1, "batch_size": 256,
-
+    "epochs": 2000,
+    "model": "resnet34",
+    "model_lr": 0.1,
+    "batch_size": 256,
     # params for model
-    "position": 0, "inp_shape": [0, 3, 28, 28], "method": "orig",
-    "log_tb_freq": 10, 
-
+    "position": 0,
+    "inp_shape": [0, 3, 28, 28],
+    "method": "orig",
+    "log_tb_freq": 10,
     # Params for gradient descent on data
     # "inversion_algo": "send_model_centralized",
     "inversion_algo": "send_grads",
-    "fedadam": False, "distadam": True,
-    "server_lr": 0.01, "server_beta_1": 0.9, "server_beta_2": 0.99, "server_tau": 1e-9,
-    "global_steps": 2000, "local_steps": 0, "local_lr": 1e-3,
-    "alpha_preds": 0.1, "alpha_tv": 2.5e-3, "alpha_l2": 1e-7, "alpha_f": 10.0,
-    "distill_batch_size": 128, "distill_epochs": 10, "warmup": 200,
-    "first_time_steps": 100, "adaptive_distill": False,
-
-    "exp_keys": ["distill_epochs", "global_steps", "local_steps","position"]
+    "fedadam": False,
+    "distadam": True,
+    "server_lr": 0.01,
+    "server_beta_1": 0.9,
+    "server_beta_2": 0.99,
+    "server_tau": 1e-9,
+    "global_steps": 2000,
+    "local_steps": 0,
+    "local_lr": 1e-3,
+    "alpha_preds": 0.1,
+    "alpha_tv": 2.5e-3,
+    "alpha_l2": 1e-7,
+    "alpha_f": 10.0,
+    "distill_batch_size": 128,
+    "distill_epochs": 10,
+    "warmup": 200,
+    "first_time_steps": 100,
+    "adaptive_distill": False,
+    "exp_keys": ["distill_epochs", "global_steps", "local_steps", "position"],
 }
 
 feddream = {
@@ -261,67 +389,89 @@ feddream = {
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     # Learning setup
-    "num_clients": 2, "samples_per_client": 1000,
+    "num_clients": 2,
+    "samples_per_client": 1000,
     "device_ids": {"node_0": [1], "node_1": [2], "node_2": [1]},
-    "epochs": 400, "model": "resnet18",
-    "model_lr": 0.2, "batch_size": 256,
+    "epochs": 400,
+    "model": "resnet18",
+    "model_lr": 0.2,
+    "batch_size": 256,
     # optional for het models
     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg8"},
-    
     # params for model
-    "position": 0, "inp_shape": [0, 3, 32, 32],
+    "position": 0,
+    "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
-    "data_lr": 0.05, "global_steps": 2000, "local_steps": 1,
-    "alpha_preds": 1, "alpha_tv": 2.5e-5, "alpha_l2": 3e-8, "alpha_f": 10,
+    "data_lr": 0.05,
+    "global_steps": 2000,
+    "local_steps": 1,
+    "alpha_preds": 1,
+    "alpha_tv": 2.5e-5,
+    "alpha_l2": 3e-8,
+    "alpha_f": 10,
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size":10*256, 
-    "warmup": 20, "local_train_freq": 5,
-
+    "distill_batch_size": 256,
+    "distill_epochs": 100,
+    "dset_size": 10 * 256,
+    "warmup": 20,
+    "local_train_freq": 5,
     # adaptive distillation parameters
-    "adaptive_server": True, "lambda_server": 10, "adaptive_distill_start_round": 10, 
-    "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": []
+    "adaptive_server": True,
+    "lambda_server": 10,
+    "adaptive_distill_start_round": 10,
+    "log_console": True,
+    "log_tb_freq": 1,
+    "exp_keys": [],
 }
 
 isolated = {
     "algo": "isolated",
     "exp_id": 10,
-    "exp_type": "iid_clients_isolated_heterogeneous",
+    "exp_type": "iid_clients_isolated",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/cifar10/iid/",
     "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
-    "device_ids": {"node_0": [1], "node_1": [0], "node_2": [0], "node_3": [3], "node_4": [3]},
-
+    "device_ids": {
+        "node_0": [6],
+        "node_1": [6],
+        "node_2": [6],
+        "node_3": [7],
+        "node_4": [7],
+    },
     # Learning setup
-    "num_clients": 4, "samples_per_client": 1000,
-    "epochs": 400, "local_runs": 5,
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "epochs": 400,
+    "local_runs": 5,
     # optional for het models
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
-
-    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
-    "exp_keys": ["algo", "seed"]
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "model": "resnet18",
+    "model_lr": 0.1,
+    "batch_size": 256,
+    "exp_keys": ["algo", "seed"],
 }
 
 centralized = {
     "algo": "centralized",
     "exp_id": 6,
     "exp_type": "iid_clients_centralized",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
-    "seed": 4,
+    "dset": "svhn",
+    "dump_dir": "./expt_dump/svhn/iid/",
+    "dpath": "./imgs/svhn",
+    "seed": 2,
     # no concept of client in isolated learning
-    "device_ids": {"node_0": [7]},
-
+    "device_ids": {"node_0": [3]},
     # Learning setup
-    "num_clients": 1, "samples_per_client": 4000,
+    "num_clients": 1,
+    "samples_per_client": 4000,
     "epochs": 400,
     "model": "resnet18",
-    "model_lr": 0.1, "batch_size": 256,
-    "exp_keys": []
+    "model_lr": 0.1,
+    "batch_size": 256,
+    "exp_keys": [],
 }
 fedgen = {
     "algo": "fedgen",
@@ -368,14 +518,44 @@ fedgen = {
         # "model",
     ],
 }
+
+scaffold = {
+    "algo": "scaffold",
+    "exp_id": 1,
+    "exp_type": "iid_clients_scaffold",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./imgs/cifar10",
+    "seed": 1,
+    "device_ids": {
+        "node_0": [7],
+        "node_1": [6],
+        "node_2": [7],
+        "node_3": [5],
+        "node_4": [4],
+    },
+    # Learning setup
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "local_runs": 1,
+    "epochs": 400,
+    "model": "resnet18",
+    "lr_client": 0.1,
+    "batch_size": 256,
+    "lr_server": 1.0,
+    "model_lr": 0.1,  # decoy parameter not used in scaffold
+    "exp_keys": [],
+}
+
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
+# current_config = feddream_fast
 # current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
-# current_config = isolated
+current_config = isolated
 # current_config = centralized
 current_config = fedgen
