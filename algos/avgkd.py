@@ -41,7 +41,6 @@ class AvgKDClient(BaseClient):
                                           self.device)
         if local_round == self.config["local_runs"] - 1:
             print("Client {} finished training locally with loss {} at local round {}".format(self.node_id, avg_loss, local_round))
-        # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
 
     def train_avgKD(self, labels, local_round):
         """
@@ -54,7 +53,6 @@ class AvgKDClient(BaseClient):
 
         if local_round == self.config["local_runs"] - 1:
             print("Client {} finished training avgKD with loss {} at local round {}".format(self.node_id, avg_loss, local_round))
-        # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
     
     def local_test(self, **kwargs):
         """
@@ -65,14 +63,12 @@ class AvgKDClient(BaseClient):
                                                self._test_loader,
                                                self.loss_fn,
                                                self.device)
-        # pass
         return acc
 
     def get_representation(self) -> tuple:
         """
         Share the dataloader and model
         """
-        # print('devices', self.dloader.device, self.model.device)
         if self.communication_round == 0:
             self.communication_round = 1
             return (self.model.to('cpu'), self.dloader)
@@ -82,42 +78,26 @@ class AvgKDClient(BaseClient):
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
-        # print('total_epochs', total_epochs)
         for round in range(start_epochs, total_epochs+1):
-            print('round', round)
-            # self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
-            # print("Client waiting for semaphore from {}".format(self.server_node))
             if round == 0:
                 warmup_rounds = 50
                 for i in range(warmup_rounds):
-                # for i in range(self.config["local_runs"]):
                     self.local_train(i)
             else:
                 self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
-                # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
 
                 repr = {self.node_id: self.get_representation()}
-                # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
                 self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
-                # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
                 labels_per_batch = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
-                # print(self.node_id, labels_per_batch)
-                # self.log_utils.logging.info("Client {} received new model from {}".format(self.node_id, self.server_node))
 
                 for i in range(5):
-                    # self.local_train()
                     self.local_train(i)
 
                 for i in range(self.config["local_runs"]):
-                    # self.local_train()
                     self.train_avgKD(labels_per_batch, i)
-                
-                # if round == total_epochs-1:
-                #     self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.DONE)
                 
             test_acc = self.local_test()
             self.comm_utils.send_signal(dest=self.server_node, data=test_acc, tag=self.tag.CLIENT_STATS)
-            # self.log_utils.logging.info("Round {} done".format(round))
 
 
 class AvgKDServer(BaseServer):
@@ -156,7 +136,6 @@ class AvgKDServer(BaseServer):
         reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
         self.log_utils.log_console("Server received all clients done signal")
 
-        # print('reprs from all clients: ', reprs)
         client_models = {}
 
         for client_repr in reprs:
@@ -200,8 +179,6 @@ class AvgKDServer(BaseServer):
                 assert len(outputs_client_batch) == len(self.clients)
                 
                 client_new_labels[client_node][batch] = torch.mean(torch.stack(outputs_client_batch), dim=0)
-                # client_new_labels[client_node][batch] = torchlist[0]
-                # client_new_labels[client_node][batch] = ((torchlist[1] + torchlist[2] + torchlist[3]) / 3 + torchlist[0]) / 2 
             
         for client_node in self.clients:
             # MODIFY sent signal to labels
