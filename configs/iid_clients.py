@@ -1,4 +1,3 @@
-
 feddream_fast = {
     # adaptive_distill_start_round: 30 also works fine
     # need not wait for gen warmup, can start client training immediately
@@ -343,6 +342,51 @@ scaffold = {
     "exp_keys": []
 }
 
+fedgen = {
+    "algo": "fedgen",
+    "exp_id": "test",
+    "exp_type": "fedgen",
+    "exp_type": "iid_clients_fedgen",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid",
+    "dpath": "./imgs/cifar10",
+    "seed": 4,
+    "heterogeneous_models": False,
+    "models": {
+        "0": "resnet18",
+        "1": "wrn16_1",
+        "2": "vgg11",
+        "3": "resnet34",
+        "4": "wrn40_1",
+    },
+    "device_ids": {
+        "node_0": [1],
+        "node_1": [2],
+        "node_2": [3],
+        "node_3": [4],
+        "node_4": [2],
+    },
+    # Learning setup
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    # "alpha": 0.1,
+    # "class_per_client": 2,
+    "epochs": 400,
+    "local_runs": 5,
+    "model": "resnet18",
+    "model_lr": 0.005,
+    "batch_size": 256,
+    "exp_keys": [
+        "algo",
+        # "alpha",
+        # "epochs",
+        # "local_runs",
+        # "dset",
+        # "num_clients",
+        # "samples_per_client",
+        # "model",
+    ],
+}
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
@@ -351,6 +395,7 @@ scaffold = {
 # current_config = fl
 # current_config = fedprox
 # current_config = moon
-current_config = isolated
+# current_config = isolated
 # current_config = centralized
+# current_confg = fedgen
 current_config = scaffold

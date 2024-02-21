@@ -365,6 +365,52 @@ centralized = {
     "exp_keys": ["alpha", "client_data_units", "epochs"]
 }
 
+fedgen = {
+    "algo": "fedgen",
+    "exp_id": "test",
+    "exp_type": "fedgen",
+    "exp_type": "non_iid_balanced_clients_fedgen",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/alpha_0.1/",
+    "dpath": "./imgs/cifar10",
+    "heterogeneous_models": False,
+    "models": {
+        "0": "resnet18",
+        "1": "wrn16_1",
+        "2": "vgg11",
+        "3": "resnet34",
+        "4": "wrn40_1",
+    },
+    "seed": 4,
+    "device_ids": {
+        "node_0": [1],
+        "node_1": [0],
+        "node_2": [2],
+        "node_3": [3],
+        "node_4": [3],
+    },
+    # Learning setup
+    "num_clients": 4,
+    "samples_per_client": 1000,
+    "alpha": 0.1,
+    # "class_per_client": 2,
+    "epochs": 400,
+    "local_runs": 5,
+    "model": "resnet18",
+    "model_lr": 0.005,
+    "batch_size": 256,
+    "exp_keys": [
+        "algo",
+        "alpha",
+        # "epochs",
+        # "local_runs",
+        # "dset",
+        # "num_clients",
+        # "samples_per_client",
+        # "model",
+    ],
+}
+
 # current_config = non_iid_labels_clients_independent
 # current_config = non_iid_labels_clients_collab
 # current_config = non_iid_balanced_clients_independent
@@ -378,3 +424,4 @@ current_config = feddream_fast
 # current_config = isolated
 # current_config = centralized
 # current_config = scaffold
+# current_config = fedgen

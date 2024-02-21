@@ -12,6 +12,7 @@ from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
 from algos.moon import MoonClient, MoonServer
 from algos.centralized import CentralizedServer
+from algos.fedgen import FedGenClient, FedGenServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
 
@@ -29,17 +30,19 @@ algo_map = {
     "feddream": [FedDreamServer, FedDreamClient],
     "feddream_fast": [FedDreamFastServer, FedDreamFastClient],
     "feddream_fast_indp": [FedDreamFastServerIndp, FedDreamFastClientIndp],
+    "fedgen": [FedGenServer, FedGenClient],
 }
+
 
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
     print(algo_name)
     return algo_map[algo_name][rank>0](config)
 
-
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
+
     def __init__(self) -> None:
         pass
 
