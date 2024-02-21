@@ -185,18 +185,10 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return train_loss, acc
 
-    def train_fedprox(
-        self,
-        model: nn.Module,
-        global_model,
-        mu,
-        optim,
-        dloader,
-        loss_fn,
-        device: torch.device,
-        **kwargs,
-    ) -> Tuple[float, float]:
-        """TODO: generate docstring"""
+
+    def train_fedprox(self, model:nn.Module, global_model, mu, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
         model.train()
         train_loss = 0
         correct = 0
@@ -212,13 +204,13 @@ class ModelUtils():
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1) # type: ignore
             loss = loss_fn(output, target)
+
             # for fedprox
             fed_prox_reg = 0.0
             global_weight_collector = list(global_model.parameters())
             for param_index, param in enumerate(model.parameters()):
                 fed_prox_reg += ((mu / 2) * torch.norm((param - global_weight_collector[param_index])) ** 2)
             loss += fed_prox_reg
-
             loss.backward()
             optim.step()
             train_loss += loss.item()
@@ -230,21 +222,9 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return train_loss, acc
 
-    def train_fedcon(
-        self,
-        model: nn.Module,
-        gloabl_model,
-        previous_nets,
-        cos,
-        mu,
-        temperature,
-        optim,
-        dloader,
-        loss_fn,
-        device: torch.device,
-        **kwargs,
-    ) -> Tuple[float, float]:
-        """TODO: generate docstring"""
+    def train_fedcon(self, model:nn.Module, gloabl_model, previous_nets, cos, mu, temperature, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
         model.train()
         train_loss = 0
         correct = 0
@@ -324,9 +304,8 @@ class ModelUtils():
             wts[key] = wts[key].to(device)
         model_.load_state_dict(wts)
 
-    def move_to_device(
-        self, items: List[Tuple[torch.Tensor, torch.Tensor]], device: torch.device
-    ) -> list:
+    def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
+                       device: torch.device) -> list:
         # Expects a list of tuples with each tupe containing two tensors
         return [[item[0].to(device), item[1].to(device)] for item in items]
 
