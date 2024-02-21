@@ -1,10 +1,11 @@
 import jmespath, importlib, os
 
 
-def load_config(config_path):
+def load_config(config_path, seed):
     path = '.'.join(config_path.split('.')[1].split('/')[1:])
     print(path)
     config = importlib.import_module(path).current_config
+    config["seed"] = seed
     return process_config(config)
 
 def process_config(config):

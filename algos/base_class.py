@@ -74,6 +74,7 @@ class BaseClient(BaseNode):
         super().__init__(config)
         self.server_node = 0
         self.set_parameters(config)
+        self.num_classes = None
 
     def set_parameters(self, config):
         """
@@ -118,8 +119,17 @@ class BaseClient(BaseNode):
             if not isinstance(y, int):
                 y = y.item()
             self.class_counts[y] += 1
-        self.samples_per_client = [c/samples_per_client for c in self.class_counts]
-        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=False)
+        self.num_classes = 0
+        for class_count in self.class_counts:
+            if class_count != 0:
+                self.num_classes += 1
+
+        self.samples_per_client = [c / samples_per_client for c in self.class_counts]
+        print(f"samples per client:{self.samples_per_client}")
+        if config['algo'] == 'avgkd':
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=False)
+        else:
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):

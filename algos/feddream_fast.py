@@ -19,12 +19,8 @@ from PIL import Image
 import torchvision.transforms as T
 
 
-## change g_step-setup for 10, after aug input same to each model, ismaml, 
-# reset, adv=10/1.22-apative distill, 
-# check optimizers -> use adam
-## done: fedadam for self.generator
-
-#s_model
+#TODO: server sends only d(L)/d(s) and s to perform adaptive teaching
+# currently server sending the whole model for easy computation
 class CommProtocol(object):
     """
     Communication protocol tags for the server and clients
@@ -39,8 +35,8 @@ class CommProtocol(object):
     START_DISTILL = 7 # Used by the server to signal the clients to start distillation
     FINAL_GLOBAL_REPS = 6 # Used by the server to send the final global representations to the clients for a given epoch
     GENERATOR_UPDATES = 4 # Used by client to send the updated genertor model state
-    GENERATOR_DONE = 3 # Used by server to send the updates genertor model state
-    STUDENT_UPDATES = 2
+    GENERATOR_DONE = 3 # Used to signal that generator training is complete
+    STUDENT_UPDATES = 2 
 
 class FedDreamFastClient(BaseClient):
     def __init__(self, config):
@@ -102,9 +98,10 @@ class FedDreamFastClient(BaseClient):
                                                                                 acc,
                                                                                 test_acc))
         # save the model if the test loss is lower than the best loss
-        if test_loss < self.best_loss:
-            self.best_loss = test_loss
+        # if test_loss < self.best_loss:
+        #     self.best_loss = test_loss
             # self.model_utils.save_model(self.model, self.config["saved_models"] + f"user{self.node_id}.pt")
+        return test_acc
         
     def update_local_model(self):
         tr_loss, tr_acc, student_loss, student_acc = None, None, None, None
@@ -114,27 +111,6 @@ class FedDreamFastClient(BaseClient):
                                                     self.dloader,
                                                     self.loss_fn,
                                                     self.device)
-        # if ((self.node_id==2) and self.round<=120):
-        #     for _ in range(5):
-        #         tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                                 self.optim,
-        #                                                 self.dloader,
-        #                                                 self.loss_fn,
-        #                                                 self.device)
-        # if ((self.node_id==4) and self.round<=60):
-        #     for _ in range(5):
-        #         tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                                 self.optim,
-        #                                                 self.dloader,
-        #                                                 self.loss_fn,
-        #                                                 self.device)
-        # if ((self.node_id==1 or self.node_id==4) or self.node_id==3):
-        #     for _ in range(5):
-        #         tr_loss, tr_acc = self.model_utils.train(self.model,
-        #                                                 self.optim,
-        #                                                 self.dloader,
-        #                                                 self.loss_fn,
-        #                                                 self.device)
         print("train_loss: {}, train_acc: {}".format(tr_loss, tr_acc))
         if self.round % self.local_train_freq == 0:
             synth_dloader = DataLoader(self.synth_dset, batch_size=256, shuffle=True)
@@ -148,7 +124,6 @@ class FedDreamFastClient(BaseClient):
                                                                     apply_softmax=True,
                                                                     position=self.position,
                                                                     extra_batch=True)
-            # self.synth_dset.reset()
             print("student_loss: {}, student_acc: {} at client {}".format(student_loss, student_acc, self.node_id))
         if self.round % self.log_tb_freq == 0:
             test_loss, test_acc = self.model_utils.test(self.model,
@@ -210,7 +185,6 @@ class FedDreamFastClient(BaseClient):
             return self.z - reps.clone().detach()
         return self.z
         
-    
     def single_round_fast(self):
         self.model.eval()
         for g_step in range(self.global_steps):
@@ -249,7 +223,7 @@ class FedDreamFastClient(BaseClient):
         # if self.log_console:
             # self.log_utils.log_console("Starting local warmup rounds")
         if not self.config["load_existing"]:
-            self.local_warmup()
+            test_acc = self.local_warmup()
         else:
             print("skipping local warmup because checkpoints are loaded")
             test_loss, test_acc = self.model_utils.test(self.model,
@@ -530,9 +504,9 @@ class FedDreamFastServer(BaseServer):
         # Wait for the students to finish warmup rounds
         if self.log_console:
             self.log_utils.log_console("Waiting for students to finish warmup rounds")
+        total_epochs = self.config["epochs"]
         self.comm_utils.wait_for_all_clients(self.clients, tag=self.tag.DONE_WARMUP)
         start_epochs = self.config.get("start_epochs", 0)
-        total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
             self.round = round
             for client in self.clients:

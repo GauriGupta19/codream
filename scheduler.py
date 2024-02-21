@@ -6,7 +6,6 @@ from algos.distill_reps import DistillRepsClient, DistillRepsServer
 from algos.feddream import FedDreamClient, FedDreamServer
 from algos.feddream_fast import FedDreamFastClient, FedDreamFastServer
 from algos.feddream_fast_independent import FedDreamFastClientIndp, FedDreamFastServerIndp
-from algos.feddream_fast_noniid import FedDreamFastNoniidClient, FedDreamFastNoniidServer
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.avgkd import AvgKDClient, AvgKDServer
 from algos.isolated import IsolatedClient, IsolatedServer
@@ -14,6 +13,7 @@ from algos.scaffold import SCAFFOLDClient, SCAFFOLDServer
 from algos.fedprox import FedProxClient, FedProxServer
 from algos.moon import MoonClient, MoonServer
 from algos.centralized import CentralizedServer
+from algos.fedgen import FedGenClient, FedGenServer
 from utils.log_utils import copy_source_code
 from utils.config_utils import load_config
 
@@ -32,23 +32,24 @@ algo_map = {
     "feddream": [FedDreamServer, FedDreamClient],
     "feddream_fast": [FedDreamFastServer, FedDreamFastClient],
     "feddream_fast_indp": [FedDreamFastServerIndp, FedDreamFastClientIndp],
-    "feddream_fast_noniid": [FedDreamFastNoniidServer, FedDreamFastNoniidClient],
+    "fedgen": [FedGenServer, FedGenClient],
 }
+
 
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
     print(algo_name)
     return algo_map[algo_name][rank>0](config)
 
-
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
+
     def __init__(self) -> None:
         pass
 
-    def assign_config_by_path(self, config_path) -> None:
-        self.config = load_config(config_path)
+    def assign_config_by_path(self, config_path, seed) -> None:
+        self.config = load_config(config_path, seed)
 
     def initialize(self) -> None:
         assert self.config is not None, "Config should be set when initializing"
