@@ -424,3 +424,4 @@ current_config = feddream_fast
 # current_config = isolated
 # current_config = centralized
 # current_config = scaffold
+# current_config = fedgen

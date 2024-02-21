@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
 import models
-from resnet import ResNet18, ResNet34, ResNet50, ResNet101
+from utils.resnet import ResNet18, ResNet34, ResNet50, ResNet101
 import numpy as np
 import torch.nn.functional as F
 
@@ -67,13 +67,7 @@ class ModelUtils():
         return model
 
     @staticmethod
-    def get_generator(
-        num_classes: int,
-        device: torch.device,
-        hidden_dim: int,
-        feature_dim: int,
-        **kwargs,
-    ) -> nn.Module:
+    def get_generator(num_classes: int, device: torch.device, hidden_dim: int, feature_dim: int,**kwargs,) -> nn.Module:
         """helper function used in FedGen to create generators for server and clients"""
         # need to extract feature dim from model
         model = Generative(
@@ -86,9 +80,7 @@ class ModelUtils():
         model = model.to(device)
         return model
 
-    def train(
-        self, model: nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs
-    ) -> Tuple[float, float]:
+    def train(self, model: nn.Module, optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring"""
         model.train()
         train_loss = 0
@@ -127,18 +119,8 @@ class ModelUtils():
         acc = correct / total_samples
         return train_loss, acc
 
-    def train_fedgen(
-        self,
-        model: nn.Module,
-        optim,
-        dloader,
-        loss_fn,
-        device: torch.device,
-        qualified_labels: List,
-        batch_size: int,
-        generative_model: nn.Module,
-        **kwargs,
-    ) -> Tuple[float, float]:
+    def train_fedgen(self, model: nn.Module, optim, dloader, loss_fn, device: torch.device, qualified_labels: List,
+        batch_size: int, generative_model: nn.Module, **kwargs,) -> Tuple[float, float]:
         """TODO: generate docstring"""
 
         model.train()

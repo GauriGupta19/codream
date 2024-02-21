@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
 import numpy as np
-import copy
 from utils.comm_utils import CommUtils
 from utils.data_utils import get_dataset, non_iid_labels, non_iid_balanced_clients, \
                             non_iid_balanced_labels, non_iid_unbalanced_dataidx_map, plot_training_distribution
@@ -9,9 +8,6 @@ from torch.utils.data import DataLoader, Subset
 
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
-import torch.nn as nn
-from utils.model_utils import BaseHeadSplit
-
 
 class BaseNode(ABC):
     def __init__(self, config) -> None:
@@ -24,6 +20,7 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils()
         self.dset_obj = get_dataset(config["dset"], config["dpath"])
+            
         self.set_constants()
 
     def set_constants(self):
@@ -83,7 +80,7 @@ class BaseClient(BaseNode):
     def set_parameters(self, config):
         """
         Set the parameters for the client
-        """
+        """        
         self.set_model_parameters(config)
         self.set_data_parameters(config)
 
@@ -100,8 +97,8 @@ class BaseClient(BaseNode):
             split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
             plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
-            dset = Subset(train_dset, indices[client_idx])
-            print("using non_iid_balanced", config["alpha"])
+            dset = Subset(train_dset, indices[client_idx]) 
+            print("using non_iid_balanced", config["alpha"])   
         elif config["exp_type"].startswith("non_iid_balanced_labels"):
             #all nodes will eventually generate the same data
             print("starting creating data")
@@ -112,7 +109,7 @@ class BaseClient(BaseNode):
             print("using non_iid_balanced", config["alpha"])   
         elif config["exp_type"].startswith("non_iid_labels"):
             num_classes = config["class_per_client"]
-            sp = np.arange(client_idx * num_classes, (client_idx + 1) * num_classes)
+            sp = np.arange(client_idx*num_classes, (client_idx+1)*num_classes)
             dset = non_iid_labels(train_dset, config["samples_per_client"], sp)
             print("using non_iid_labels", sp)
         else:
