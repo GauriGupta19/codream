@@ -96,6 +96,26 @@ fl = {
     "exp_keys": ["algo", "seed"]
 }
 
+avgkd = {
+    "algo": "avgkd",
+    "exp_id": 10,
+    "exp_type": "iid_clients_avgkd_seed2",
+    "dset": "mnist",
+    "dump_dir": "./expt_dump/mnist/iid/",
+    "dpath": "./imgs/mnist",
+    "seed": 2,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 50,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
+    # communication epochs = 20 and local runs = 20 as per paper on AvgKD
+    "epochs": 400, "local_runs": 50,
+    # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "model": "resnet18", "model_lr": 0.01, "batch_size": 256,
+    "exp_keys": ["algo", "seed"]
+}
+
 fedprox = {
     "algo": "fedprox",
     "exp_id": 10,
@@ -390,12 +410,13 @@ fedgen = {
 # current_config = independent_dreams
 # current_config = collab_dreams
 # current_config = feddream
-# current_config = feddream_fast
+current_config = feddream_fast
 # current_config = feddream_fast_indp
 # current_config = fl
+# current_config = avgkd
 # current_config = fedprox
 # current_config = moon
 # current_config = isolated
 # current_config = centralized
 # current_confg = fedgen
-current_config = scaffold
+# current_config = scaffold

@@ -59,7 +59,6 @@ class BaseNode(ABC):
             # self.model_utils.load_model(self.model, config["saved_models"] + f"user{self.node_id}.pt")
             # self.model_utils.load_model(self.model, config["checkpoint"])
         self.optim = optim(self.model.parameters(), lr=config["model_lr"], momentum=0.9, weight_decay=1e-4,)
-        # self.optim = optim(self.model.parameters(), lr=3e-4)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     @abstractmethod
@@ -95,7 +94,7 @@ class BaseClient(BaseNode):
             #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_clients(self.dset_obj, config["num_clients"], config["samples_per_client"], config["alpha"])
-            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            # plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             dset = Subset(train_dset, indices[client_idx]) 
             print("using non_iid_balanced", config["alpha"])   
@@ -103,7 +102,7 @@ class BaseClient(BaseNode):
             #all nodes will eventually generate the same data
             print("starting creating data")
             split_data = non_iid_balanced_labels(self.dset_obj, config["num_clients"], config["samples_per_label"], config["alpha"])
-            plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
+            # plot_training_distribution(split_data[0], split_data[1], config["num_clients"], self.dset_obj.NUM_CLS, config["saved_models"])
             indices, train_y = split_data
             dset = Subset(train_dset, indices[client_idx]) 
             print("using non_iid_balanced", config["alpha"])   
@@ -127,7 +126,10 @@ class BaseClient(BaseNode):
 
         self.samples_per_client = [c / samples_per_client for c in self.class_counts]
         print(f"samples per client:{self.samples_per_client}")
-        self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
+        if config['algo'] == 'avgkd':
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=False)
+        else:
+            self.dloader = DataLoader(dset, batch_size=batch_size, shuffle=True)
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def local_train(self, dataset, **kwargs):

@@ -119,6 +119,62 @@ class ModelUtils():
         acc = correct / total_samples
         return train_loss, acc
 
+    def soft_loss(self, preds, y):
+        'Function for the soft cross entrohpy objective'
+        logprobs = nn.functional.log_softmax(preds, dim = -1)
+        loss = -(y * logprobs).sum() / preds.shape[0]
+        return loss
+    
+    def train_avgkd(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, agents_prediction, **kwargs) -> Tuple[float, float]:
+        """TODO: generate docstring
+        """
+        model.train()
+        train_loss = 0
+        correct = 0
+        total_samples = 0
+        for batch_idx, (data, target) in enumerate(dloader):
+            data, target = data.to(device), target.to(device)
+            if "extra_batch" in kwargs:
+                data = data.view(data.size(0) * data.size(1), *data.size()[2:])
+                target = target.view(target.size(0) * target.size(1), *target.size()[2:])
+            total_samples += data.size(0)
+            optim.zero_grad()
+            # check if epoch is passed as a keyword argument
+            # if so, call adjust_learning_rate
+            if "epoch" in kwargs:
+                self.adjust_learning_rate(optim, kwargs["epoch"])
+
+            position = kwargs.get("position", 0)
+            if position==0:
+                output = model(data)
+            else:
+                output = model(data, position=position)
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1) # type: ignore
+            if len(target.size()) > 1 and target.size(1) == 1:
+                target = target.squeeze(dim=1)
+            agents_prediction_batch = agents_prediction[batch_idx]
+            agents_prediction_batch = agents_prediction_batch.to(device)
+            # print('agents_prediction_batch', batch_idx, agents_prediction_batch)
+            # print('output', batch_idx, output)
+            # print(batch_idx, agents_prediction_batch)
+            loss = self.soft_loss(output, agents_prediction_batch)
+            
+            # loss = loss_fn(output, torch.argmax(agents_prediction_batch, dim=1))
+            # print(batch_idx, 'agents prediction', torch.argmax(agents_prediction_batch, dim=1))
+            # print(batch_idx, 'target', target)
+            # loss = loss_fn(output, target)
+            loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+        acc = correct / total_samples
+        return train_loss, acc
+
     def train_fedgen(self, model: nn.Module, optim, dloader, loss_fn, device: torch.device, qualified_labels: List,
         batch_size: int, generative_model: nn.Module, **kwargs,) -> Tuple[float, float]:
         """TODO: generate docstring"""
