@@ -6,7 +6,6 @@ from collections import OrderedDict
 import torch
 import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
 from algos.base_class import BaseClient, BaseServer
 from utils.generator import Generator
 from utils.di_hook import DeepInversionHook
@@ -156,7 +155,7 @@ class FedDreamFastClient(BaseClient):
         # self.log_utils.log_console("Round {} done".format(round))
         self.synth_dset.append((x, y))
 
-    def fast_synthesize(self, reps, targets):
+    def fast_synthesize(self, reps):
         self.model.eval()
         self.z.data = reps.clone().detach().requires_grad_(True)
         for _ in range(self.local_steps):
@@ -189,9 +188,6 @@ class FedDreamFastClient(BaseClient):
         self.model.eval()
         for g_step in range(self.global_steps):
             # Wait for the server to send the latest representations
-            targets = self.comm_utils.wait_for_signal(src=self.server_node,
-                                                    tag=self.tag.START_GEN_REPS)
-            targets = targets.to(self.device)
             gen_state = self.comm_utils.wait_for_signal(src=self.server_node,
                                                         tag=self.tag.GENERATOR_UPDATES)
             self.generator.load_state_dict(gen_state)
@@ -204,7 +200,7 @@ class FedDreamFastClient(BaseClient):
                     {'params': self.generator.parameters()},
                     {'params': [self.z], 'lr': self.lr_z}
                 ], lr=self.lr_g, betas=[0.5, 0.999])
-            grads = self.fast_synthesize(reps, targets)
+            grads = self.fast_synthesize(reps)
             # Send the grads to the server
             self.comm_utils.send_signal(dest=self.server_node,
                                         data=grads.to("cpu"),
@@ -444,7 +440,6 @@ class FedDreamFastServer(BaseServer):
     def single_round_fast(self):
         start = time.time()
         self.reps = torch.randn(size=(self.distill_batch_size, self.nz), device=self.device).requires_grad_()
-        self.targets = torch.randint(low=0, high=self.dset_obj.NUM_CLS, size=(self.distill_batch_size,))
         self.data_optimizer = torch.optim.Adam([self.reps], lr=self.config["lr_z"], betas=[0.5, 0.999])
         self.generator.load_state_dict(self.meta_generator.state_dict())
         self.ep += 1
@@ -452,7 +447,6 @@ class FedDreamFastServer(BaseServer):
             reset_l0(self.generator)
         for it in range(self.global_steps):
             for client in self.clients:
-                self.comm_utils.send_signal(dest=client, data=self.targets.to("cpu"), tag=self.tag.START_GEN_REPS)
                 self.comm_utils.send_signal(dest=client, data=put_on_cpu(self.generator.state_dict()), 
                                             tag=self.tag.GENERATOR_UPDATES)
                 self.comm_utils.send_signal(dest=client, data=self.reps.to("cpu"), tag=self.tag.START_GEN_REPS)

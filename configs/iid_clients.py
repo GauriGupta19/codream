@@ -4,26 +4,26 @@ feddream_fast = {
     "seed": 4,
     "algo": "feddream_fast",
     "exp_id": "fast",
-    "exp_type": "iid_clients_feddream_fast_test_het",
+    "exp_type": "iid_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dset": "pathmnist",
+    "dump_dir": "./expt_dump/pathmnist/iid/",
+    "dpath": "./imgs/pathmnist",
     # Learning setup
-    "num_clients": 4, "samples_per_client": 6000,
-    "device_ids": {"node_0": [4], "node_1": [2], "node_2": [5], "node_3": [6], "node_4": [7]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [1], "node_1": [2], "node_2": [3], "node_3": [6], "node_4": [7]},
     "epochs": 400, "model": "resnet18",
     "model_lr": 0.2, "batch_size": 256,
     # optional for het models
-    "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
+    "heterogeneous_models": False, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},
     
     # params for model
     "position": 0, "inp_shape": [0, 3, 32, 32],
     # Params for gradient descent on data
     "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
-    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 50*256, 
+    "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
     "warmup": 20, "local_train_freq": 5,
 
     # adaptive distillation parameters
@@ -35,7 +35,7 @@ feddream_fast = {
     "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
 
     "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["warmup", "local_steps", "nx_samples", "dset_size"]
+    "exp_keys": ["local_steps", "nx_samples", "optimizer_type"]
 }
 
 feddream_fast_indp = {
@@ -89,8 +89,8 @@ fl = {
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 6000,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [1], "node_4": [1]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -138,15 +138,15 @@ moon = {
     "algo": "moon",
     "exp_id": 10,
     "exp_type": "iid_clients_moon",
-    "dset": "mnist",
-    "dump_dir": "./expt_dump/mnist/iid/",
-    "dpath": "./imgs/mnist",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
     "seed": 4,
     # server can have overlapping device ids with clients because
     # both are not used at the same time
     # Learning setup
-    "num_clients": 4, "samples_per_client": 50,
-    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [0]},
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1], "node_4": [2]},
     "epochs": 400, "local_runs": 5,
     "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
     "exp_keys": ["algo", "seed"]
@@ -158,9 +158,9 @@ independent_dreams = {
     "exp_type": "iid_clients_independent_dreams",
     "load_existing": False,
     "checkpoint_paths": {"1": "expt_dump/iid_clients_distill_reps_cifar10_1clients_25000samples_distadam_num_clients_1_samples_per_client_25000_distill_epochs_10_global_steps_2000_local_steps_0_warmup_250_seed2/saved_models/user1.pt"},
-    "dset": "cifar10",
+    "dset": "pathmnist",
     "dump_dir": "./expt_dump/cifar10/iid/",
-    "dpath": "./imgs/cifar10",
+    "dpath": "./imgs",
     "seed": 3,
     # Learning setup
     "num_clients": 1, "top_k": 1, "samples_per_client": 1000,
@@ -315,7 +315,7 @@ isolated = {
     "device_ids": {"node_0": [6], "node_1": [6], "node_2": [6], "node_3": [7], "node_4": [7]},
 
     # Learning setup
-    "num_clients": 4, "samples_per_client": 6000,
+    "num_clients": 4, "samples_per_client": 1000,
     "epochs": 400, "local_runs": 5,
     # optional for het models
     # "heterogeneous_models": True, "models": {"0": "resnet18", "1": "wrn16_1", "2": "vgg11", "3": "resnet34", "4": "wrn40_1"},

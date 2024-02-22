@@ -11,7 +11,6 @@ parser.add_argument('-b', nargs='?', default=b_default, type=str,
                     help='filepath for benchmark config, default: {}'.format(b_default))
 parser.add_argument('-seed', nargs='?', default=4, type=int)
 args = parser.parse_args()
-print(args)
 
 for seed in [2]:
     scheduler = Scheduler()

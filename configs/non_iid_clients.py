@@ -2,7 +2,7 @@ feddream_fast = {
     "seed": 1,
     "algo": "feddream_fast",
     "exp_id": "distadam",
-    "exp_type": "non_iid_balanced_clients_feddream_fast_wo_adaptive",
+    "exp_type": "non_iid_balanced_clients_feddream_fast",
     "load_existing": False,
     "checkpoint_paths": {},
     "dset": "mnist",
@@ -20,7 +20,7 @@ feddream_fast = {
     # params for model
     "position": 0, "inp_shape": [0, 1, 28, 28],
     # Params for gradient descent on data
-    "global_steps": 1, "local_steps": 5, "nx_samples": 5,
+    "global_steps": 1, "local_steps": 5, "nx_samples": 5, 
     # for local training
     "distill_batch_size": 256, "distill_epochs": 100, "dset_size": 25*256, 
     "warmup": 50, "local_train_freq": 5,
@@ -31,10 +31,10 @@ feddream_fast = {
     #fast-meta deepinversion parameters
     "lr_z": 0.0015, "lr_g": 5e-3,
     "adv": 1.33, "bn": 10, "oh": 0.5, "bn_mmt": 0.9,
-    "reset_bn": 0, "reset_l0": 1,"ismaml": 0,
+    "reset_bn": 0, "reset_l0": 1,"ismaml": 0, "optimizer_type": "avg",
 
     "log_console": True, "log_tb_freq": 1, 
-    "exp_keys": ["local_steps", "alpha", "nx_samples"]
+    "exp_keys": ["alpha", "local_steps", "warmup", "nx_samples", "dset_size"]
 }
 
 feddream_fast_noniid = {
