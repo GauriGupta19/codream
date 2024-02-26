@@ -8,7 +8,8 @@ Here is the list of customizable parameters in the config file:
 * ```num_clients, samples_per_client``` refers to the number of collaborators (clients) participating in the learning and samples refer to the number of training images per client.    
 * ```epochs, model_lr, batch_size``` are just the typical parameters associated with ML models.   
 * ```alpha``` used to indicate the degree of data heterogeneity for non-iid setting, lower alpha indicates highly non-id data  
-* ```heterogeneous_models, models```  is a flag used to indicate if clients have heterogeneous models. If True, then the list of different models for each client is provided
+* ```heterogeneous_models, models```  is a flag used to indicate if clients have heterogeneous models. If True, then the list of different models for each client is provided  
+
 Others for Codream/feddream:  
 * ```data_lr``` is the lr to be used to train the data--the current (random) image that we have.  
 * ```alpha_preds``` is the hyperparameter that is used to control the cross-entropy loss function.   
