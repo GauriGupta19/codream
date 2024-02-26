@@ -50,7 +50,10 @@ Collaborative learning by sharing distilled images, a library for the Co-Dream p
 |                              |                | FedProx                 |
 |                              |                | Moon                    |
 |                              |                | Scaffold                |
+|                              |                | AvgKD                   |
 
+Isolated:  
+Centralized:  
 
 <!-- TODO: add possible mpirun note? -->
 
@@ -72,7 +75,7 @@ We design our experiments for both IID and non-IID settings. For non-iid cases, 
 2. ```non_iid_balanced_clients```: each client has an equal number of samples that are non-iid distributed among labels according to Dirichlet distribution Dir(α)  
 3. ```non_iid_labels```: an extreme non-iid case where each client has only certain labels
 
-First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`. For non-iid, add in `non_iid_clients.py` and specify ```exp_type``` starting with desired non-iid setting such as ```non_iid_balanced_clients_fl```.  A sample config is shown below for iid scaffold:
+First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`. For non-iid, add in `non_iid_clients.py` and specify ```exp_type``` starting with the desired non-iid setting such as ```non_iid_balanced_clients_fl```.  A sample config is shown below for iid scaffold:
 
 ```
 fl = {
@@ -95,22 +98,43 @@ fl = {
 ```
 
 #### Config file parameters
-Here are the full list of customizable parameters in the config file:
+Here are the list of customizable parameters in the config file:
 ```exp_id``` is used for the purposes of identifying the experiment performed.   
 ```load_existing``` is a flag for whether to use an existing model or not. The existing model is saved in the directory specified by results_path in the config file. False, if parameter does not exist.  
 ```start_epoch``` which epoch to start with. Usually used with load_existing flag.   
-```exp_type``` the type of experiment to perform. Isolated and collab determine whether to perform the tests in isolation or with the data of other clients (collab). IID (Independent and Identically distributed) refers to how the dataset is distributed; if it is IID, then there's training that's disjoint from other classes. Otherwise, there may be portions of training and testing that overlap between classes.  
+```exp_type``` the type of experiment to perform. IID (Independent and Identically distributed) refers to how the dataset is distributed; if it is IID. And for non-iid setting starts with non-iid setting such as ```non_iid_balanced_clients_fl```
 ```dset, dump_dir, dpath, seed, device_ids```are all relatively straightforward and refer to the dataset, the dump directory, dataset path, seed (for pseudorandom purposes), and the gpu ids respectively.    
 ```num_clients, samples_per_client``` refers to the number of collaborators (clients) participating in the learning and samples refers to the number of training images per client.    
 ```epochs, model_lr, batch_size``` are just the typical parameters associated with ML models.   
+```alpha```  
+```heterogeneous_models, models```  
+```local_train_freq```  
+```alpha```  
+```alpha```  
+```alpha```  
+Others for codream/feddream:  
 ```data_lr``` is the lr to be used to train the data--the current (random) image that we have.  
 ```alpha_preds``` is the hyperparameter that is used to control the cross-entropy loss function.   
 ```alpha_tv``` is the hyperparameter that controls the total variation loss. Implementation of this loss function can be found in the ```modules.py``` file.      
 ```alpha_l2``` is the hyperparameter that applies to the l2 norm.      
 ```alpha_f``` is the hyperparameter applied to the r_feature, which tries to minimize the difference in the mean and the variance.   
-```inp_shape, position``` describe the model we're making.  
+```inp_shape``` shape of the dream dataset (here same as data image shape).
+```position``` feature layer of the model from which the dream representations are extracted. If 0 dreams are extracted in the data space.
 ```distill_batch_size, distill_epochs``` denote the epochs and batch_size to be used for the collab learning models.  
 ```warmup``` refers to the amount of epochs required before you can start training on the collab data. 
+```adaptive_server, adaptive_distill_start_round```  
+```global_steps```  
+```local_steps```  
+
+```optimizer_type```  
+
+Others for codream-fast/feddream-fast:cite paper, github  
+```nx_samples```  
+```lr_z, lr_z```  
+```dset_size```  
+```adv, bn, oh, bn_mmt```:fast-meta deepinversion parameters  
+```reset_bn, reset_l0, ismaml```  
+
 
 
 ### 3. Running with MPI <a name="mpi"></a>
