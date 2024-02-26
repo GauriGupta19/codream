@@ -22,7 +22,7 @@ Others for Codream/feddream:
 * ```adaptive_server, adaptive_distill_start_round``` is a flag used to indicate if we are doing the adaptive training of collab-dreams w.r.t. server or not. We indicate when this adaptive training starts with start_round parameter.
 * ```local_steps``` is the number of local steps of dreaming on each client's local model in each epoch.  
 * ```global_steps``` is the number of global steps for aggregation of dreams by the server in each epoch.  
-* ```optimizer_type``` is the type of aggregation performed for accumulating knowledge.   
+* ```optimizer_type``` is the type of aggregation performed for accumulating knowledge like model averaging, fedadam(with psuedo-gradients).   
 
 Others for codream-fast/feddream-fast:
 * ```nx_samples``` is the number of batches of dreams generated in each epoch.  
