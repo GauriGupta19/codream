@@ -7,8 +7,8 @@ Here are the list of customizable parameters in the config file:
 * ```dset, dump_dir, dpath, seed, device_ids```are all relatively straightforward and refer to the dataset, the dump directory, dataset path, seed (for pseudorandom purposes), and the gpu ids respectively.    
 * ```num_clients, samples_per_client``` refers to the number of collaborators (clients) participating in the learning and samples refers to the number of training images per client.    
 * ```epochs, model_lr, batch_size``` are just the typical parameters associated with ML models.   
-* ```alpha```  
-* ```heterogeneous_models, models```  
+* ```alpha```  used to indicate the degree of data heterogeneity for non-iid setting, lower alpha indicates highly non-id data
+* ```heterogeneous_models, models```  flag used to indicate if clients have heterogeneous models. If True, then the list of different models at each client is provided
 * ```local_train_freq```  
 * ```alpha```  
 * ```alpha```  
@@ -25,7 +25,7 @@ Others for codream/feddream:
 * ```warmup``` refers to the amount of epochs required before you can start training on the collab data. 
 * ```adaptive_server, adaptive_distill_start_round```  
 * ```global_steps```  
-* ```local_steps```  
+* ```local_steps```  number of local model steps on each client's local data
 
 * ```optimizer_type```  
 
