@@ -72,7 +72,7 @@ We design our experiments for both IID and non-IID settings. For non-iid cases, 
 2. ```non_iid_balanced_clients```: each client has an equal number of samples that are non-iid distributed among labels according to Dirichlet distribution Dir(α)  
 3. ```non_iid_labels```: an extreme non-iid case where each client has only certain labels
 
-First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`. For non-iid, add in `non_iid_clients.py` and specify ```exp_type``` starting with desired non-iid setting such as ```non_iid_balanced_clients_feddream_fast```.  A sample config is shown below for iid scaffold:
+First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`. For non-iid, add in `non_iid_clients.py` and specify ```exp_type``` starting with desired non-iid setting such as ```non_iid_balanced_clients_fl```.  A sample config is shown below for iid scaffold:
 
 ```
 fl = {
