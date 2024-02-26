@@ -2,8 +2,8 @@
   <h1>Collab Learning</h1>
 
   <p style="font-size:1.2em">
-    <a href="https://github.com/tremblerz"><strong>Abhishek Singh</strong></a>,
-    <a href="https://github.com/GauriGupta19"><strong>Gauri Gupta</strong></a>, 
+    <a href="https://github.com/tremblerz"><strong>Abhishek Singh *</strong></a>,
+    <a href="https://github.com/GauriGupta19"><strong>Gauri Gupta *</strong></a>, 
     <a href="https://github.com/RitvikKapila"><strong>Ritvik Kapila</strong></a>
     <a href="https://github.com/photonshi"><strong>Yichuan Shi</strong></a>, 
     <a href="https://github.com/Tropylium"><strong>Alex Dang</strong></a>, 
