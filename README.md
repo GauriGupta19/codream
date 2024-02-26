@@ -52,8 +52,9 @@ Collaborative learning by sharing distilled images, a library for the Co-Dream p
 |                              |                | Scaffold                |
 |                              |                | AvgKD                   |
 
-Isolated:  
-Centralized:  
+We also include Independent and Centralized training baseline for reference.
+Isolated: Each clients trains a model only on its local dataset
+Centralized: All the client data is aggregated in a single place and a single model is trained on the combined data  
 
 <!-- TODO: add possible mpirun note? -->
 
@@ -96,6 +97,7 @@ fl = {
     "exp_keys": ["algo", "seed"]
 }
 ```
+A detailed list of config parameters can be found [here](https://github.com/tremblerz/collab_learning/blob/codream_public/configs/README.md)
 
 ### 3. Running with MPI <a name="mpi"></a>
 
