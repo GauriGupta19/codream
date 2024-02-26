@@ -1,29 +1,101 @@
-# Collab Learning
-Collaborative learning by sharing distilled images
+<div align="center">
+  <h1>Collab Learning</h1>
 
-# Code Structure
-<img src = "image2.png" height = 300><br />
-When MPI run is called, it calls main.py in three different processors, one server and two clients.<br />
+  <p style="font-size:1.2em">
+    <a href="https://github.com/tremblerz"><strong>Abhishek Singh</strong></a>,
+    <a href="https://github.com/GauriGupta19"><strong>Gauri Gupta</strong></a>, 
+    <a href="https://github.com/RitvikKapila"><strong>Ritvik Kapila</strong></a>
+    <a href="https://github.com/photonshi"><strong>Yichuan Shi</strong></a>, 
+    <a href="https://github.com/Tropylium"><strong>Alex Dang</strong></a>, 
+    <a href="https://github.com/mohammedehab2002"><strong>Mohammed Ehab</strong></a>, 
+  </p>
 
-<img src = "image1.png" width = 500><br />
-This is what the structure looks like in the server node. The arrows indicate which class calls which. For example, the arrow going from Scheduler to DAREServer indicates that Scheduler calls DAREServer at some point.<br />
+  <p align="center" style="font-size:16px">Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space.  </p>
+  <!-- Images? -->
+  <!-- <p align="center">
+    <img src="media/teaser.gif" />
+  </p> -->
+</div>
 
-<img src = "image4.png" width = 500> <br />
-This is the structural diagram for both client nodes. It is nearly identical to the server’s. The main difference is that Scheduler calls DAREClient instead of DAREServer, and DareClient goes on to call FastMetaSynthesizer, which calls Generator. Only the structure for DARE is shown here for simplicity, but the server and client files being called are dependent on the algorithm specified in the configuration file (DARE, Federated, or Isolated).
+![CoDream pipeline diagram](assets/pipeline.png)
+
+<!-- Introduction: fl in iid/ noniid; noniid supports heterogeneity parameter, list of models -->
+<!-- Link to paper -->
+
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Getting Started](#baselines)
+    - [Installation](#1-installation)
+    - [Config](#2-defining-config)
+    - [Running with MPI](#3-running-with-mpi)
+    - [Logging](#4-logging)
+    - [Tensorboard Monitoring](#5-monitoring-with-tensorboard)
+
+    </ul>
+<!-- 4. [Training](#training) -->
+3. [Code Structure](#developer)
+4. [Citation](#citation)
+5. [License](#license)
+
+## Introduction <a name="introduction"></a>
+Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space. This library provides a pipeline for benchmarking centralized federated learning under both iid and non-iid data settings. We provide implementation for the following model architecture, datasets, and federated learning algorithm:
+
+| Model Architecutre           | Datasets       | FL Algorithm            |
+|------------------------------|----------------|-------------------------|
+| LeNet5                       | CIFAR[10, 100] | FedDream, FedDream_fast |
+| MobileNet                    | PathMNIST      | Centralized             |
+| VGG[8, 11, 13, 16, 19]       | MNIST          | Isolated                |
+| ResNet[18, 34, 50, 101, 152] | EMNIST         | FedAvg                  |
+|                              | SVHM           | FedGen                  |
+|                              |                | FedProx                 |
+|                              |                | Moon                    |
+|                              |                | Scaffold                |
 
 
-# Control Flow
+<!-- TODO: add possible mpirun note? -->
 
+## Getting Started <a name="baselines"></a>
+<!-- how to run baselines - include brief overview of supported baselines, how to define config, and how dataset is downloaded -->
 
-## Main
-The application first runs main.py, which handles running the application from the command line. It takes as argument a config file path, where the default config file is ```iid_clients.py```.  
+The abbreviated list below shows steps to getting your first run started using the collab_learning library:
 
-The usage for main.py is as follows:  
-``` python3 main.py -b "{path_to_config_file}" ```, where you replace the {path_to_config_file} with the actual path of the desired config file.
+### 1. Installation <a name="installation"></a>
+To install all dependencies for using the package, please run
+```
+pip install -r requirements.txt
+```
+Datasets and models in the above list are automatically installed upon the first run. For importing custom models, datasets, and FL algorithms, please see the implementation details in `models/`, `utils/data_utils.py`, and `algos/`
 
-Upon launch, ```main.py``` parses the config file, and based on its configuration runs Scheduler.py, which takes care of the rest of our program.
+### 2. Defining Config <a name="config"></a>
+We design our experiments for both IID and non-IID settings. For non-iid cases, we provide support for different kinds of settings which can be found in `utils/data_utils.py` as follows:  
+1. ```non_iid_balanced_labels```: data from all labels are non-iid distributed among clients according to Dirichlet distribution Dir(α), where clients can have an unequal number of samples  
+2. ```non_iid_balanced_clients```: each client has an equal number of samples that are non-iid distributed among labels according to Dirichlet distribution Dir(α)  
+3. ```non_iid_labels```: an extreme non-iid case where each client has only certain labels
 
-### Config file parameters
+First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`, and `non_iid_clients.py` otherwise. Then modify `main.py` to reflect whether IID or non-IID setups are being run. A sample config is shown below for iid scaffold:
+
+```
+fl = {
+    "algo": "fedavg",
+    "exp_id": 10,
+    "exp_type": "iid_clients_fl",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/cifar10/iid/",
+    "dpath": "./imgs/cifar10",
+    "seed": 4,
+    # server can have overlapping device ids with clients because
+    # both are not used at the same time
+    # Learning setup
+    "num_clients": 4, "samples_per_client": 1000,
+    "device_ids": {"node_0": [3], "node_1": [6], "node_2": [2], "node_3": [4], "node_4": [5]},
+    "epochs": 400, "local_runs": 5,
+    "model": "resnet18", "model_lr": 0.1, "batch_size": 256,
+    "exp_keys": ["algo", "seed"]
+}
+```
+
+#### Config file parameters
+Here are the full list of customizable parameters in the config file:
 ```exp_id``` is used for the purposes of identifying the experiment performed.   
 ```load_existing``` is a flag for whether to use an existing model or not. The existing model is saved in the directory specified by results_path in the config file. False, if parameter does not exist.  
 ```start_epoch``` which epoch to start with. Usually used with load_existing flag.   
@@ -38,40 +110,34 @@ Upon launch, ```main.py``` parses the config file, and based on its configuratio
 ```alpha_f``` is the hyperparameter applied to the r_feature, which tries to minimize the difference in the mean and the variance.   
 ```inp_shape, position``` describe the model we're making.  
 ```distill_batch_size, distill_epochs``` denote the epochs and batch_size to be used for the collab learning models.  
-```warmup``` refers to the amount of epochs required before you can start training on the collab data.  
+```warmup``` refers to the amount of epochs required before you can start training on the collab data. 
 
-## Scheduler
-Scheduler takes care of the bulk of our program. Mainly, it executes any one of the iid/non-iid client programs in isolation or in collaboration with other clients, depending on the parameters given in ```exp_type```. Here,  I will briefly walk through each of these training methods and how they differ:
 
-#### 1) IID Clients Isolated
-This performs a typical training that we see in machine learning. For epochs specified in the config file, it tests each of the client's model and logs the test results. Then, it trains each of the client's model using Cross Entropy loss and adjusts the parameters to better fit the data. It also saves the model by client numbers in the results path specified in the config file. All of this is done from start epoch to epochs as indicated by the config file. 
+### 3. Running with MPI <a name="mpi"></a>
 
-#### 2) IID Federated
-This is similar to (1), but with a major difference. After each epoch is done, following the training, the parameters for each of the client's model is set to be the weighted average among all the client models.
+After the experimental config is set, run experiments by calling main.py:
+```
+mpirun -np N -host localhost:N python main.py -b "{path_to_config_file}"
+```
+where N is a number that represents how many nodes there are in the system. With the example config above, `N=3` because there are 2 clients and 1 server.  It takes as argument a config file path by replacing {path_to_config_file} with the actual path of the desired config file, where the default config file is ```iid_clients.py```.  
 
-#### 3) IID Clients Collab
-The structure of this training is very similar to (1), but there are important distinctions. We still have the same sequence of test, train, save for epochs from start epochs to epochs. However, once you're done with the "warmup" number of epochs, as described in the config, then you're going to generate random noise for your image and generate a random label. You apply gradient ascent--this is more of the Deep Inversion technique detailed by the paper linked below--on the image and label to get a generated image of the label. Then you run the image through the model to get an appropriate activation according to the model and store that. You store this collab data for all the models. Then, you train each client on the collab data and its own data, using the KL loss function. You repeat this for epochs as specified in the config and you continue adding to the collab data (without clearing it) as you go into further epochs. 
+Upon launch, ```main.py``` parses the config file, and based on its configuration runs Scheduler.py, which takes care of the rest of our program.
 
-#### 4) IID Clients Adaptive Collab
-This is similar to (3), but with some differences that we'll detail here. For each client, instead of applying gradient ascent subject to its own loss only, in adaptive collab, we apply gradient ascent to a client's model subject to the loss from all other clients and loss on the client model itself as well. This also results in a slightly different regularization of hyperparameters as can be seen in the ```algos.py``` file. 
+### 4. Logging <a name="logging"></a>
 
-#### 5) Non-IID Clients Colab
-This is the same as clients colab, but the dataset is not mutually exclusive anymore (non-iid). In addition, the training method is also different as we use the loss from both KL Loss and Cross Entropy to adjust our parameters. 
+To capture logs and ensure that experiments are reproducible, the collab-learning library copies all files and folder structure -- as well as the actual statistics of model performance -- into a separate `log` folder that will be created upon the first run. 
 
-#### 6) Non-IID Federated
-This is also the same as the IID Federated method, with the exception that the datasets now are not necessarily independent or identically distributed.
+### 5. Monitoring with Tensorboard <a name="tensorboard"></a>
 
-## General Code Flow
-<img src = "image3.png"> <br /><br />
-After being assigned the config file, the Scheduler is initialized, setting the seed that will be used to generate random values, establishing the node as a communicator, and snapshotting the experiment to save the results.<br />
+The code provides support for tensorboard monitoring. To open tensorboard, run the following command inside the log folder:
 
-After initializing, the program checks the rank of the current processor. The server has rank 0, and clients have ranks 1 and 2. We check the config file for the appropriate algorithm(DARE, Federated, or Isolated), and depending on the rank, we either run the Server class or Client class of each algorithm. If the algorithm specified is Isolated, there is only one processor, which has rank 0, so we simply run the Server class.<br />
+```tensorboard --logdir ./ --host 0.0.0.0```
 
-The Client class gets the tags from the CommProtocol class and creates an optimizer according to the config.
-If running on the server, the program decides whether to use GPU or CPU depending on the availability of Cuda on the device.<br />
+Once tensorboard outputs the link, click into it to view the logged performances.
 
-The dataset, either MNIST or CFAR10 depending on the config, is transformed. We set important values like the mean and number of cycles, train and test the data, and create a dataloader object.
-The server and client continue to work in parallel, now using MPI to send signals to each other.<br />
+<!-- how to run training - essentially very similar to baseline but maybe more detail on config / code structure? -->
+
+## Control Flow <a name="developer"></a>
 
 Server:
 The server sends a signal to start the warmup rounds. Once it receives the signal from the client class that the warmup rounds are over, it runs a single round and updates the data statistics to the terminal for as many epochs as the config file specifies.
@@ -82,13 +148,17 @@ Upon receiving the signal to begin from the server, the algorithm starts the tra
 
 The program terminates when both the server and the client have run their rounds for the correct number of epochs.<br />
 
-
-
-
-
-
 To further examine these training methods, take a look at the research paper on which this project is based in [here](https://arxiv.org/abs/1912.08795).  
+ 
 
-
-
-
+## Citation <a name="citation"></a>
+```
+@inproceedings{singh2023co,
+  title={Co-Dream: Collaborative data synthesis with decentralized models},
+  author={Singh, Abhishek and Gupta, Gauri and Lu, Charles and Koirala, Yogesh and Shankar, Sheshank and Ehab, Mohammed and Raskar, Ramesh},
+  booktitle={ICML Workshop on Localized Learning (LLW)},
+  year={2023}
+}
+```
+## License <a name="license"></a>
+The CoDream code is available under the [Apache License](LICENSE).
