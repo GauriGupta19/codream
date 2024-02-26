@@ -18,6 +18,9 @@
 </div>
 
 ![CoDream pipeline diagram](assets/pipeline.png)
+Overview of the CoDream pipeline comprising three stages: (1) Knowledge Extraction— each client generates dreams, representing the extracted knowledge from their local models (teacher). Starting with random noise images and frozen teacher models,
+clients optimize to reduce entropy on the output distribution while regularizing the batch norm and adaptive loss. The clients share their local updates of dreams and logits with the server. (2) Knowledge Aggregation—server aggregates dreams and soft labels from clients to
+construct a CoDream dataset. (3) Knowledge Acquisition—clients update their local models through two-stage training (i) on jointly optimized co-dreams with knowledge distillation (where clients act as students) and (ii) local dataset with cross-entropy loss. 
 
 <!-- Introduction: fl in iid/ noniid; noniid supports heterogeneity parameter, list of models -->
 <!-- Link to paper -->
@@ -79,6 +82,9 @@ We design our experiments for both IID and non-IID settings. For non-iid cases, 
 3. ```non_iid_labels```: an extreme non-iid case where each client has only certain labels
 
 First, define the desired experimental configuration in the `configs` folder. For IID_experimental setups, add the config in `iid_clients.py`. For non-iid, add in `non_iid_clients.py` and specify ```exp_type``` starting with the desired non-iid setting such as ```non_iid_balanced_clients_fl```.  A sample config is shown below for iid scaffold:
+
+![Data heterogenity](assets/iid_vs_noniid.png)
+Visualization of statistical heterogeneity among CIFAR10 clients: Client IDs on the x-axis, class labels on the y-axis, and point size reflects the number of training samples per label for each use.  
 
 ```
 fl = {
