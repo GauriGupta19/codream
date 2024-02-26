@@ -52,8 +52,8 @@ Collaborative learning by sharing distilled images, a library for the Co-Dream p
 |                              |                | Scaffold                |
 |                              |                | AvgKD                   |
 
-`CoDream`:  We introduce a novel collaborative learning approach where clients jointly optimize synthetic dreams(starting from random noise on frozen local models) using federated averaging for performing collective knowledge sharing across clients.
-`CoDream-fast`:  To accelerate the process of generating dreams, we implement the [Fast-datafree](https://arxiv.org/pdf/2112.06253.pdf) approach on top of our algorithm. CoDream-fast learns common features using a metagenerator for initializing dreams, instead of initializing with random noise every time.
+`CoDream`:  We introduce a novel collaborative learning approach where clients jointly optimize synthetic dreams(starting from random noise on frozen local models) using federated averaging for performing collective knowledge sharing across clients.  
+`CoDream-fast`:  To accelerate the process of generating dreams, we implement the [Fast-datafree](https://arxiv.org/pdf/2112.06253.pdf) approach on top of our algorithm. CoDream-fast learns common features using a metagenerator for initializing dreams, instead of initializing with random noise every time.  
 We also include Independent and Centralized training baselines for reference.  
 `Isolated`: Each client trains a model only on its local dataset  
 `Centralized`: All the client data is aggregated in a single place and a single model is trained on the combined data  
