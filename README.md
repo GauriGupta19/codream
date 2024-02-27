@@ -12,7 +12,7 @@
 
   <p align="center" style="margin: 2em auto;">
     <a href='https://mitmedialab.github.io/codream.github.io/' style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/CoDream-Project_page-orange?style=flat&logo=googlechrome&logoColor=orange' alt='Project Page'></a>
-    <a href=''><img src='https://img.shields.io/badge/arXiv-Paper_PDF-red?style=flat&logo=arXiv&logoColor=green' alt='Paper PDF'></a>
+    <a href='https://arxiv.org/abs/2402.15968'><img src='https://img.shields.io/badge/arXiv-Paper_PDF-red?style=flat&logo=arXiv&logoColor=green' alt='Paper'></a>
   </p>
 
   <p align="center" style="font-size:16px">Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space.  </p>
@@ -152,11 +152,13 @@ To further examine these training methods, take a look at the research paper on 
 
 ## Citation <a id="citation"></a>
 ```
-@inproceedings{singh2023co,
-  title={Co-Dream: Collaborative data synthesis with decentralized models},
-  author={Singh, Abhishek and Gupta, Gauri and Lu, Charles and Koirala, Yogesh and Shankar, Sheshank and Ehab, Mohammed and Raskar, Ramesh},
-  booktitle={ICML Workshop on Localized Learning (LLW)},
-  year={2023}
+@misc{singh2024codream,
+  title={CoDream: Exchanging dreams instead of models for federated aggregation with heterogeneous models}, 
+  author={Abhishek Singh and Gauri Gupta and Ritvik Kapila and Yichuan Shi and Alex Dang and Sheshank Shankar and Mohammed Ehab and Ramesh Raskar},
+  year={2024},
+  eprint={2402.15968},
+  archivePrefix={arXiv},
+  primaryClass={cs.LG}
 }
 ```
 ## License <a id="license"></a>
