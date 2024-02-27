@@ -2,12 +2,17 @@
   <h1>Collab Learning</h1>
 
   <p style="font-size:1.2em">
-    <a href="https://github.com/tremblerz"><strong>Abhishek Singh *</strong></a>,
-    <a href="https://github.com/GauriGupta19"><strong>Gauri Gupta *</strong></a>, 
-    <a href="https://github.com/RitvikKapila"><strong>Ritvik Kapila</strong></a>
-    <a href="https://github.com/photonshi"><strong>Yichuan Shi</strong></a>, 
-    <a href="https://github.com/Tropylium"><strong>Alex Dang</strong></a>, 
-    <a href="https://github.com/mohammedehab2002"><strong>Mohammed Ehab</strong></a>, 
+    <a href="https://github.com/tremblerz"><strong>Abhishek Singh<sup>*</sup></strong></a> ·
+    <a href="https://github.com/GauriGupta19"><strong>Gauri Gupta<sup>*</sup></strong></a> ·
+    <a href="https://github.com/RitvikKapila"><strong>Ritvik Kapila</strong></a> ·
+    <a href="https://github.com/photonshi"><strong>Yichuan Shi</strong></a> ·
+    <a href="https://github.com/Tropylium"><strong>Alex Dang</strong></a> ·
+    <a href="https://github.com/mohammedehab2002"><strong>Mohammed Ehab</strong></a> 
+  </p>
+
+  <p align="center" style="margin: 2em auto;">
+    <a href='https://mitmedialab.github.io/codream.github.io/' style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/CoDream-Project_page-orange?style=flat&logo=googlechrome&logoColor=orange' alt='Project Page'></a>
+    <a href=''><img src='https://img.shields.io/badge/arXiv-Paper_PDF-red?style=flat&logo=arXiv&logoColor=green' alt='Paper PDF'></a>
   </p>
 
   <p align="center" style="font-size:16px">Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space.  </p>
@@ -28,11 +33,11 @@ construct a CoDream dataset. (3) Knowledge Acquisition—clients update their lo
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Getting Started](#baselines)
-    - [Installation](#1-installation)
-    - [Config](#2-defining-config)
-    - [Running with MPI](#3-running-with-mpi)
-    - [Logging](#4-logging)
-    - [Tensorboard Monitoring](#5-monitoring-with-tensorboard)
+    - [Installation](#installation)
+    - [Config](#defining-config)
+    - [Running with MPI](#running-with-mpi)
+    - [Logging](#logging)
+    - [Tensorboard Monitoring](#monitoring-with-tensorboard)
 
     </ul>
 <!-- 4. [Training](#training) -->
@@ -40,7 +45,7 @@ construct a CoDream dataset. (3) Knowledge Acquisition—clients update their lo
 4. [Citation](#citation)
 5. [License](#license)
 
-## Introduction <a name="introduction"></a>
+## Introduction <a id="introduction"></a>
 Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space. This library provides a pipeline for benchmarking centralized federated learning under both iid and non-iid data settings. We provide implementation for the following model architecture, datasets, and federated learning algorithm:
 
 | Model Architecutre           | Datasets       | FL Algorithm            |
@@ -63,19 +68,19 @@ We also include Independent and Centralized training baselines for reference.
 
 <!-- TODO: add possible mpirun note? -->
 
-## Getting Started <a name="baselines"></a>
+## Getting Started <a id="baselines"></a>
 <!-- how to run baselines - include brief overview of supported baselines, how to define config, and how dataset is downloaded -->
 
 The abbreviated list below shows steps to getting your first run started using the collab_learning library:
 
-### 1. Installation <a name="installation"></a>
+### 1. Installation <a id="installation"></a>
 To install all dependencies for using the package, please run
 ```
 pip install -r requirements.txt
 ```
 Datasets and models in the above list are automatically installed upon the first run. For importing custom models, datasets, and FL algorithms, please see the implementation details in `models/`, `utils/data_utils.py`, and `algos/`
 
-### 2. Defining Config <a name="config"></a>
+### 2. Defining Config <a id="defining-config"></a>
 We design our experiments for both IID and non-IID settings. For non-iid cases, we provide support for different kinds of settings which can be found in `utils/data_utils.py` as follows:  
 1. ```non_iid_balanced_labels```: data from all labels are non-iid distributed among clients according to Dirichlet distribution Dir(α), where clients can have an unequal number of samples  
 2. ```non_iid_balanced_clients```: each client has an equal number of samples that are non-iid distributed among labels according to Dirichlet distribution Dir(α)  
@@ -107,7 +112,7 @@ fl = {
 ```
 A detailed list of config parameters can be found [here](https://github.com/tremblerz/collab_learning/blob/codream_public/configs/README.md)
 
-### 3. Running with MPI <a name="mpi"></a>
+### 3. Running with MPI <a id="running-with-mpi"></a>
 
 After the experimental config is set, run experiments by calling main.py:
 ```
@@ -117,11 +122,11 @@ where N is a number that represents how many nodes there are in the system. With
 
 Upon launch, ```main.py``` parses the config file, and based on its configuration runs Scheduler.py, which takes care of the rest of our program.
 
-### 4. Logging <a name="logging"></a>
+### 4. Logging <a id="logging"></a>
 
 To capture logs and ensure that experiments are reproducible, the collab-learning library copies all files and folder structure -- as well as the actual statistics of model performance -- into a separate `log` folder that will be created upon the first run. 
 
-### 5. Monitoring with Tensorboard <a name="tensorboard"></a>
+### 5. Monitoring with Tensorboard <a id="monitoring-with-tensorboard"></a>
 
 The code provides support for tensorboard monitoring. To open tensorboard, run the following command inside the log folder:
 
@@ -131,7 +136,7 @@ Once tensorboard outputs the link, click into it to view the logged performances
 
 <!-- how to run training - essentially very similar to baseline but maybe more detail on config / code structure? -->
 
-## Control Flow <a name="developer"></a>
+## Control Flow <a id="developer"></a>
 
 Server:
 The server sends a signal to start the warmup rounds. Once it receives the signal from the client class that the warmup rounds are over, it runs a single round and updates the data statistics to the terminal for as many epochs as the config file specifies.
@@ -145,7 +150,7 @@ The program terminates when both the server and the client have run their rounds
 To further examine these training methods, take a look at the research paper on which this project is based in [here](https://arxiv.org/abs/1912.08795).  
  
 
-## Citation <a name="citation"></a>
+## Citation <a id="citation"></a>
 ```
 @inproceedings{singh2023co,
   title={Co-Dream: Collaborative data synthesis with decentralized models},
@@ -154,5 +159,5 @@ To further examine these training methods, take a look at the research paper on 
   year={2023}
 }
 ```
-## License <a name="license"></a>
+## License <a id="license"></a>
 The CoDream code is available under the [Apache License](LICENSE).
