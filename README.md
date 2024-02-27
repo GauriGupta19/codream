@@ -7,15 +7,17 @@
     <a href="https://github.com/RitvikKapila"><strong>Ritvik Kapila</strong></a> ·
     <a href="https://github.com/photonshi"><strong>Yichuan Shi</strong></a> ·
     <a href="https://github.com/Tropylium"><strong>Alex Dang</strong></a> ·
-    <a href="https://github.com/mohammedehab2002"><strong>Mohammed Ehab</strong></a> 
+    <a href="https://mitmedialab.github.io/codream.github.io/"><strong>Sheshank Shankar</strong></a> ·
+    <a href="https://github.com/mohammedehab2002"><strong>Mohammed Ehab</strong></a> ·
+    <a href="https://www.media.mit.edu/people/raskar/overview/"><strong>Ramesh Raskar</strong></a> 
   </p>
 
   <p align="center" style="margin: 2em auto;">
     <a href='https://mitmedialab.github.io/codream.github.io/' style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/CoDream-Project_page-orange?style=flat&logo=googlechrome&logoColor=orange' alt='Project Page'></a>
-    <a href='https://arxiv.org/abs/2402.15968'><img src='https://img.shields.io/badge/arXiv-Paper_PDF-red?style=flat&logo=arXiv&logoColor=green' alt='Paper'></a>
+    <a href='https://arxiv.org/abs/2402.15968'><img src='https://img.shields.io/badge/arXiv-Paper_PDF-red?style=flat&logo=arXiv&logoColor=green' alt='Paper PDF'></a>
   </p>
 
-  <p align="center" style="font-size:16px">Collaborative learning by sharing distilled images, a library for the Co-Dream paper that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space.  </p>
+  <p align="center" style="font-size:16px">Official implementation of the CoDream paper, a collaborative learning method by sharing distilled images that proposes a novel way to perform learning in a collaborative, distributed way via gradient descent in the data space. </p>
   <!-- Images? -->
   <!-- <p align="center">
     <img src="media/teaser.gif" />
